@@ -73,6 +73,11 @@ jobs:
         run: sdkmanager --update
       - name: Accept Android SDK licenses (after update)
         run: yes | sdkmanager --licenses > /dev/null || true
+      # 一時デバッグ: このランナーの sdkmanager が実際にどのバージョンを認識しているか確認する
+      - name: DEBUG list available platforms/build-tools
+        run: |
+          sdkmanager --version
+          sdkmanager --list 2>&1 | grep -E "platforms;android-|build-tools;3[0-9]" || true
       - name: Install SDK platform used by compileSdk
         run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
       - run: chmod +x gradlew
