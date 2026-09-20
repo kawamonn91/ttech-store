@@ -66,20 +66,14 @@ jobs:
         run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
-      # ランナーに焼き込まれた sdkmanager のパッケージ一覧が古く、新しい platforms/build-tools が
-      # 見つからないことがあるため、インストール前に一覧を更新する(更新で追加された分の
-      # ライセンスにも改めて同意する)。
-      - name: Update SDK package list
-        run: sdkmanager --update
-      - name: Accept Android SDK licenses (after update)
-        run: yes | sdkmanager --licenses > /dev/null || true
-      # 一時デバッグ: このランナーの sdkmanager が実際にどのバージョンを認識しているか確認する
-      - name: DEBUG list available platforms/build-tools
-        run: |
-          sdkmanager --version
-          sdkmanager --list 2>&1 | grep -E "platforms;android-|build-tools;3[0-9]" || true
+      # sdkmanager 上のパッケージ名は "android-37" ではなく "android-37.0"(マイナーバージョン付き)。
+      # Android Gradle Plugin は compileSdk = 37 を渡すと "android-37" という名前でプラットフォームを
+      # 探すため、Android Studio がローカルでは互換用に "android-37" という別名フォルダを作っている。
+      # CI にはその仕組みが無いので、インストール後に同じ内容で "android-37" フォルダを複製する。
       - name: Install SDK platform used by compileSdk
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+        run: |
+          sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+          cp -r "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
       - run: chmod +x gradlew
       - run: ./gradlew testDebugUnitTest assembleDebug --console=plain
       - name: Upload test reports on failure
