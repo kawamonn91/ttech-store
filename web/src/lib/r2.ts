@@ -1,4 +1,5 @@
 import { AwsClient } from "aws4fetch";
+import { Agent, fetch as undiciFetch } from "undici";
 import { env } from "./env";
 
 /**
@@ -14,6 +15,13 @@ function client() {
     region: "auto",
   });
 }
+
+/**
+ * サーバーからR2への直接リクエスト(headObject)専用に IPv4 接続を強制する。
+ * 一部のネットワーク環境(VPN/ゼロトラストクライアント等)で、R2のIPv6経路がブロックされて
+ * Node の fetch がタイムアウトすることがあるため、その回避策として明示的に使う。
+ */
+const r2Agent = new Agent({ connect: { family: 4 } });
 
 function objectUrl(key: string): URL {
   const encoded = key.split("/").map(encodeURIComponent).join("/");
@@ -47,7 +55,8 @@ export function presignUpload(key: string): Promise<string> {
 
 /** アップロード済みか確認し、サイズを返す。無ければ null */
 export async function headObject(key: string): Promise<{ size: number } | null> {
-  const res = await client().fetch(objectUrl(key).toString(), { method: "HEAD" });
+  const url = await client().sign(objectUrl(key).toString(), { method: "HEAD", aws: { signQuery: true } });
+  const res = await undiciFetch(url.url, { method: "HEAD", dispatcher: r2Agent });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`R2 HEAD failed: ${res.status}`);
   return { size: Number(res.headers.get("content-length") ?? 0) };
