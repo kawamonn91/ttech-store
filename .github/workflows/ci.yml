@@ -57,8 +57,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
+      # android-actions/setup-android@v3 は、新しく追加されたSDKライセンス(android-googlexr-license 等)を
+      # 固定回数の自動同意でしか処理できず失敗することがあるため使わない。ランナーに元から入っている
+      # sdkmanager を直接使い、yes で全ライセンスに同意してから必要なパッケージだけ入れる。
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
       - name: Install SDK platform used by compileSdk
         run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
       - run: chmod +x gradlew
