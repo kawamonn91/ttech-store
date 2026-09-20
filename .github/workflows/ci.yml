@@ -61,6 +61,9 @@ jobs:
       # android-actions/setup-android@v3 は、新しく追加されたSDKライセンス(android-googlexr-license 等)を
       # 固定回数の自動同意でしか処理できず失敗することがあるため使わない。ランナーに元から入っている
       # sdkmanager を直接使い、yes で全ライセンスに同意してから必要なパッケージだけ入れる。
+      # cmdline-tools の bin はデフォルトでは PATH に無いため、明示的に追加する。
+      - name: Add Android cmdline-tools to PATH
+        run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
       - name: Install SDK platform used by compileSdk
