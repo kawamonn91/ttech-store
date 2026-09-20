@@ -66,6 +66,13 @@ jobs:
         run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
+      # ランナーに焼き込まれた sdkmanager のパッケージ一覧が古く、新しい platforms/build-tools が
+      # 見つからないことがあるため、インストール前に一覧を更新する(更新で追加された分の
+      # ライセンスにも改めて同意する)。
+      - name: Update SDK package list
+        run: sdkmanager --update
+      - name: Accept Android SDK licenses (after update)
+        run: yes | sdkmanager --licenses > /dev/null || true
       - name: Install SDK platform used by compileSdk
         run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
       - run: chmod +x gradlew
