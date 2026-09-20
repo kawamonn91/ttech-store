@@ -1,0 +1,39 @@
+name: scan-release
+
+# 管理画面でAPKがアップロードされると、Web から repository_dispatch(scan-release)で起動される。
+# 手動で再検査したい場合は workflow_dispatch から release_id / download_url / callback_url を渡す。
+on:
+  repository_dispatch:
+    types: [scan-release]
+  workflow_dispatch:
+    inputs:
+      release_id:
+        required: true
+      download_url:
+        required: true
+      callback_url:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 署名付きURLをログに出さない
+        run: |
+          echo "::add-mask::${{ github.event.client_payload.downloadUrl || inputs.download_url }}"
+      - name: APK を検査して結果を通知
+        env:
+          RELEASE_ID: ${{ github.event.client_payload.releaseId || inputs.release_id }}
+          DOWNLOAD_URL: ${{ github.event.client_payload.downloadUrl || inputs.download_url }}
+          CALLBACK_URL: ${{ github.event.client_payload.callbackUrl || inputs.callback_url }}
+          SCAN_WEBHOOK_SECRET: ${{ secrets.SCAN_WEBHOOK_SECRET }}
+          VT_API_KEY: ${{ secrets.VT_API_KEY }}
+        run: node workers/scan/inspect.mjs

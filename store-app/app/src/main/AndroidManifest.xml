@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 他アプリを APK からインストールするための権限。提供元不明アプリの許可が別途必要 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Android 14+: このストアを「更新の担当」として登録し、他ストアによる勝手な更新を防ぐ -->
+    <uses-permission android:name="android.permission.ENFORCE_UPDATE_OWNERSHIP" />
+
+    <!--
+      カタログの packageName が端末にインストール済みか調べるために必要。
+      このアプリは Google Play では配布しないため、Play のポリシー制限は受けない。
+    -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application
+        android:name=".StoreApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.TtechStore">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Web の詳細ページ(https://store.kawamonn.com/apps/<slug>)から直接開く -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="store.kawamonn.com"
+                    android:pathPrefix="/apps/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="ttechstore"
+                    android:host="apps" />
+            </intent-filter>
+        </activity>
+
+        <!-- PackageInstaller のセッション結果(ユーザー確認の要求・成功/失敗)を受け取る -->
+        <receiver
+            android:name=".install.InstallResultReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

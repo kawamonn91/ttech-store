@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 買い物袋をモチーフにした仮アイコン(正式なロゴができたら差し替える) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,44 L74,44 L78,84 L30,84 Z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M44,50 L44,38 A10,10 0 0 1 64,38 L64,50" />
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M54,58 L60,70 L48,70 Z" />
+</vector>
