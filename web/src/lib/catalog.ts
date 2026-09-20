@@ -44,7 +44,7 @@ export async function listCategories(): Promise<CategoryDto[]> {
 }
 
 /** PostgREST の or() フィルタを壊す文字を除く */
-function sanitizeQuery(q: string): string {
+export function sanitizeQuery(q: string): string {
   return q.replace(/[,()%*\\]/g, " ").trim().slice(0, 80);
 }
 

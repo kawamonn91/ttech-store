@@ -20,12 +20,11 @@ function objectUrl(key: string): URL {
   return new URL(`https://${env.r2AccountId()}.r2.cloudflarestorage.com/${env.r2Bucket()}/${encoded}`);
 }
 
-async function presign(method: "GET" | "PUT", key: string, expiresSeconds: number, headers?: Record<string, string>) {
+async function presign(method: "GET" | "PUT", key: string, expiresSeconds: number) {
   const url = objectUrl(key);
   url.searchParams.set("X-Amz-Expires", String(expiresSeconds));
   const signed = await client().sign(url.toString(), {
     method,
-    headers,
     aws: { signQuery: true },
   });
   return signed.url;
@@ -38,8 +37,12 @@ export function presignDownload(key: string): Promise<string> {
   return presign("GET", key, DOWNLOAD_URL_TTL_SECONDS);
 }
 
-export function presignUpload(key: string, contentType = "application/vnd.android.package-archive"): Promise<string> {
-  return presign("PUT", key, UPLOAD_URL_TTL_SECONDS, { "Content-Type": contentType });
+/**
+ * 管理コンソールからの直接アップロード用。署名されるのは host のみで、Content-Type は署名対象にならない。
+ * 中身が本当に正しいAPKかどうかは、アップロード後の検査(workers/scan)で確認する。
+ */
+export function presignUpload(key: string): Promise<string> {
+  return presign("PUT", key, UPLOAD_URL_TTL_SECONDS);
 }
 
 /** アップロード済みか確認し、サイズを返す。無ければ null */

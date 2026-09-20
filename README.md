@@ -42,6 +42,23 @@ cd store-app && ./gradlew testDebugUnitTest assembleDebug
 #   storeApiBase=http://10.0.2.2:3000/api/v1
 ```
 
+## テストとCI
+
+| 対象 | テスト | 実行 |
+|---|---|---|
+| Web(署名検証・検査結果の判定・DL発行・R2署名URL・DTO変換・各APIルート) | Vitest(モック使用) | `cd web && npm test` |
+| ストアアプリ(ハッシュ/署名の検証ロジック・APIクライアント・再開ダウンロード・更新判定) | JUnit + MockWebServer | `cd store-app && ./gradlew testDebugUnitTest` |
+| APK検査ワーカー(apksigner / aapt2 出力のパーサー) | node:test | `node --test "workers/scan/*.test.mjs"` |
+| DB(RLS・列権限・署名鍵固定トリガー・DL重複除外・評価集計) | pgTAP | `supabase test db`(要 Docker) |
+
+CI(`.github/workflows/ci.yml`)は push / PR ごとに上の4つ+ Web の lint・build(型チェック込み)+ Android の assembleDebug を実行する。
+ストアアプリのインストール処理そのもの(PackageInstaller)は、`tools/mock-api/server.mjs` のモックAPIとエミュレータで手動確認する:
+
+```bash
+node tools/mock-api/server.mjs <任意のAPK>     # good / tampered(ハッシュ改ざん) / badcert(署名不一致) の3件を配信
+# store-app/local.properties に storeApiBase=http://10.0.2.2:8787/api/v1 を書いてビルド → エミュレータにインストール
+```
+
 ## 方針メモ
 
 - 課金は未実装。`apps.price_yen` は将来用(常に0)。導入時は Stripe + `entitlements` + ダウンロード時の権限チェック(`web/src/lib/download.ts`)を想定。

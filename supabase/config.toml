@@ -1,0 +1,23 @@
+# Supabase CLI(ローカル開発 / CI の pgTAP テスト)用の最小設定。
+# 本番のプロジェクト設定はダッシュボード側で行う。
+project_id = "ttech-store"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[storage]
+enabled = true
