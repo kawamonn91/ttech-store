@@ -12,6 +12,8 @@ okhttp = "5.5.0"
 serialization = "1.11.0"
 coil = "3.6.2"
 work = "2.11.0"
+credentials = "1.6.0"
+googleid = "1.2.0"
 
 junit = "4.13.2"
 
@@ -44,6 +46,10 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

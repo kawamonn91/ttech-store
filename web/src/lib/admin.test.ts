@@ -7,7 +7,7 @@ let factors: { factor_type: string; status: string }[];
 
 vi.mock("./supabase", () => ({
   getAdminUser: async () => cookieAdmin,
-  publicClient: () => ({ auth: { getUser: async (token: string) => ({ data: { user: token === "valid-token" ? bearerUser : null } }) } }),
+  publicClient: () => ({ auth: { getUser: async (token: string) => ({ data: { user: token === "invalid-token" ? null : bearerUser } }) } }),
   serviceClient: () => ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: profileRole } }) }) }) }),
     auth: { admin: { getUserById: async () => ({ data: { user: { factors } } }) } },
@@ -24,6 +24,12 @@ beforeEach(() => {
 });
 
 const withAuth = (token?: string) => new Request("http://localhost/api", token ? { headers: { authorization: `Bearer ${token}` } } : {});
+
+/** aal クレームだけを持つダミーJWT(署名検証はモック側でしていないので中身は最小限でよい) */
+const fakeJwt = (aal: string) => {
+  const b64url = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString("base64url");
+  return `${b64url({ alg: "none" })}.${b64url({ aal })}.sig`;
+};
 
 describe("requireAdmin", () => {
   it("Cookieセッションが管理者ならそちらを優先する(Bearerは見ない)", async () => {
@@ -54,10 +60,20 @@ describe("requireAdmin", () => {
     expect("admin" in result && result.admin.id).toBe("u1");
   });
 
-  it("TOTP設定済みのadminはBearerトークンだけでは通らない(Web側でのみ)", async () => {
+  it("TOTP設定済みのadminはaal1のBearerトークンだけでは通らず、totp_requiredを返す", async () => {
     factors = [{ factor_type: "totp", status: "verified" }];
-    const result = await requireAdmin(withAuth("valid-token"));
+    const result = await requireAdmin(withAuth(fakeJwt("aal1")));
     expect("response" in result).toBe(true);
+    if ("response" in result) {
+      const body = await result.response.json();
+      expect(body.code).toBe("totp_required");
+    }
+  });
+
+  it("TOTP設定済みでもaal2のBearerトークンなら通る(ストアアプリでTOTP検証済み)", async () => {
+    factors = [{ factor_type: "totp", status: "verified" }];
+    const result = await requireAdmin(withAuth(fakeJwt("aal2")));
+    expect("admin" in result && result.admin.id).toBe("u1");
   });
 
   it("unverifiedなTOTPは未設定として扱う", async () => {

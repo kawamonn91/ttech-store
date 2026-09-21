@@ -2,6 +2,7 @@ package com.kawamonn.store.ui
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -32,6 +33,7 @@ private val tabs = listOf(
     Tab("home", "ホーム", Icons.Filled.Home),
     Tab("search", "検索", Icons.Filled.Search),
     Tab("updates", "アップデート", Icons.Filled.SystemUpdate),
+    Tab("account", "マイページ", Icons.Filled.AccountCircle),
 )
 
 @Composable
@@ -102,6 +104,7 @@ fun StoreNavHost(pendingRoute: String?, onRouteConsumed: () -> Unit) {
             }
             composable("search") { SearchScreen(openApp, padding) }
             composable("updates") { UpdatesScreen(openApp, padding) }
+            composable("account") { com.kawamonn.store.ui.account.AccountScreen(padding) }
             composable("detail/{slug}", arguments = listOf(navArgument("slug") { type = NavType.StringType })) { entry ->
                 DetailScreen(slug = entry.arguments?.getString("slug").orEmpty(), onBack = { nav.popBackStack() })
             }

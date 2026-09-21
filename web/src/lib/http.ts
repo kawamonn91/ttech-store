@@ -9,9 +9,15 @@ export function jsonOk<T>(data: T, opts: { cache?: boolean } = {}): NextResponse
   });
 }
 
-/** クライアント(ストアアプリ)は { error: "..." } の error を利用者向けメッセージとして表示する */
-export function jsonError(message: string, status: number): NextResponse {
-  return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
+/**
+ * クライアント(ストアアプリ)は { error: "..." } の error を利用者向けメッセージとして表示する。
+ * `code` は機械判定用(例: "totp_required" でストアアプリにTOTP入力を促す)。
+ */
+export function jsonError(message: string, status: number, opts: { code?: string } = {}): NextResponse {
+  return NextResponse.json(
+    { error: message, ...(opts.code ? { code: opts.code } : {}) },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export function internalError(e: unknown): NextResponse {
