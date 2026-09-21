@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 名刺(角丸長方形)+ 人物アイコン -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,34 L86,34 A4,4 0 0 1 90,38 L90,72 A4,4 0 0 1 86,76 L22,76 A4,4 0 0 1 18,72 L18,38 A4,4 0 0 1 22,34 Z" />
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M44,55 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
+    <path
+        android:fillColor="#0EA5E9"
+        android:pathData="M28,70 C28,62 35,66 44,66 C53,66 60,62 60,70 Z" />
+    <path android:fillColor="#94A3B8" android:pathData="M68,46 L82,46 L82,50 L68,50 Z" />
+    <path android:fillColor="#94A3B8" android:pathData="M68,56 L82,56 L82,60 L68,60 Z" />
+    <path android:fillColor="#94A3B8" android:pathData="M68,66 L78,66 L78,70 L68,70 Z" />
+</vector>
