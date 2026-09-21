@@ -20,3 +20,4 @@ rootProject.name = "ttech-apps"
 include(":common")
 include(":warikan")
 include(":pomodoro-timer")
+include(":date-calculator")
