@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { sessionClient } from "@/lib/supabase";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://store.kawamonn.com"),
@@ -8,7 +9,12 @@ export const metadata: Metadata = {
   description: "T-tech のAndroidアプリをまとめて配布するストア。専用アプリからインストール・更新ができます。",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const supabase = await sessionClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html lang="ja" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
@@ -21,6 +27,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/search" className="hover:text-brand">
                 検索
               </Link>
+              <Link href={user ? "/account" : "/login"} className="hover:text-brand">
+                {user ? "マイページ" : "ログイン"}
+              </Link>
               <Link href="/download" className="rounded-full bg-brand px-3 py-1.5 font-semibold text-brand-foreground">
                 ストアアプリを入手
               </Link>
@@ -30,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
         <footer className="border-t border-border py-6 text-center text-sm text-muted">
           <p className="space-x-4">
-            <a href="https://kawamonn.com" className="hover:text-brand">
+            <a href="https://www.kawamonn.com" className="hover:text-brand">
               kawamonn.com
             </a>
             <Link href="/legal/terms" className="hover:text-brand">

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * 管理コンソールのセッション(Cookie)を最新に保つ。
+ * 管理コンソール・開発者ポータル・アカウントページのセッション(Cookie)を最新に保つ。
  * Supabase のアクセストークンは短命なので、リクエストのたびにここで更新する。
  */
 export async function proxy(request: NextRequest) {
@@ -25,4 +25,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/admin/:path*"] };
+export const config = { matcher: ["/admin/:path*", "/dev/:path*", "/account/:path*"] };
