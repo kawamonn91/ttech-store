@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ShareImage/ShareFile が書き出す一時ファイル用。共有が終われば端末のキャッシュ整理で消えてよい -->
+    <cache-path name="shared" path="shared/" />
+</paths>

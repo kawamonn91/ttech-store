@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <!--
+          共有(ShareImageKt.shareBitmap等)用のFileProvider。共通モジュールに1回だけ定義し、
+          ${applicationId} プレースホルダで各アプリごとに別のauthorityになるようにしてある。
+          個々のアプリのAndroidManifest.xmlには何も足さなくてよい。
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
 </manifest>
