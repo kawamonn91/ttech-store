@@ -4,6 +4,7 @@ import { getAdminUser, sessionClient, serviceClient } from "@/lib/supabase";
 import { ProfileForm } from "./ProfileForm";
 import { DeleteAccountButton } from "./DeleteAccountButton";
 import { DeveloperApplyForm } from "./DeveloperApplyForm";
+import { TotpSetup } from "./TotpSetup";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,12 @@ export default async function AccountPage() {
 
   const admin = await getAdminUser();
   const svc = serviceClient();
+
+  let totpFactor: { id: string; status: string } | null = null;
+  if (profile?.role === "admin") {
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    totpFactor = factors?.totp?.find((f) => f.status === "verified") ?? null;
+  }
 
   const [myApps, downloads, pendingReleases] = await Promise.all([
     developer
@@ -72,6 +79,12 @@ export default async function AccountPage() {
       <Section title="プロフィール">
         <ProfileForm initialName={profile?.display_name ?? ""} />
       </Section>
+
+      {profile?.role === "admin" && (
+        <Section title="2段階認証(管理者)">
+          <TotpSetup initialFactor={totpFactor} />
+        </Section>
+      )}
 
       <Section title="開発者登録">
         {developer ? (
