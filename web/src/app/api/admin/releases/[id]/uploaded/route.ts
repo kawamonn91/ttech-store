@@ -8,8 +8,8 @@ import { serviceClient } from "@/lib/supabase";
  * アップロード完了の通知。R2 にファイルがあることを確かめ、APK検査(GitHub Actions)を起動する。
  * GitHub が未設定の環境では起動せず、手動で workers/scan/inspect.mjs を実行するための情報を返す。
  */
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin();
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(request);
   if ("response" in auth) return auth.response;
 
   const { id } = await params;

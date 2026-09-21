@@ -9,7 +9,7 @@ const MAX_APK_BYTES = 500 * 1024 * 1024;
 
 /** 新しいリリースを作り、APK を R2 へ直接アップロードするための署名付きURLを返す */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if ("response" in auth) return auth.response;
 
   const { id: appId } = await params;

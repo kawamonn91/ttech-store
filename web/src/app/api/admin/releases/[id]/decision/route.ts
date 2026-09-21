@@ -10,7 +10,7 @@ const Body = z.object({ action: z.enum(["publish", "reject", "unpublish"]) });
  * 公開時は DB トリガーが署名鍵の固定/一致を検証し、違反すれば例外になる(その内容をそのまま返す)。
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if ("response" in auth) return auth.response;
 
   const { id } = await params;
