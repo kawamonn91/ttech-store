@@ -83,6 +83,39 @@ jobs:
           name: android-test-reports
           path: store-app/app/build/reports/tests/
 
+  native-apps:
+    name: Native apps (unit tests / assemble)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native-apps
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      # store-app と同じ理由(上のコメント参照)で、素の sdkmanager を直接使う
+      - name: Add Android cmdline-tools to PATH
+        run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
+      - name: Install SDK platform used by compileSdk
+        run: |
+          sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+          cp -r "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+      - run: chmod +x gradlew
+      # アプリを増やしても settings.gradle.kts に include するだけでよいよう、
+      # 個別モジュール名を書かず全モジュール一括でテスト・ビルドする
+      - run: ./gradlew testDebugUnitTest assembleDebug --console=plain
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-apps-test-reports
+          path: native-apps/*/build/reports/tests/
+
   database:
     name: Database (migrations + pgTAP)
     runs-on: ubuntu-latest
