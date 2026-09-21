@@ -12,6 +12,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -21,6 +22,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.lifecycle.compose.LifecycleResumeEffect
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -35,6 +39,14 @@ fun StoreNavHost(pendingRoute: String?, onRouteConsumed: () -> Unit) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
+    val container = LocalContainer.current
+    val updateCount by container.updateChecker.updates.collectAsState()
+
+    // ストアアプリを開いた/フォアグラウンドに戻ったたびに最新化する(12時間ごとの背景チェックとは別)
+    LifecycleResumeEffect(Unit) {
+        container.updateChecker.refresh()
+        onPauseOrDispose {}
+    }
 
     LaunchedEffect(pendingRoute) {
         if (pendingRoute != null) {
@@ -57,7 +69,15 @@ fun StoreNavHost(pendingRoute: String?, onRouteConsumed: () -> Unit) {
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(tab.icon, contentDescription = null) },
+                            icon = {
+                                if (tab.route == "updates" && updateCount.isNotEmpty()) {
+                                    BadgedBox(badge = { Badge { Text(updateCount.size.toString()) } }) {
+                                        Icon(tab.icon, contentDescription = null)
+                                    }
+                                } else {
+                                    Icon(tab.icon, contentDescription = null)
+                                }
+                            },
                             label = { Text(tab.label) },
                         )
                     }
@@ -67,7 +87,19 @@ fun StoreNavHost(pendingRoute: String?, onRouteConsumed: () -> Unit) {
     ) { padding: PaddingValues ->
         val openApp: (String) -> Unit = { slug -> nav.navigate("detail/$slug") }
         NavHost(nav, startDestination = "home") {
-            composable("home") { HomeScreen(openApp, padding) }
+            composable("home") {
+                HomeScreen(
+                    openApp,
+                    onOpenUpdates = {
+                        nav.navigate("updates") {
+                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    padding,
+                )
+            }
             composable("search") { SearchScreen(openApp, padding) }
             composable("updates") { UpdatesScreen(openApp, padding) }
             composable("detail/{slug}", arguments = listOf(navArgument("slug") { type = NavType.StringType })) { entry ->

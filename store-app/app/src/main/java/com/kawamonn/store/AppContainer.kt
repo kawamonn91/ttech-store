@@ -9,6 +9,7 @@ import com.kawamonn.store.install.ApkDownloader
 import com.kawamonn.store.install.ApkInstaller
 import com.kawamonn.store.install.InstallController
 import com.kawamonn.store.install.InstallEvent
+import com.kawamonn.store.update.UpdateChecker
 import com.kawamonn.store.update.UpdatePrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +42,9 @@ class AppContainer(private val app: Application) {
         scope = appScope,
         events = installEvents,
     )
+
+    /** ホーム画面のバナー・アップデートタブのバッジ用。ストアアプリを開くたびに [UpdateChecker.refresh] を呼ぶ */
+    val updateChecker = UpdateChecker(api = api, installedVersion = installedApps::versionCode, scope = appScope)
 
     /**
      * ダウンロード数の重複カウント防止に使う、端末ごとのランダムID。

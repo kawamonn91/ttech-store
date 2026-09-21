@@ -1,19 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 買い物袋をモチーフにした仮アイコン(正式なロゴができたら差し替える) -->
+<!-- 意匠: アプリタイルを並べて「T」の形にする(T-tech / ストアらしさの両方を表す)。
+     108x108 のうち中央66x66がアダプティブアイコンの安全領域なので、その内側(26〜82)に収める。 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M34,44 L74,44 L78,84 L30,84 Z" />
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M44,50 L44,38 A10,10 0 0 1 64,38 L64,50" />
-    <path
-        android:fillColor="#2563EB"
-        android:pathData="M54,58 L60,70 L48,70 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.35" android:pathData="M26,26 h16 a4,4 0 0 1 4,4 v16 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-16 a4,4 0 0 1 4,-4 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M46,26 h16 a4,4 0 0 1 4,4 v16 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-16 a4,4 0 0 1 4,-4 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.35" android:pathData="M66,26 h16 a4,4 0 0 1 4,4 v16 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-16 a4,4 0 0 1 4,-4 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M46,46 h16 a4,4 0 0 1 4,4 v16 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-16 a4,4 0 0 1 4,-4 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M46,66 h16 a4,4 0 0 1 4,4 v16 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-16 a4,4 0 0 1 4,-4 Z" />
 </vector>
