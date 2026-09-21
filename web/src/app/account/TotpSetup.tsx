@@ -19,7 +19,7 @@ export function TotpSetup({ initialFactor }: { initialFactor: Factor | null }) {
   const router = useRouter();
   const [factor, setFactor] = useState(initialFactor);
   const [stage, setStage] = useState<Stage>("idle");
-  const [qrSvg, setQrSvg] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [pendingFactorId, setPendingFactorId] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -37,7 +37,7 @@ export function TotpSetup({ initialFactor }: { initialFactor: Factor | null }) {
       return;
     }
     setPendingFactorId(data.id);
-    setQrSvg(data.totp.qr_code);
+    setQrDataUrl(data.totp.qr_code);
     setSecret(data.totp.secret);
     setStage("confirming");
   }
@@ -95,9 +95,10 @@ export function TotpSetup({ initialFactor }: { initialFactor: Factor | null }) {
     return (
       <form onSubmit={confirmEnrollment} className="space-y-3 rounded-xl border border-border bg-surface p-4">
         <p className="text-sm text-muted">認証アプリ(Google Authenticator 等)でQRコードを読み取り、表示された6桁のコードを入力してください。</p>
-        {qrSvg && (
+        {qrDataUrl && (
+          // data.totp.qr_code は Supabase が既に完成した data: URI を返す(自前でラップしない)
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`data:image/svg+xml;utf8,${encodeURIComponent(qrSvg)}`} alt="QRコード" className="h-40 w-40" />
+          <img src={qrDataUrl} alt="QRコード" className="h-40 w-40" />
         )}
         {secret && <p className="break-all text-xs text-muted">読み取れない場合の手動入力用キー: {secret}</p>}
         <input

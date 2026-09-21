@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const supabase = serviceClient();
-    const { data: release } = await supabase.from("app_releases").select("id, status").eq("id", id).maybeSingle();
+    const { data: release } = await supabase.from("app_releases").select("id, status, app_id, apps(status)").eq("id", id).maybeSingle();
     if (!release) return jsonError("リリースが見つかりません", 404);
 
     const { action } = body.data;
@@ -42,6 +42,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       // トリガーの例外(署名鍵不一致など)は利用者に分かる文言で返す
       return jsonError(error.message, 422);
     }
+
+    // リリースを公開したら、アプリ自体もまだ非公開なら合わせて公開する(マイページ・管理コンソールどちらの
+    // 承認操作も、これ1回で完結させるため)
+    const app = Array.isArray(release.apps) ? release.apps[0] : release.apps;
+    if (action === "publish" && app && app.status !== "published") {
+      const { error: appError } = await supabase.from("apps").update({ status: "published" }).eq("id", release.app_id);
+      if (appError) return jsonError(appError.message, 422);
+    }
+
     return jsonOk({ ok: true });
   } catch (e) {
     return internalError(e);

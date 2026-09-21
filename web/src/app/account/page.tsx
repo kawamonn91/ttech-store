@@ -1,21 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminUser, sessionClient, serviceClient } from "@/lib/supabase";
 import { ProfileForm } from "./ProfileForm";
 import { DeleteAccountButton } from "./DeleteAccountButton";
 import { DeveloperApplyForm } from "./DeveloperApplyForm";
 import { TotpSetup } from "./TotpSetup";
+import { PendingReleases } from "./PendingReleases";
 
 export const dynamic = "force-dynamic";
 
 const APP_STATUS_LABEL: Record<string, string> = { draft: "下書き", pending: "審査中", published: "公開中", suspended: "停止中" };
-const RELEASE_STATUS_LABEL: Record<string, string> = {
-  uploaded: "検査待ち",
-  scanned: "承認待ち",
-  approved: "非公開(承認済み)",
-  rejected: "却下",
-  published: "公開中",
-};
 
 export default async function AccountPage() {
   const supabase = await sessionClient();
@@ -118,28 +111,14 @@ export default async function AccountPage() {
 
       {admin && (
         <Section title="承認待ちのリリース(管理者)">
-          {!pendingReleases.data || pendingReleases.data.length === 0 ? (
-            <p className="text-sm text-muted">承認待ちのリリースはありません。</p>
-          ) : (
-            <ul className="space-y-2">
-              {pendingReleases.data.map((r) => {
-                const app = Array.isArray(r.app) ? r.app[0] : r.app;
-                return (
-                  <li key={r.id}>
-                    <Link
-                      href={`/admin/apps/${app?.id}`}
-                      className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-2.5 text-sm hover:border-brand"
-                    >
-                      <span>
-                        {app?.name} <span className="text-muted">v{r.version_name}</span>
-                      </span>
-                      <span className="text-brand">{RELEASE_STATUS_LABEL[r.status]}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <PendingReleases
+            items={(pendingReleases.data ?? []).map((r) => ({
+              id: r.id,
+              version_name: r.version_name,
+              status: r.status,
+              app: Array.isArray(r.app) ? r.app[0] : r.app,
+            }))}
+          />
         </Section>
       )}
 
