@@ -43,3 +43,6 @@ next-env.d.ts
 # next dev が自動生成する、AIエージェント向けの注意書き(次回起動時にも作られる)
 /AGENTS.md
 /CLAUDE.md
+
+.vercel
+.env*

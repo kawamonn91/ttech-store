@@ -131,7 +131,8 @@ async function virusTotal(hash, file, size, apiKey) {
   return { status: "pending", permalink };
 }
 
-async function inspect(file) {
+// web/scripts/publish-app.mjs からも直接呼べるよう export する(GitHub Actions からの利用が main())
+export async function inspect(file) {
   const size = statSync(file).size;
   const hash = await sha256(file);
 

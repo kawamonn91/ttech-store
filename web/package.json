@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "publish-app": "node scripts/publish-app.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0",
