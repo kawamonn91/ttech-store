@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 財布(留め具付き) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,38 L80,38 A8,8 0 0 1 88,46 L88,76 A8,8 0 0 1 80,84 L28,84 A8,8 0 0 1 20,76 L20,46 A8,8 0 0 1 28,38 Z" />
+    <path android:fillColor="#CA8A04" android:pathData="M20,52 L88,52 L88,56 L20,56 Z" />
+    <path android:fillColor="#CA8A04" android:pathData="M78,68 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+</vector>
