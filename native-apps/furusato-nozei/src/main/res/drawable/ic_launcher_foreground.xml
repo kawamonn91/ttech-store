@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 寄付を表すギフトボックスと円マーク -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M48,26 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M60,26 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M24,34 L84,34 L84,88 L24,88 Z" />
+    <path android:fillColor="#059669" android:pathData="M24,34 L84,34 L84,44 L24,44 Z" />
+    <path android:fillColor="#059669" android:pathData="M50,34 L58,34 L58,88 L50,88 Z" />
+    <path android:fillColor="#059669" android:fillAlpha="0.16" android:pathData="M32,58 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <path android:fillColor="#059669" android:fillAlpha="0.16" android:pathData="M76,58 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <path android:fillColor="#059669" android:fillAlpha="0.16" android:pathData="M32,74 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <path android:fillColor="#059669" android:pathData="M76,74 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M72,69 L76,74 M80,69 L76,74 M76,74 L76,80 M73,76 L79,76" />
+</vector>
