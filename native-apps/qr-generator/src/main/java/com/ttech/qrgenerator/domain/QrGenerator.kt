@@ -8,7 +8,11 @@ import com.google.zxing.qrcode.QRCodeWriter
 
 /** QRコード生成(ZXing)。ビットマップ描画はUI側に任せ、ここでは行列を返すだけにする。 */
 object QrGenerator {
-    /** [text] が空、または生成に失敗した場合は null。 */
+    /**
+     * [text] が空、または生成に失敗した場合は null。
+     * ZXing の既定の文字コードは ISO-8859-1 で日本語が化けるため、UTF-8 を指定する
+     * (Webアプリ版の qrcode ライブラリと同じ)。
+     */
     fun encode(text: String, size: Int = 280, margin: Int = 2): BitMatrix? {
         if (text.isBlank()) return null
         return try {
@@ -17,7 +21,7 @@ object QrGenerator {
                 BarcodeFormat.QR_CODE,
                 size,
                 size,
-                mapOf(EncodeHintType.MARGIN to margin),
+                mapOf(EncodeHintType.MARGIN to margin, EncodeHintType.CHARACTER_SET to "UTF-8"),
             )
         } catch (e: WriterException) {
             null
