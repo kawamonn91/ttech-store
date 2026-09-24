@@ -13,7 +13,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
 
   const [categories, result] = await Promise.all([
     listCategories(),
-    listApps({ q, category: category || undefined, sort: "popular", limit: 60 }),
+    listApps({ q, category: category || undefined, sort: "popular", limit: 100 }),
   ]);
 
   const chip = (active: boolean) =>
@@ -42,7 +42,14 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
           </Link>
         ))}
       </div>
-      {result.items.length === 0 ? <p className="text-muted">見つかりませんでした。</p> : <AppGrid apps={result.items} />}
+      {result.items.length === 0 ? (
+        <p className="text-muted">見つかりませんでした。</p>
+      ) : (
+        <>
+          <p className="mb-3 text-sm text-muted">{result.total}件</p>
+          <AppGrid apps={result.items} />
+        </>
+      )}
     </>
   );
 }

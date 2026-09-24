@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppGrid } from "@/components/AppCard";
-import { getHome } from "@/lib/catalog";
+import { getHome, listApps } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default async function HomePage() {
-  const { featured, newest, popular } = await getHome();
+  const [{ featured, newest, popular }, { total }] = await Promise.all([getHome(), listApps({ limit: 1 })]);
   const empty = featured.length + newest.length + popular.length === 0;
 
   return (
@@ -47,6 +47,13 @@ export default async function HomePage() {
         <Section title="人気">
           <AppGrid apps={popular} />
         </Section>
+      )}
+      {total > 0 && (
+        <div className="mb-8 text-center">
+          <Link href="/search" className="inline-block rounded-full border border-border bg-surface px-6 py-2.5 text-sm font-semibold hover:text-brand">
+            すべてのアプリを見る({total}件)
+          </Link>
+        </div>
       )}
     </>
   );
