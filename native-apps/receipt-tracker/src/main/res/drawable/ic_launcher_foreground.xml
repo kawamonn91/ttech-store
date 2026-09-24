@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: レシートと円マーク -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,20 L76,20 L76,88 L71,84 L65,88 L59,84 L54,88 L49,84 L43,88 L37,84 L32,88 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#64748B"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M46,34 L54,46 L62,34 M54,46 L54,62 M46,50 L62,50 M46,56 L62,56" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#64748B"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M42,72 L66,72" />
+</vector>
