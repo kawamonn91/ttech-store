@@ -26,6 +26,16 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
+/** 管理者専用アプリ(公開カタログに出ない)の1件分 */
+data class PrivateApp(
+    val name: String,
+    val packageName: String,
+    val releaseId: String,
+    val versionName: String,
+    val versionCode: Long,
+    val apkSize: Long?,
+)
+
 /** アプリ全体で共有するオブジェクトの置き場(手動DI) */
 class AppContainer(private val app: Application) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -35,7 +45,9 @@ class AppContainer(private val app: Application) {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    val api: StoreApi = HttpStoreApi(http, BuildConfig.STORE_API_BASE)
+    val api: StoreApi = HttpStoreApi(http, BuildConfig.STORE_API_BASE) {
+        (authRepository.state.value as? com.kawamonn.store.auth.AuthState.SignedIn)?.accessToken
+    }
     val installedApps = InstalledApps(app)
     val updatePrefs = UpdatePrefs(app)
     val installEvents = MutableSharedFlow<InstallEvent>(extraBufferCapacity = 32)
@@ -85,6 +97,42 @@ class AppContainer(private val app: Application) {
                     fun field(name: String) = (json?.get(name) as? kotlinx.serialization.json.JsonPrimitive)?.content
                     if (field("code") == "totp_required") throw com.kawamonn.store.auth.TotpRequiredException()
                     throw IllegalStateException(field("error") ?: "操作に失敗しました (${response.code})")
+                }
+            }
+        }
+    }
+
+    /**
+     * 管理者専用アプリ(公開カタログに出ないもの)の一覧。管理者としてログインしているときだけ返る。
+     * インストールは通常のアプリと同じ流れ(ダウンロード情報の取得だけ、管理者のトークンを付けて呼ぶ)。
+     */
+    suspend fun adminPrivateApps(): List<PrivateApp> {
+        val token = (authRepository.state.value as? com.kawamonn.store.auth.AuthState.SignedIn)?.accessToken
+            ?: throw IllegalStateException("ログインしてください")
+        return withContext(Dispatchers.IO) {
+            val request = okhttp3.Request.Builder()
+                .url("${BuildConfig.STORE_WEB_BASE}/api/admin/private-apps")
+                .header("Authorization", "Bearer $token")
+                .get()
+                .build()
+            http.newCall(request).execute().use { response ->
+                val text = response.body.string()
+                val json = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject }.getOrNull()
+                fun field(obj: kotlinx.serialization.json.JsonObject?, name: String) = (obj?.get(name) as? kotlinx.serialization.json.JsonPrimitive)?.content
+                if (!response.isSuccessful) {
+                    if (field(json, "code") == "totp_required") throw com.kawamonn.store.auth.TotpRequiredException()
+                    throw IllegalStateException(field(json, "error") ?: "管理者用アプリを読み込めませんでした (${response.code})")
+                }
+                (json?.get("items") as? kotlinx.serialization.json.JsonArray).orEmpty().mapNotNull { element ->
+                    val o = element as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+                    PrivateApp(
+                        name = field(o, "name") ?: return@mapNotNull null,
+                        packageName = field(o, "packageName") ?: return@mapNotNull null,
+                        releaseId = field(o, "releaseId") ?: return@mapNotNull null,
+                        versionName = field(o, "versionName") ?: field(o, "versionCode") ?: "?",
+                        versionCode = field(o, "versionCode")?.toLongOrNull() ?: return@mapNotNull null,
+                        apkSize = field(o, "apkSize")?.toLongOrNull(),
+                    )
                 }
             }
         }

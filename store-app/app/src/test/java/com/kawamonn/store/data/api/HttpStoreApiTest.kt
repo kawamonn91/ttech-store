@@ -94,6 +94,28 @@ class HttpStoreApiTest {
         assertEquals(3L, info.versionCode)
     }
 
+    private val downloadInfoJson = """{"url":"https://r2.example/x.apk","sha256":"${"a".repeat(64)}","signingCertSha256":"${"b".repeat(64)}","apkSize":10,"versionCode":3,"packageName":"jp.yomumemo.app"}"""
+
+    @Test
+    fun `ログイン中は、ダウンロード情報の取得にだけBearerトークンを付ける`() = runBlocking {
+        val authed = HttpStoreApi(OkHttpClient(), server.url("/api/v1").toString()) { "token-123" }
+        server.enqueue(json(downloadInfoJson))
+        authed.downloadInfo("rel-1", "device-abc")
+        assertEquals("Bearer token-123", server.takeRequest().headers["Authorization"])
+
+        // 公開カタログの取得(一覧・詳細など)には、ログインしていてもトークンを送らない
+        server.enqueue(json("""{"featured":[],"newest":[],"popular":[]}"""))
+        authed.home()
+        assertNull(server.takeRequest().headers["Authorization"])
+    }
+
+    @Test
+    fun `未ログインなら、ダウンロード情報の取得にもAuthorizationを付けない`() = runBlocking {
+        server.enqueue(json(downloadInfoJson))
+        api.downloadInfo("rel-1", "device-abc")
+        assertNull(server.takeRequest().headers["Authorization"])
+    }
+
     @Test
     fun `エラーレスポンスの error を利用者向けメッセージとして返す`() {
         server.enqueue(json("""{"error":"このアプリは現在ダウンロードできません"}""", code = 404))

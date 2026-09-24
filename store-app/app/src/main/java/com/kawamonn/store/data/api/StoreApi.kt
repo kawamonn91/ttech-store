@@ -23,9 +23,14 @@ interface StoreApi {
     suspend fun downloadInfo(releaseId: String, deviceId: String): DownloadInfoDto
 }
 
+/**
+ * [authToken] はログイン中のアクセストークン(未ログインなら null)。ダウンロード情報の取得にだけ付ける。
+ * 通常のアプリでは使われないが、管理者専用アプリ(公開カタログに出ないもの)は管理者のトークンが無いと発行されない。
+ */
 class HttpStoreApi(
     private val client: OkHttpClient,
     baseUrl: String,
+    private val authToken: () -> String? = { null },
 ) : StoreApi {
     private val base: HttpUrl = baseUrl.trimEnd('/').plus("/").toHttpUrl()
     private val json = Json {
@@ -54,7 +59,7 @@ class HttpStoreApi(
     override suspend fun index() = get<IndexDto>("index")
 
     override suspend fun downloadInfo(releaseId: String, deviceId: String): DownloadInfoDto =
-        post("releases/$releaseId/download", json.encodeToString(DownloadRequestDto(deviceId)))
+        post("releases/$releaseId/download", json.encodeToString(DownloadRequestDto(deviceId)), authToken())
 
     private suspend inline fun <reified T> get(path: String, vararg query: Pair<String, String?>): T {
         val url = base.newBuilder().addPathSegments(path).apply {
@@ -63,9 +68,11 @@ class HttpStoreApi(
         return execute(Request.Builder().url(url).get().build())
     }
 
-    private suspend inline fun <reified T> post(path: String, body: String): T {
+    private suspend inline fun <reified T> post(path: String, body: String, bearer: String? = null): T {
         val url = base.newBuilder().addPathSegments(path).build()
-        return execute(Request.Builder().url(url).post(body.toRequestBody(jsonType)).build())
+        val builder = Request.Builder().url(url).post(body.toRequestBody(jsonType))
+        if (bearer != null) builder.header("Authorization", "Bearer $bearer")
+        return execute(builder.build())
     }
 
     private suspend inline fun <reified T> execute(request: Request): T = withContext(Dispatchers.IO) {

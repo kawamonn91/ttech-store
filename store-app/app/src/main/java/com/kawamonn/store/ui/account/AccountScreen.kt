@@ -58,6 +58,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
     var role by remember { mutableStateOf<String?>(null) }
     var myApps by remember { mutableStateOf<List<MyApp>>(emptyList()) }
     var pending by remember { mutableStateOf<List<PendingRelease>>(emptyList()) }
+    var privateApps by remember { mutableStateOf<List<com.kawamonn.store.PrivateApp>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var busyId by remember { mutableStateOf<String?>(null) }
     var reloadTick by remember { mutableStateOf(0) }
@@ -97,6 +98,9 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
                 pending = emptyList()
             }
         }.onFailure { error = it.message }
+
+        // 管理者専用アプリ(公開カタログに出ないもの)。他の読み込みが失敗しても、ここは独立して試す
+        privateApps = if (role == "admin") runCatching { container.adminPrivateApps() }.getOrDefault(emptyList()) else emptyList()
     }
 
     fun decide(releaseId: String, action: String) {
@@ -154,6 +158,28 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
                     }
                 }
             }
+        }
+
+        if (role == "admin") {
+            item { SectionTitle("管理者用アプリ") }
+            if (privateApps.isEmpty()) {
+                item { Text("管理者用のアプリはまだ公開されていません。", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp)) }
+            }
+            items(privateApps, key = { it.releaseId }) { app ->
+                Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("${app.name} v${app.versionName}", style = MaterialTheme.typography.titleMedium)
+                    com.kawamonn.store.ui.InstallButton(
+                        packageName = app.packageName,
+                        latest = com.kawamonn.store.data.api.LatestReleaseDto(
+                            releaseId = app.releaseId,
+                            versionName = app.versionName,
+                            versionCode = app.versionCode,
+                            apkSize = app.apkSize,
+                        ),
+                    )
+                }
+            }
+            item { Text("管理者だけがダウンロードできるアプリです(ストアの一覧・検索・更新の通知には出ません)。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp)) }
         }
 
         item { SectionTitle("作成したアプリ") }
