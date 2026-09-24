@@ -17,7 +17,11 @@ object QrGenerator {
                 BarcodeFormat.QR_CODE,
                 size,
                 size,
-                mapOf(EncodeHintType.MARGIN to margin),
+                // 文字コードを指定しないとZXingは ISO-8859-1 で符号化し、日本語が「?」に化ける。
+                mapOf(
+                    EncodeHintType.MARGIN to margin,
+                    EncodeHintType.CHARACTER_SET to "UTF-8",
+                ),
             )
         } catch (e: WriterException) {
             null

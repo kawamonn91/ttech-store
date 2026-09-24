@@ -1,5 +1,9 @@
 package com.ttech.qrgenerator.domain
 
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -38,6 +42,20 @@ class QrGeneratorTest {
             }
         }
         assertTrue(filled)
+    }
+
+    @Test
+    fun `日本語のテキストも文字化けせずに読み取れる`() {
+        val text = "こんにちは、日本語のQRコード"
+        val matrix = QrGenerator.encode(text, size = 300)!!
+
+        val pixels = IntArray(matrix.width * matrix.height) { i ->
+            if (matrix.get(i % matrix.width, i / matrix.width)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        }
+        val source = RGBLuminanceSource(matrix.width, matrix.height, pixels)
+        val decoded = QRCodeReader().decode(BinaryBitmap(HybridBinarizer(source)))
+
+        assertEquals(text, decoded.text)
     }
 
     @Test
