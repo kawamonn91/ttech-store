@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: キーボード -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M20,36 L88,36 L88,76 L20,76 Z" />
+    <path android:fillColor="#44403C" android:pathData="M26,42 L34,42 L34,50 L26,50 Z" />
+    <path android:fillColor="#44403C" android:pathData="M38,42 L46,42 L46,50 L38,50 Z" />
+    <path android:fillColor="#44403C" android:pathData="M50,42 L58,42 L58,50 L50,50 Z" />
+    <path android:fillColor="#44403C" android:pathData="M62,42 L70,42 L70,50 L62,50 Z" />
+    <path android:fillColor="#44403C" android:pathData="M74,42 L82,42 L82,50 L74,50 Z" />
+    <path android:fillColor="#44403C" android:pathData="M32,53 L40,53 L40,61 L32,61 Z" />
+    <path android:fillColor="#44403C" android:pathData="M44,53 L52,53 L52,61 L44,61 Z" />
+    <path android:fillColor="#44403C" android:pathData="M56,53 L64,53 L64,61 L56,61 Z" />
+    <path android:fillColor="#44403C" android:pathData="M68,53 L76,53 L76,61 L68,61 Z" />
+    <path android:fillColor="#44403C" android:pathData="M36,65 L72,65 L72,70 L36,70 Z" />
+</vector>
