@@ -81,7 +81,8 @@ cd ../web && node scripts/publish-app.mjs \
 ## テスト
 
 - Web: `cd web && npx vitest run`(`moderation`・`admin-queries`・`notify`・`mail`・各APIルートのテスト)
-- DB: `supabase/tests/admin/README.md`(Docker の使い捨て Postgres で、BAN・管理者専用アプリ・通知トリガーを検証)
+- DB(CI・本物のSupabase): `supabase/tests/database/02_admin.test.sql`(pgTAP。BAN・管理者専用アプリ・ユーザー一覧・通知トリガー)。`supabase test db` で実行
+- DB(手元・Docker): `supabase/sql-tests/README.md`(代用品を入れた使い捨てPostgresでの検証。pgTAPではないので `supabase/tests/` には置かない)
 - Android: `cd native-apps && ./gradlew :ttech-admin:testDebugUnitTest`
 - 管理アプリのUI確認用に、実サーバーの代わりになる検証用サーバーを使った(本番には繋がない)。
   デバッグビルドだけ、`./gradlew -PadminWebBase=http://10.0.2.2:8787 -PsupabaseUrl=http://10.0.2.2:8787 :ttech-admin:assembleDebug` で接続先を変えられる。
