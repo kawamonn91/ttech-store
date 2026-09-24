@@ -5,6 +5,8 @@ import { DeleteAccountButton } from "./DeleteAccountButton";
 import { DeveloperApplyForm } from "./DeveloperApplyForm";
 import { TotpSetup } from "./TotpSetup";
 import { PendingReleases } from "./PendingReleases";
+import { PrivateApps } from "./PrivateApps";
+import { listPrivateApps } from "@/lib/admin-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +50,9 @@ export default async function AccountPage() {
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: null }),
   ]);
+
+  // 管理者専用アプリ。取得に失敗しても(例: DBの更新が未適用でも)マイページ全体は表示する
+  const privateApps = admin ? await listPrivateApps(svc).catch(() => []) : [];
 
   const provider = user.app_metadata?.provider === "google" ? "Google" : "メールアドレス";
 
@@ -119,6 +124,12 @@ export default async function AccountPage() {
               app: Array.isArray(r.app) ? r.app[0] : r.app,
             }))}
           />
+        </Section>
+      )}
+
+      {admin && (
+        <Section title="管理者用アプリ">
+          <PrivateApps items={privateApps} />
         </Section>
       )}
 

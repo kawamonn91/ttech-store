@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 盾(管理・保護)とチェックマーク -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,22 L78,31 L78,54 C78,69 68,79 54,86 C40,79 30,69 30,54 L30,31 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#312E81"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M42,54 L50,62 L67,44" />
+</vector>

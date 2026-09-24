@@ -4,7 +4,10 @@
 //
 // 使い方:
 //   node scripts/publish-app.mjs --apk <path> --name "表示名" [--slug xxx] [--short-desc "..."]
-//     [--description "..."] [--category カテゴリのslug] [--notes "リリースノート"] [--publish]
+//     [--description "..."] [--category カテゴリのslug] [--notes "リリースノート"] [--publish] [--admin-only]
+//
+// --admin-only: 管理者専用アプリとして登録する(公開カタログ・ストアの一覧・更新確認には出ず、
+//   管理者としてログインしたときだけダウンロードできる)。新規登録時に指定する。
 //
 // パッケージ名はAPK自体(AndroidManifest)から読み取る。既に登録済みのパッケージ名なら
 // 新しいバージョンとして追加するだけでよく、--name 等は省略できる。
@@ -45,6 +48,10 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === "--publish") {
       out.publish = true;
+      continue;
+    }
+    if (a === "--admin-only") {
+      out["admin-only"] = true;
       continue;
     }
     if (a.startsWith("--")) {
@@ -201,6 +208,8 @@ async function main() {
       description: args.description ?? "",
       category_id: categoryId ?? null,
       status: "draft",
+      // 管理者専用は、最初の登録の時点から公開カタログに出ない状態で作る(後から切り替えると、一瞬公開される)
+      ...(args["admin-only"] ? { admin_only: true } : {}),
     });
     console.log(`  新規アプリを登録しました: slug=${app.slug}`);
   } else {
