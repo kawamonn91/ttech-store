@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -145,8 +147,16 @@ private fun SelectedProperty(
                     TextButton(onClick = onRemove) { Text("削除") }
                 }
                 property.items.forEach { item ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = item.checked, onCheckedChange = { onUpdate { it.toggleItem(property.id, item.id) } })
+                    // Web版と同じく、項目名をタップしても切り替わるように行全体をタップ対象にする。
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(
+                            value = item.checked,
+                            role = Role.Checkbox,
+                            onValueChange = { onUpdate { it.toggleItem(property.id, item.id) } },
+                        ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = item.checked, onCheckedChange = null, modifier = Modifier.padding(12.dp))
                         Text(
                             item.label,
                             textDecoration = if (item.checked) TextDecoration.LineThrough else null,
