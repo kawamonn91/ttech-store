@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: ブタの貯金箱とコイン -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,58 C30,44 42,38 56,38 C72,38 82,46 82,60 C82,70 76,76 70,78 L70,84 L62,84 L62,80 L48,80 L48,84 L40,84 L40,78 C34,74 30,68 30,58 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M24,54 C26,52 30,52 31,54" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F472B6"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M50,44 L62,44" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M49,24 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+    <path
+        android:fillColor="#F472B6"
+        android:pathData="M67.5,54 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" />
+</vector>
