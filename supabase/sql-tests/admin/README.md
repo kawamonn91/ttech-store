@@ -5,7 +5,7 @@ SupabaseのCLIが無くても、Dockerだけで実行できる。auth / storage 
 (`../diary-safety/00_stubs.sql` と `01_net_stub.sql`)。
 
 ```sh
-cd supabase/tests/admin
+cd supabase/sql-tests/admin
 docker run -d --name pgtest -e POSTGRES_PASSWORD=pw postgres:15
 docker cp ../diary-safety/00_stubs.sql pgtest:/00.sql
 docker cp 01_net_stub.sql pgtest:/01.sql
