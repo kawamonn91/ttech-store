@@ -18,6 +18,7 @@ rootProject.name = "ttech-apps"
 
 // 新しいアプリを追加するときは、ここに1行足すだけでよい(build.gradle.kts はテンプレートをコピーする)
 include(":common")
+include(":track-common")
 include(":warikan")
 include(":pomodoro-timer")
 include(":date-calculator")
@@ -69,3 +70,4 @@ include(":room-checkin")
 include(":receipt-tracker")
 include(":invoice-maker")
 include(":ttech-admin")
+include(":drive-record")

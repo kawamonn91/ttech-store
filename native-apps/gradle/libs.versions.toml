@@ -15,8 +15,10 @@ junit = "4.13.2"
 zxingCore = "3.5.4"
 pdfboxAndroid = "2.0.27.0"
 okhttp = "5.5.0"
+carApp = "1.7.0"
 
 [libraries]
+androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver3-junit4", version.ref = "okhttp" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
