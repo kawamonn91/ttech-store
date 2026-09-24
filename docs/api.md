@@ -14,6 +14,8 @@
 
 ## 内部・管理用(認証あり。ストアアプリからは使わない)
 
+管理アプリ(`native-apps/ttech-admin`)向けの `/api/admin/*` と、報告のメール通知は [admin.md](admin.md) を参照。
+
 | パス | 認証 | 内容 |
 |---|---|---|
 | `POST /api/admin/apps/{id}/releases` | 管理者セッション | リリース作成 + R2 アップロード用署名URL |

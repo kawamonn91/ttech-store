@@ -7,3 +7,4 @@ node_modules/
 keystore.properties
 local.properties
 .vercel/
+supabase/local/
