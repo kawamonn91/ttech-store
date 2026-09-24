@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: ハサミと予約表 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,26 L86,26 L86,82 L56,82 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C026D3"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M62,38 L80,38 M62,50 L80,50 M62,62 L74,62" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:pathData="M22,76 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:pathData="M34,86 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M33,71 L50,34 M42,81 L50,40 L60,30" />
+</vector>
