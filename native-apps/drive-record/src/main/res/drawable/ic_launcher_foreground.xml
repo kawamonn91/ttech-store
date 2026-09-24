@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 地図の上をうねる赤いルート。出発地(緑)から到着地(白)へ。丸く切り抜かれても欠けないよう、中央の安全な範囲に収めている -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#66FF1744"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M37.4,69.8 C43.9,54 51.1,67 56.9,52.6 S66.4,43.9 71.3,38.2" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF453A"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M37.4,69.8 C43.9,54 51.1,67 56.9,52.6 S66.4,43.9 71.3,38.2" />
+    <path android:fillColor="#FFFFFF" android:pathData="M37.4,65.1 a4.7,4.7 0 1,0 0.01,0 z" />
+    <path android:fillColor="#22C55E" android:pathData="M37.4,67.3 a2.5,2.5 0 1,0 0.01,0 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M71.3,32.8 a5.4,5.4 0 1,0 0.01,0 z" />
+    <path android:fillColor="#111111" android:pathData="M67.4,38.2 h3.9 v-3.9 h-3.9 z M71.3,38.2 h3.9 v3.9 h-3.9 z" />
+</vector>

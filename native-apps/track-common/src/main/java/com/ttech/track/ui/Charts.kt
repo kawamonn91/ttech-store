@@ -1,8 +1,7 @@
 package com.ttech.track.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +48,8 @@ fun LineChart(
     xLabel: (Double) -> String = { it.toInt().toString() },
     invertY: Boolean = false,
     minSpanY: Double = 1.0,
+    /** true なら、縦軸の下端を0にする(速度など、負にならない値) */
+    zeroFloor: Boolean = false,
     cursorIndex: Int? = null,
     onCursor: ((Int?) -> Unit)? = null,
 ) {
@@ -58,21 +59,15 @@ fun LineChart(
     val labelStyle = remember(labelColor) { TextStyle(color = labelColor, fontSize = 10.sp) }
 
     val indices = remember(xs, ys) { Geometry.downsampleIndices(xs, ys, 320) }
+    // 長押ししてからなぞったときだけ、位置を追う(普通の縦のスワイプは、ページのスクロールに使えるように通す)
     val cursorModifier = if (onCursor == null || xs.size < 2) Modifier else Modifier
         .pointerInput(xs) {
-            detectDragGestures(
+            detectDragGesturesAfterLongPress(
                 onDragStart = { pos -> onCursor(nearestIndex(xs, pos.x, size.width.toFloat(), leftPad = 44.dp.toPx())) },
                 onDrag = { change, _ -> onCursor(nearestIndex(xs, change.position.x, size.width.toFloat(), leftPad = 44.dp.toPx())) },
                 onDragEnd = { onCursor(null) },
                 onDragCancel = { onCursor(null) },
             )
-        }
-        .pointerInput(xs) {
-            detectTapGestures(onPress = { pos ->
-                onCursor(nearestIndex(xs, pos.x, size.width.toFloat(), leftPad = 44.dp.toPx()))
-                tryAwaitRelease()
-                onCursor(null)
-            })
         }
 
     Canvas(modifier.fillMaxWidth().height(height).then(cursorModifier)) {
@@ -95,7 +90,7 @@ fun LineChart(
             maxY = mid + minSpanY / 2
         }
         val pad = (maxY - minY) * 0.08
-        minY -= pad
+        minY = if (zeroFloor) 0.0 else minY - pad
         maxY += pad
         val minX = xs.first()
         val maxX = xs.last()

@@ -240,6 +240,54 @@ class DriveRecorderTest {
     }
 
     @Test
+    fun `最初の点が遠く離れた古い位置だったら、続く点で基準を取り直す`() {
+        val r = recorder()
+        val id = r.start(Trigger.ANDROID_AUTO)
+        // 測位の開始直後に、端末が直前に測っていた別の場所(カリフォルニア)の点が1つだけ入る
+        assertTrue(r.onPoint(TrackPoint(now, 37.42, -122.08, speed = 0.0, hAcc = 5.0)))
+        // そのあと、実際の走行の点が続く(日本)。1〜2点目は除かれ、3点目で基準が取り直される
+        assertFalse(r.onPoint(p(1)))
+        assertFalse(r.onPoint(p(2)))
+        assertTrue(r.onPoint(p(3)))
+        assertTrue(r.onPoint(p(4)))
+        for (i in 5..60) r.onPoint(p(i))
+        val s = r.finish(minDistanceM = 300)!!
+        assertEquals(id, s.id)
+        // 古い点は記録から消え、除いていた日本の点(1〜3点目)から数えて残る(60点、距離は約590m)
+        assertEquals(35.0 + 10.0 / 111_195.08, s.startLat, 1e-6)
+        assertEquals(60, s.pointCount)
+        assertEquals(590.0, s.distanceM, 12.0)
+        assertTrue(files.readTrack(id).none { it.lon < 0 })
+    }
+
+    @Test
+    fun `整合しない飛び(バラバラの位置)では、基準を取り直さない`() {
+        val r = recorder()
+        r.start(Trigger.MANUAL)
+        r.onPoint(p(0))
+        // 互いに離れた場所のでたらめな点が続いても、最初の点のままにする
+        assertFalse(r.onPoint(TrackPoint(now + 1000, 36.0, 138.0, hAcc = 5.0)))
+        assertFalse(r.onPoint(TrackPoint(now + 2000, 34.0, 140.0, hAcc = 5.0)))
+        assertFalse(r.onPoint(TrackPoint(now + 3000, 38.0, 137.0, hAcc = 5.0)))
+        assertEquals(1, r.live()!!.points)
+        assertEquals(35.0, r.live()!!.lastPoint!!.lat, 1e-9)
+    }
+
+    @Test
+    fun `記録が長くなってからの飛びは、続いても基準を取り直さない`() {
+        val r = recorder()
+        r.start(Trigger.MANUAL)
+        for (i in 0..80) r.onPoint(p(i))
+        val before = r.live()!!.points
+        // 走行の途中で、位置が遠くへ飛んだ点が続く(誤測位)
+        val far = (81..86).map { TrackPoint(now + it * 1000L, 40.0 + it * 1e-4, 130.0, speed = 10.0, hAcc = 5.0) }
+        far.forEach { assertFalse(r.onPoint(it)) }
+        assertEquals(before, r.live()!!.points)
+        // その後、正しい位置に戻れば、記録は続く
+        assertTrue(r.onPoint(p(87)))
+    }
+
+    @Test
     fun `記録中でなければ点を受け取らない`() {
         assertFalse(recorder().onPoint(p(0)))
     }
@@ -320,5 +368,70 @@ class PlaceLabelTest {
         assertNull(PlaceLabel.shorten(null))
         assertNull(PlaceLabel.shorten("  "))
         assertNull(PlaceLabel.shorten("日本、〒965-0000"))
+    }
+}
+
+class IdleTrimTest {
+    private fun pts(speeds: List<Double>): List<TrackPoint> =
+        speeds.mapIndexed { i, v -> TrackPoint(1_000L * i, 35.0 + i * 1e-5, 139.0, speed = v, hAcc = 5.0) }
+
+    @Test
+    fun `出発前と到着後の停止を取り除き、前後5秒だけ残す`() {
+        val speeds = List(60) { 0.0 } + List(100) { 12.0 } + List(90) { 0.0 }
+        val trimmed = IdleTrim.trim(pts(speeds))
+        // 走行100点 + 前5点 + 後5点
+        assertEquals(110, trimmed.size)
+        assertEquals(55_000L, trimmed.first().timeMs)
+        assertEquals(164_000L, trimmed.last().timeMs)
+    }
+
+    @Test
+    fun `途中の停止(信号待ち)は取り除かない`() {
+        val speeds = List(30) { 0.0 } + List(20) { 12.0 } + List(40) { 0.0 } + List(20) { 12.0 } + List(30) { 0.0 }
+        val trimmed = IdleTrim.trim(pts(speeds))
+        assertEquals(20 + 40 + 20 + 10, trimmed.size)
+    }
+
+    @Test
+    fun `最初から最後まで走っていれば、そのまま`() {
+        val all = pts(List(50) { 12.0 })
+        assertEquals(all, IdleTrim.trim(all))
+    }
+
+    @Test
+    fun `一度も動いていない記録は、そのまま返す`() {
+        val all = pts(List(50) { 0.1 })
+        assertEquals(all, IdleTrim.trim(all))
+    }
+
+    @Test
+    fun `点が少なければ触らない`() {
+        assertEquals(1, IdleTrim.trim(pts(listOf(0.0))).size)
+        assertTrue(IdleTrim.trim(emptyList()).isEmpty())
+    }
+
+    @Test
+    fun `記録を終えると、到着後の停止が取り除かれて保存される`() {
+        val dir = Files.createTempDirectory("trim").toFile()
+        try {
+            val files = TrackFiles(dir)
+            var now = 1_790_000_000_000L
+            val r = DriveRecorder(files, clock = { now })
+            val id = r.start(Trigger.ANDROID_AUTO)
+            // 走行60秒(約600m)のあと、止まったまま90秒(車を降りたが Android Auto はまだ切れていない)
+            var lat = 35.0
+            for (i in 0..59) {
+                lat += 10.0 / 111_195.08
+                r.onPoint(TrackPoint(now + i * 1000L, lat, 139.0, speed = 10.0, hAcc = 5.0))
+            }
+            for (i in 60..149) r.onPoint(TrackPoint(now + i * 1000L, lat, 139.0, speed = 0.0, hAcc = 5.0))
+            val s = r.finish(minDistanceM = 300)!!
+            assertEquals(65, s.pointCount) // 走行60点 + 到着後5点
+            assertEquals(64_000L, s.durationMs)
+            assertEquals(65, files.readTrack(id).size)
+            assertTrue("平均 ${s.avgMovingSpeedMps}", s.avgMovingSpeedMps in 9.0..11.0)
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 }

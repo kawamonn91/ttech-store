@@ -9,6 +9,7 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.ttech.track.domain.TrackPoint
 
@@ -47,6 +48,11 @@ class GpsTracker(private val context: Context, private val intervalMs: Long = 10
     private var locationListener: LocationListener? = null
     private var gnssCallback: GnssStatus.Callback? = null
 
+    companion object {
+        /** これより古い測位は使わない(ms) */
+        const val MAX_FIX_AGE_MS = 10_000L
+    }
+
     val isGpsEnabled: Boolean get() = runCatching { manager.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrDefault(false)
 
     /** 開始できたら true。GPSが端末で無効・権限が無いときは false */
@@ -54,7 +60,11 @@ class GpsTracker(private val context: Context, private val intervalMs: Long = 10
     fun start(listener: Listener, looper: Looper = Looper.getMainLooper()): Boolean {
         stop()
         if (!isGpsEnabled) return false
-        val l = LocationListener { location -> listener.onPoint(location.toTrackPoint()) }
+        val l = LocationListener { location ->
+            // 端末が直前に測っていた古い位置(別の場所のことがある)は、記録に使わない
+            val ageMs = (SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000
+            if (ageMs <= MAX_FIX_AGE_MS) listener.onPoint(location.toTrackPoint())
+        }
         return try {
             manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, intervalMs, 0f, l, looper)
             locationListener = l

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- デバッグビルドだけ: adb から Android Auto の接続を模擬するための受け口(リリース版には含まれない) -->
+    <application>
+        <receiver
+            android:name="com.ttech.driverecord.debug.DebugReceiver"
+            android:exported="true" />
+    </application>
+</manifest>

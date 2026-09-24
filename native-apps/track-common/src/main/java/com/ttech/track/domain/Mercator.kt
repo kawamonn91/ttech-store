@@ -37,20 +37,18 @@ object WebMercator {
     fun tileY(lat: Double, zoom: Int): Int = floor(worldY(lat, zoom.toDouble()) / TILE).toInt().coerceIn(0, (1 shl zoom) - 1)
 }
 
-/** 地図の背景(タイル)の種類 */
-enum class MapStyle(val label: String, val path: String) {
-    Dark("ダーク", "dark_all"),
-    Light("ライト", "light_all"),
+/** 地図の見た目。タイルは同じもの(OpenStreetMap)で、ダークは描くときに色を変換して作る */
+enum class MapStyle(val label: String) {
+    Dark("ダーク"),
+    Light("ライト"),
 }
 
 object TileUrls {
-    private val subdomains = listOf("a", "b", "c", "d")
-
-    /** 高解像度(@2x、512px)のタイル。表示は256pxぶんの大きさなので、細かく見える */
-    fun url(style: MapStyle, z: Int, x: Int, y: Int): String {
-        val s = subdomains[(x + y).mod(subdomains.size)]
-        return "https://$s.basemaps.cartocdn.com/${style.path}/$z/$x/$y@2x.png"
-    }
+    /**
+     * OpenStreetMap の標準タイル(256px)。キー不要で、出典の表示と、アプリを名乗る User-Agent が条件。
+     * 大量の取得は禁止されているので、取得したタイルは端末に保存して、二度目からは通信しない。
+     */
+    fun url(z: Int, x: Int, y: Int): String = "https://tile.openstreetmap.org/$z/$x/$y.png"
 
     /** 経度方向は地図が一周してつながっている。縦方向に範囲外のタイルは無い(null) */
     fun normalize(z: Int, x: Int, y: Int): Pair<Int, Int>? {
@@ -59,7 +57,7 @@ object TileUrls {
         return x.mod(n) to y
     }
 
-    const val ATTRIBUTION = "© OpenStreetMap contributors © CARTO"
+    const val ATTRIBUTION = "© OpenStreetMap contributors"
 }
 
 /**
@@ -83,13 +81,17 @@ data class MapViewport(
     fun lonAt(screenX: Double): Double = WebMercator.lon((screenX - widthPx / 2.0) / scale + cx, zoom)
     fun latAt(screenY: Double): Double = WebMercator.lat((screenY - heightPx / 2.0) / scale + cy, zoom)
 
-    /** タイルを描くときの整数のズーム。表示の細かさに近いものを選ぶ */
-    val tileZoom: Int get() = zoom.let { Math.round(it).toInt() }.coerceIn(0, MAX_TILE_ZOOM)
+    /**
+     * タイルを描くときの整数のズーム。画面の密度が高い(scale が大きい)ときは、1つ細かいタイルを選んで、
+     * タイル1枚(256px)が画面でほぼ256pxになるようにする(引き伸ばしてぼやけないように)。
+     */
+    val tileZoom: Int get() = Math.round(zoom + log2(scale)).toInt().coerceIn(0, MAX_TILE_ZOOM)
 
     /** 画面に入るタイルの範囲(x, y はタイル番号。x は一周ぶんの折り返しを考慮しない生の値) */
     fun visibleTiles(): TileRange {
         val z = tileZoom
-        val k = 2.0.pow(z - zoom) * scale // タイル1枚(256)が画面で何pxになるか = 256 * k
+        // タイル1枚は、ズーム z では世界座標で 256*2^(zoom-z) の大きさ。それが画面で何pxか
+        val k = 2.0.pow(zoom - z) * scale
         val tilePx = WebMercator.TILE * k
         val cxT = WebMercator.worldX(centerLon, z.toDouble()) / WebMercator.TILE
         val cyT = WebMercator.worldY(centerLat, z.toDouble()) / WebMercator.TILE

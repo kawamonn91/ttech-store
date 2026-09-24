@@ -75,7 +75,7 @@ class TrackFilterTest {
 
     @Test
     fun `精度が悪い測位は除く`() {
-        assertTrue(filter.decide(null, p(1000, acc = 50.0)) is FixDecision.Reject)
+        assertEquals(RejectKind.ACCURACY, (filter.decide(null, p(1000, acc = 50.0)) as FixDecision.Reject).kind)
         assertEquals(FixDecision.Accept, filter.decide(null, p(1000, acc = 30.0)))
     }
 
@@ -98,6 +98,7 @@ class TrackFilterTest {
         val decision = filter.decide(prev, jumped)
         assertTrue(decision is FixDecision.Reject)
         assertEquals("位置が飛んだ", (decision as FixDecision.Reject).reason)
+        assertEquals(RejectKind.JUMP, decision.kind)
     }
 
     @Test
@@ -352,12 +353,42 @@ class MercatorTest {
     }
 
     @Test
-    fun `タイルのURLは高解像度(@2x)で、経度は一周して折り返す`() {
-        assertEquals("https://c.basemaps.cartocdn.com/dark_all/5/10/12@2x.png".substringAfter("//").substringAfter("/"), TileUrls.url(MapStyle.Dark, 5, 10, 12).substringAfter("//").substringAfter("/"))
+    fun `タイルのURLはOpenStreetMapの標準タイルで、経度は一周して折り返す`() {
+        assertEquals("https://tile.openstreetmap.org/5/10/12.png", TileUrls.url(5, 10, 12))
         assertEquals(3 to 2, TileUrls.normalize(3, -5, 2))
         assertEquals(1 to 2, TileUrls.normalize(3, 9, 2))
         assertNull(TileUrls.normalize(3, 1, -1))
         assertNull(TileUrls.normalize(3, 1, 8))
+    }
+
+    @Test
+    fun `画面の密度が高いときは、細かいタイルを選んで引き伸ばさない`() {
+        assertEquals(15, MapViewport(35.0, 139.0, 15.0, 1000, 1000, 1.0).tileZoom)
+        assertEquals(16, MapViewport(35.0, 139.0, 15.0, 1000, 1000, 2.0).tileZoom) // 密度2倍 → 1段細かい
+        assertEquals(17, MapViewport(35.0, 139.0, 15.2, 1000, 1000, 3.0).tileZoom) // 15.2 + log2(3)=16.8 → 17
+        assertEquals(MapViewport.MAX_TILE_ZOOM, MapViewport(35.0, 139.0, 19.5, 1000, 1000, 3.0).tileZoom)
+    }
+
+    @Test
+    fun `どんな小数のズーム・密度でも、見えているタイルの範囲が画面全体を覆う`() {
+        for (scale in listOf(1.0, 1.5, 2.0, 2.625, 3.0)) {
+            for (zoom in listOf(11.0, 11.3, 12.5, 13.49, 13.51, 14.7, 15.0, 16.25)) {
+                val vp = MapViewport(35.68, 139.76, zoom, 1080, 1920, scale)
+                val r = vp.visibleTiles()
+                val z = r.z.toDouble()
+                val left = vp.toScreenX(WebMercator.lon(r.minX * 256.0, z))
+                val right = vp.toScreenX(WebMercator.lon((r.maxX + 1) * 256.0, z))
+                val top = vp.toScreenY(WebMercator.lat(r.minY * 256.0, z))
+                val bottom = vp.toScreenY(WebMercator.lat((r.maxY + 1) * 256.0, z))
+                assertTrue("左が足りない zoom=$zoom scale=$scale left=$left", left <= 0.5)
+                assertTrue("右が足りない zoom=$zoom scale=$scale right=$right", right >= 1079.5)
+                assertTrue("上が足りない zoom=$zoom scale=$scale top=$top", top <= 0.5)
+                assertTrue("下が足りない zoom=$zoom scale=$scale bottom=$bottom", bottom >= 1919.5)
+                // タイルは、画面で256px前後(0.7〜1.42倍)に描かれる = ぼやけず、多すぎもしない
+                val tilePx = r.tilePx
+                assertTrue("タイルの大きさ $tilePx", tilePx in 256 * 0.69..256 * 1.43)
+            }
+        }
     }
 
     @Test
@@ -400,8 +431,8 @@ class MercatorTest {
     fun `見えているタイルの範囲は画面全体を覆う`() {
         val vp = MapViewport(35.68, 139.76, 15.0, 1080, 1920, 3.0)
         val r = vp.visibleTiles()
-        assertEquals(15, r.z)
-        assertTrue(r.count in 4..60)
+        assertEquals(17, r.z) // 密度3倍なので、ズーム15の表示には1段細かい(ズーム17)タイルを使う
+        assertTrue(r.count in 40..120)
         // 範囲の端のタイルが、画面の外まで届いている
         val leftEdge = vp.toScreenX(WebMercator.lon(r.minX * 256.0, r.z.toDouble()))
         val rightEdge = vp.toScreenX(WebMercator.lon((r.maxX + 1) * 256.0, r.z.toDouble()))

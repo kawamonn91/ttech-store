@@ -48,14 +48,14 @@ class RouteImageRenderer(private val tiles: TileRepository) {
         // 想定外に大きい範囲(タイルが多すぎる)は、通信を抑えるため取得せず背景のまま描く
         val fetch = if (wanted.size <= MAX_TILES) wanted else emptyList()
         val loaded = coroutineScope {
-            fetch.map { (z, x, y) -> async { tiles.bitmap(mapStyle, z, x, y) } }.awaitAll()
+            fetch.map { (z, x, y) -> async { tiles.bitmap(z, x, y) } }.awaitAll()
         }
         val tilesLoaded = fetch.isNotEmpty() && loaded.all { it != null }
 
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         MapPainter.drawBackground(canvas, mapStyle)
-        MapPainter.drawTiles(canvas, vp, mapStyle) { z, x, y -> tiles.cached(mapStyle, z, x, y) }
+        MapPainter.drawTiles(canvas, vp, mapStyle) { z, x, y -> tiles.cached(z, x, y) }
         MapPainter.drawRoute(canvas, vp, route, routeStyle, density)
         MapPainter.drawMarkers(canvas, vp, points.firstOrNull(), points.lastOrNull(), density)
         overlay?.invoke(canvas, vp)

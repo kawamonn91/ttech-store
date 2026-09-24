@@ -3,6 +3,8 @@ package com.ttech.track.map
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
@@ -42,10 +44,25 @@ object MapPainter {
 
     fun drawBackground(canvas: Canvas, style: MapStyle) = canvas.drawColor(backgroundColor(style))
 
+    /**
+     * ダーク表示用の色の変換。明るい地図(OpenStreetMap)の色を反転し、色相を半回転して(草地は緑のまま、水は青のまま)
+     * 暗い地図にする。さらに彩度と明るさを少し下げて、上に描く赤いルートが際立つようにする。
+     */
+    private val darkFilter: ColorMatrixColorFilter by lazy {
+        val invert = ColorMatrix(floatArrayOf(-1f, 0f, 0f, 0f, 255f, 0f, -1f, 0f, 0f, 255f, 0f, 0f, -1f, 0f, 255f, 0f, 0f, 0f, 1f, 0f))
+        val hueHalfTurn = ColorMatrix(floatArrayOf(-0.574f, 1.430f, 0.144f, 0f, 0f, 0.426f, 0.430f, 0.144f, 0f, 0f, 0.426f, 1.430f, -0.856f, 0f, 0f, 0f, 0f, 0f, 1f, 0f))
+        val m = ColorMatrix()
+        m.postConcat(invert)
+        m.postConcat(hueHalfTurn)
+        m.postConcat(ColorMatrix().apply { setSaturation(0.5f) })
+        m.postConcat(ColorMatrix(floatArrayOf(0.9f, 0f, 0f, 0f, -6f, 0f, 0.9f, 0f, 0f, -6f, 0f, 0f, 0.9f, 0f, -3f, 0f, 0f, 0f, 1f, 0f)))
+        ColorMatrixColorFilter(m)
+    }
+
     /** 表示範囲に入るタイルを描く。まだ取得できていないタイルは、背景のまま */
     fun drawTiles(canvas: Canvas, vp: MapViewport, style: MapStyle, tile: (z: Int, x: Int, y: Int) -> Bitmap?) {
         val range = vp.visibleTiles()
-        val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply { if (style == MapStyle.Dark) colorFilter = darkFilter }
         val n = 1 shl range.z
         for (y in range.minY..range.maxY) {
             if (y < 0 || y >= n) continue

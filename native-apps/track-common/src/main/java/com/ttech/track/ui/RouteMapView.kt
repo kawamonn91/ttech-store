@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
@@ -64,9 +65,9 @@ fun RouteMapView(
         val range = current.visibleTiles()
         if (range.count > 100) return@LaunchedEffect
         for (y in range.minY..range.maxY) for (x in range.minX..range.maxX) {
-            if (tiles.cached(mapStyle, range.z, x, y) != null) continue
+            if (tiles.cached(range.z, x, y) != null) continue
             launch {
-                if (tiles.bitmap(mapStyle, range.z, x, y) != null) tileVersion++
+                if (tiles.bitmap(range.z, x, y) != null) tileVersion++
             }
         }
     }
@@ -74,6 +75,7 @@ fun RouteMapView(
     Canvas(
         modifier
             .fillMaxSize()
+            .clipToBounds() // 背景色を塗る処理が、この地図の枠の外まで塗らないようにする
             .onSizeChanged { size = it }
             .pointerInput(bounds) {
                 detectTransformGestures { centroid, pan, zoomChange, _ ->
@@ -106,7 +108,7 @@ fun RouteMapView(
             val c = canvas.nativeCanvas
             MapPainter.drawBackground(c, mapStyle)
             val current = viewport ?: return@drawIntoCanvas
-            MapPainter.drawTiles(c, current, mapStyle) { z, x, y -> tiles.cached(mapStyle, z, x, y) }
+            MapPainter.drawTiles(c, current, mapStyle) { z, x, y -> tiles.cached(z, x, y) }
             MapPainter.drawRoute(c, current, route, routeStyle, density)
             MapPainter.drawMarkers(c, current, points.firstOrNull(), points.lastOrNull(), density)
             marker?.let { m ->

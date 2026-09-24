@@ -1,6 +1,5 @@
 package com.ttech.track.data
 
-import com.ttech.track.domain.MapStyle
 import com.ttech.track.domain.TrackPoint
 import com.ttech.track.map.TileBytesCache
 import java.io.File
@@ -123,7 +122,7 @@ class TileBytesCacheTest {
         dir = dir,
         client = OkHttpClient(),
         userAgent = "TestApp/1.0 (test@example.com)",
-        urlFor = { _, z, x, y -> server.url("/tiles/$z/$x/$y.png").toString() },
+        urlFor = { z, x, y -> server.url("/tiles/$z/$x/$y.png").toString() },
         maxAgeMs = 1000L,
         now = { clock },
     )
@@ -132,16 +131,16 @@ class TileBytesCacheTest {
     fun `取得したタイルを保存し、期限内は通信しない`() = runBlocking {
         server.enqueue(MockResponse.Builder().body("PNGDATA").build())
         val c = cache()
-        assertArrayEquals("PNGDATA".toByteArray(), c.bytes(MapStyle.Dark, 14, 100, 200))
+        assertArrayEquals("PNGDATA".toByteArray(), c.bytes(14, 100, 200))
         assertEquals(1, server.requestCount)
-        assertArrayEquals("PNGDATA".toByteArray(), c.bytes(MapStyle.Dark, 14, 100, 200))
+        assertArrayEquals("PNGDATA".toByteArray(), c.bytes(14, 100, 200))
         assertEquals(1, server.requestCount) // 2回目は保存したものを使う
     }
 
     @Test
     fun `アプリを名乗るUser-Agentを付ける`() = runBlocking {
         server.enqueue(MockResponse.Builder().body("x").build())
-        cache().bytes(MapStyle.Light, 3, 1, 2)
+        cache().bytes(3, 1, 2)
         assertEquals("TestApp/1.0 (test@example.com)", server.takeRequest().headers["User-Agent"])
     }
 
@@ -150,9 +149,9 @@ class TileBytesCacheTest {
         server.enqueue(MockResponse.Builder().body("OLD").build())
         server.enqueue(MockResponse.Builder().body("NEW").build())
         val c = cache()
-        c.bytes(MapStyle.Dark, 5, 1, 1)
+        c.bytes(5, 1, 1)
         clock += 5_000
-        assertArrayEquals("NEW".toByteArray(), c.bytes(MapStyle.Dark, 5, 1, 1))
+        assertArrayEquals("NEW".toByteArray(), c.bytes(5, 1, 1))
         assertEquals(2, server.requestCount)
     }
 
@@ -161,28 +160,28 @@ class TileBytesCacheTest {
         server.enqueue(MockResponse.Builder().body("OLD").build())
         server.enqueue(MockResponse.Builder().code(503).build())
         val c = cache()
-        c.bytes(MapStyle.Dark, 5, 1, 1)
+        c.bytes(5, 1, 1)
         clock += 5_000
-        assertArrayEquals("OLD".toByteArray(), c.bytes(MapStyle.Dark, 5, 1, 1))
+        assertArrayEquals("OLD".toByteArray(), c.bytes(5, 1, 1))
     }
 
     @Test
     fun `保存が無く取得にも失敗したら null`() = runBlocking {
         server.enqueue(MockResponse.Builder().code(404).build())
-        assertNull(cache().bytes(MapStyle.Dark, 5, 9, 9))
+        assertNull(cache().bytes(5, 9, 9))
     }
 
     @Test
     fun `通信できないとき(接続拒否)も例外にせず null`() = runBlocking {
         val c = cache()
         server.close()
-        assertNull(c.bytes(MapStyle.Dark, 5, 2, 2))
+        assertNull(c.bytes(5, 2, 2))
     }
 
     @Test
     fun `空の応答は保存しない`() = runBlocking {
         server.enqueue(MockResponse.Builder().build())
-        assertNull(cache().bytes(MapStyle.Dark, 5, 3, 3))
-        assertFalse(cache().file(MapStyle.Dark, 5, 3, 3).exists())
+        assertNull(cache().bytes(5, 3, 3))
+        assertFalse(cache().file(5, 3, 3).exists())
     }
 }

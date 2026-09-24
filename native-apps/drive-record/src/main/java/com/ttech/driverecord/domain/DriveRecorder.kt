@@ -3,6 +3,7 @@ package com.ttech.driverecord.domain
 import com.ttech.track.data.TrackFiles
 import com.ttech.track.data.TrackWriter
 import com.ttech.track.domain.FixDecision
+import com.ttech.track.domain.RejectKind
 import com.ttech.track.domain.GeoMath
 import com.ttech.track.domain.TrackFilter
 import com.ttech.track.domain.TrackPoint
@@ -49,6 +50,8 @@ class DriveRecorder(
     private var distance = 0.0
     private var maxSpeed = 0.0
     private var startMs = 0L
+    /** 連続して「位置が飛んだ」と除いた点(互いに整合しているもの)。最初の点が古い・誤りだったときの見直し用 */
+    private val jumpStreak = ArrayList<TrackPoint>()
 
     val isActive: Boolean get() = id != null
 
@@ -68,13 +71,42 @@ class DriveRecorder(
     /** 点を1つ受け取る。記録に加えたら true、除いたら false */
     fun onPoint(p: TrackPoint): Boolean {
         if (id == null) return false
-        when (filter.decide(last, p)) {
+        when (val decision = filter.decide(last, p)) {
             is FixDecision.Reject -> {
                 rejected++
+                if (decision.kind == RejectKind.JUMP && registerJump(p)) return true
                 return false
             }
-            FixDecision.Accept -> Unit
+            FixDecision.Accept -> jumpStreak.clear()
         }
+        accept(p)
+        return true
+    }
+
+    /**
+     * 連続して「飛んだ」と除いた点が、互いに整合していて、記録がまだ短いときは、最初の点のほうが誤り
+     * (古い位置・測位開始直後の誤差)だったとみなして、いまの位置から記録し直す。
+     * 記録が長いときの飛びは、本当の誤測位として除き続ける。
+     */
+    private fun registerJump(p: TrackPoint): Boolean {
+        val previous = jumpStreak.lastOrNull()
+        if (previous == null || filter.decide(previous, p) != FixDecision.Accept) jumpStreak.clear()
+        jumpStreak.add(p)
+        if (jumpStreak.size < REANCHOR_COUNT || points.size >= REANCHOR_MAX_POINTS) return false
+        val fresh = jumpStreak.toList()
+        jumpStreak.clear()
+        writer?.close()
+        files.csvFile(id!!).delete()
+        writer = files.openWriter(id!!)
+        points.clear()
+        last = null
+        distance = 0.0
+        maxSpeed = 0.0
+        fresh.forEach(::accept)
+        return true
+    }
+
+    private fun accept(p: TrackPoint) {
         val prev = last
         if (prev != null) {
             val d = GeoMath.distanceMeters(prev.latLon, p.latLon)
@@ -85,7 +117,6 @@ class DriveRecorder(
         writer?.append(p)
         points.add(p)
         last = p
-        return true
     }
 
     fun live(): LiveDrive? {
@@ -107,8 +138,12 @@ class DriveRecorder(
         writer?.close()
         writer = null
         id = null
-        val all = points.toList()
+        val recorded = points.toList()
         reset()
+
+        // 出発前・到着後の停止は取り除き、ファイルも書き直す(所要時間・平均速度に混ざらないように)
+        val all = IdleTrim.trim(recorded)
+        if (all.size != recorded.size) rewrite(currentId, all)
 
         val stats = DriveStatsCalculator.compute(all)
         if (all.size < 2 || stats.distanceM < minDistanceM) {
@@ -120,15 +155,27 @@ class DriveRecorder(
         return summary
     }
 
+    private fun rewrite(id: String, list: List<TrackPoint>) {
+        files.csvFile(id).delete()
+        files.openWriter(id).use { w -> list.forEach(w::append) }
+    }
+
     private fun reset() {
         points.clear()
         last = null
         rejected = 0
         distance = 0.0
         maxSpeed = 0.0
+        jumpStreak.clear()
     }
 
     companion object {
+        /** この数だけ連続して整合する点が「飛んだ」扱いになったら、基準を取り直す */
+        const val REANCHOR_COUNT = 3
+
+        /** 記録した点がこれ未満のときだけ、基準を取り直す */
+        const val REANCHOR_MAX_POINTS = 60
+
         /**
          * 記録の途中でアプリが終了した(終わっていない)記録を、ファイルの点から復旧する。
          * 短すぎるものは捨てる。復旧した概要の一覧を返す。
@@ -139,7 +186,12 @@ class DriveRecorder(
                 if (id == activeId) continue
                 val meta = files.readMeta(id)?.let { runCatching { DriveJson.decodeFromString<DriveSummary>(it) }.getOrNull() }
                 if (meta != null && meta.finished) continue
-                val points = files.readTrack(id)
+                val raw = files.readTrack(id)
+                val points = IdleTrim.trim(raw)
+                if (points.size != raw.size) {
+                    files.csvFile(id).delete()
+                    files.openWriter(id).use { w -> points.forEach(w::append) }
+                }
                 val stats = DriveStatsCalculator.compute(points)
                 if (points.size < 2 || stats.distanceM < minDistanceM) {
                     files.delete(id)
@@ -164,5 +216,28 @@ object PlaceLabel {
         s = s.removePrefix("日本、").removePrefix("日本,").removePrefix("Japan, ").trim()
         s = s.replace(Regex("^〒?\\s*\\d{3}-?\\d{4}\\s*"), "")
         return s.ifBlank { null }
+    }
+}
+
+/**
+ * 出発前・到着後の、止まっている時間を取り除く。
+ * 車のエンジンを切ってから Android Auto が切れるまで(または、記録を始めてから走り出すまで)の停止が、
+ * 所要時間や平均速度に混ざらないようにするため。走り出す・止まる前後の数秒は残す。
+ * 一度も動いていない記録は、そのまま返す(短いドライブとして捨てられる)。
+ */
+object IdleTrim {
+    /** これ以上の速度(m/s)で動いていたら「走っている」 */
+    private const val MOVING_MPS = 1.5
+
+    fun trim(points: List<TrackPoint>, keepMs: Long = 5_000): List<TrackPoint> {
+        if (points.size < 2) return points
+        val speeds = DriveStatsCalculator.pointSpeeds(points)
+        val first = speeds.indexOfFirst { it >= MOVING_MPS }
+        if (first < 0) return points
+        val last = speeds.indexOfLast { it >= MOVING_MPS }
+        val from = points[first].timeMs - keepMs
+        val to = points[last].timeMs + keepMs
+        val trimmed = points.filter { it.timeMs in from..to }
+        return if (trimmed.size < 2) points else trimmed
     }
 }

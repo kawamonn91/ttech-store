@@ -27,9 +27,12 @@ data class TrackPoint(
 }
 
 /** 記録するかどうかの判断結果 */
+/** 除いた理由の種類。[JUMP] は「直前の点から現実的でない距離を移動した」場合で、基準の取り直しの判断に使う */
+enum class RejectKind { RANGE, ACCURACY, TIME, JUMP }
+
 sealed interface FixDecision {
     data object Accept : FixDecision
-    data class Reject(val reason: String) : FixDecision
+    data class Reject(val reason: String, val kind: RejectKind) : FixDecision
 }
 
 /**
@@ -44,15 +47,15 @@ class TrackFilter(
     private val maxSpeedMps: Double = 80.0,
 ) {
     fun decide(prev: TrackPoint?, p: TrackPoint): FixDecision {
-        if (p.lat !in -90.0..90.0 || p.lon !in -180.0..180.0) return FixDecision.Reject("座標が範囲外")
-        if (p.hAcc != null && p.hAcc > maxAccuracyM) return FixDecision.Reject("精度が悪い(${p.hAcc.toInt()}m)")
+        if (p.lat !in -90.0..90.0 || p.lon !in -180.0..180.0) return FixDecision.Reject("座標が範囲外", RejectKind.RANGE)
+        if (p.hAcc != null && p.hAcc > maxAccuracyM) return FixDecision.Reject("精度が悪い(${p.hAcc.toInt()}m)", RejectKind.ACCURACY)
         if (prev == null) return FixDecision.Accept
-        if (p.timeMs <= prev.timeMs) return FixDecision.Reject("時刻が戻っている")
+        if (p.timeMs <= prev.timeMs) return FixDecision.Reject("時刻が戻っている", RejectKind.TIME)
         val dtSec = (p.timeMs - prev.timeMs) / 1000.0
         val distance = GeoMath.distanceMeters(prev.latLon, p.latLon)
         // 精度の分だけ余裕を見る(誤差の範囲内で位置がずれることは普通にある)
         val slack = (p.hAcc ?: 0.0) + (prev.hAcc ?: 0.0)
-        if (distance - slack > maxSpeedMps * dtSec) return FixDecision.Reject("位置が飛んだ")
+        if (distance - slack > maxSpeedMps * dtSec) return FixDecision.Reject("位置が飛んだ", RejectKind.JUMP)
         return FixDecision.Accept
     }
 }
