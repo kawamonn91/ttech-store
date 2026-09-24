@@ -26,7 +26,7 @@ const published = () => ({
   signing_cert_sha256: "b".repeat(64),
   version_code: 7,
   status: "published",
-  app: { package_name: "jp.yomumemo.app", status: "published" },
+  app: { package_name: "jp.yomumemo.app", status: "published", admin_only: false },
 });
 
 beforeEach(() => {
@@ -77,11 +77,34 @@ describe("issueDownload", () => {
   it.each([
     ["リリースが未公開(承認待ち)", () => ({ ...published(), status: "scanned" })],
     ["リリースが却下", () => ({ ...published(), status: "rejected" })],
-    ["アプリが公開停止中", () => ({ ...published(), app: { package_name: "x.y", status: "suspended" } })],
+    ["アプリが公開停止中", () => ({ ...published(), app: { package_name: "x.y", status: "suspended", admin_only: false } })],
   ])("%s なら 404 で、URLもDL記録も出さない", async (_name, make) => {
     releaseRow = make();
     await expect(issueDownload("rel-1", "device-1", null)).rejects.toBeInstanceOf(DownloadError);
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  describe("管理者専用アプリ(admin_only)", () => {
+    const adminOnly = () => ({ ...published(), app: { package_name: "com.ttech.admin", status: "published", admin_only: true } });
+
+    it("管理者でなければ、通常のアプリと同じ 404(存在を知らせない)で、URLもDL記録も出さない", async () => {
+      releaseRow = adminOnly();
+      await expect(issueDownload("rel-1", "device-1", null)).rejects.toMatchObject({ status: 404 });
+      await expect(issueDownload("rel-1", "device-1", null, async () => false)).rejects.toMatchObject({ status: 404 });
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("管理者なら発行できる", async () => {
+      releaseRow = adminOnly();
+      await expect(issueDownload("rel-1", "device-1", null, async () => true)).resolves.toMatchObject({ packageName: "com.ttech.admin" });
+      expect(rpc).toHaveBeenCalledTimes(1);
+    });
+
+    it("通常のアプリでは管理者かどうかを確認しない", async () => {
+      const isAdmin = vi.fn(async () => true);
+      await issueDownload("rel-1", "device-1", null, isAdmin);
+      expect(isAdmin).not.toHaveBeenCalled();
+    });
   });
 
   it("検証情報(ハッシュ/署名/バージョン)が欠けたリリースは 409", async () => {

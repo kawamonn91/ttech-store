@@ -33,7 +33,7 @@ describe("POST /api/v1/releases/:id/download", () => {
     const res = await call(ID, { deviceId: "device-abcdef" });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ url: "https://r2/x" });
-    expect(issueDownload).toHaveBeenCalledWith(ID, "device-abcdef", null);
+    expect(issueDownload).toHaveBeenCalledWith(ID, "device-abcdef", null, expect.any(Function));
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
 

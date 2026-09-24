@@ -28,5 +28,12 @@ export const env = {
   storePackageName: () => process.env.STORE_PACKAGE_NAME ?? "com.kawamonn.store",
   /** ダウンロードの重複カウント判定に使う端末IDのハッシュ用ソルト */
   deviceHashSalt: () => required("DEVICE_HASH_SALT"),
+  /** DB(pg_net)から /api/internal/notify を呼ぶときの共有シークレット */
+  notifyWebhookSecret: () => required("NOTIFY_WEBHOOK_SECRET"),
+  /** 運営へのメール通知(Resend)。未設定なら通知は送られない(503を返すだけで、他の機能には影響しない) */
+  resendApiKey: () => process.env.RESEND_API_KEY ?? "",
+  adminNotifyEmail: () => process.env.ADMIN_NOTIFY_EMAIL ?? "",
+  /** 差出人。ドメイン未認証のうちは Resend の onboarding@resend.dev(自分のアカウントのメール宛にだけ送れる) */
+  mailFrom: () => process.env.MAIL_FROM || "T-tech Store <onboarding@resend.dev>",
   siteUrl: () => process.env.NEXT_PUBLIC_SITE_URL ?? "https://store.kawamonn.com",
 };
