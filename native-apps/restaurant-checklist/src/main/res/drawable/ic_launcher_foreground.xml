@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 鍋とチェックリスト -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M22,48 L70,48 L66,80 Q66,84 62,84 L30,84 Q26,84 26,80 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M18,48 L74,48" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M36,40 C36,34 56,34 56,40" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M74,28 L90,28 L90,66 L74,66 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#DC2626"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M78,36 L86,36 M78,44 L86,44 M78,52 L84,52" />
+</vector>

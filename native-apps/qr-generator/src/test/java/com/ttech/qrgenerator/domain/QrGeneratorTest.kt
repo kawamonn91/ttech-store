@@ -1,5 +1,10 @@
 package com.ttech.qrgenerator.domain
 
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.LuminanceSource
+import com.google.zxing.common.BitMatrix
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -46,4 +51,21 @@ class QrGeneratorTest {
         val matrix = QrGenerator.encode(longText, size = 280)
         assertTrue(matrix != null)
     }
+
+    @Test
+    fun `日本語のテキストを読み取ると元の文字列に戻る`() {
+        val text = "こんにちは、T-tech ストア"
+        val matrix = QrGenerator.encode(text)!!
+        val decoded = QRCodeReader().decode(BinaryBitmap(HybridBinarizer(BitMatrixSource(matrix))))
+        assertEquals(text, decoded.text)
+    }
+}
+
+/** 生成したQR行列をそのまま読み取りにかけるための画像ソース(白=255、黒=0)。 */
+private class BitMatrixSource(private val matrix: BitMatrix) : LuminanceSource(matrix.width, matrix.height) {
+    override fun getRow(y: Int, row: ByteArray?): ByteArray =
+        ByteArray(width) { x -> if (matrix.get(x, y)) 0 else 255.toByte() }
+
+    override fun getMatrix(): ByteArray =
+        ByteArray(width * height) { i -> if (matrix.get(i % width, i / width)) 0 else 255.toByte() }
 }

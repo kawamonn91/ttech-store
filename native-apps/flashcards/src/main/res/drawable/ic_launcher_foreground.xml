@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 重なったカード(フラッシュカード) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.55"
+        android:pathData="M32,26 L82,26 A5,5 0 0 1 87,31 L87,71 A5,5 0 0 1 82,76 L32,76 A5,5 0 0 1 27,71 L27,31 A5,5 0 0 1 32,26 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,34 L74,34 A5,5 0 0 1 79,39 L79,79 A5,5 0 0 1 74,84 L24,84 A5,5 0 0 1 19,79 L19,39 A5,5 0 0 1 24,34 Z" />
+    <path android:fillColor="#BE185D" android:pathData="M30,52 L68,52 L68,58 L30,58 Z" />
+    <path android:fillColor="#BE185D" android:pathData="M30,64 L54,64 L54,70 L30,70 Z" />
+</vector>

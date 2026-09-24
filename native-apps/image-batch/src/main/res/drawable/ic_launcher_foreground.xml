@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 画像フレームとリサイズ(拡大縮小)マーク -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M22,26 L86,26 L86,82 L22,82 Z" />
+    <path android:fillColor="#1E3A8A" android:pathData="M34,40 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <path android:fillColor="#1E3A8A" android:pathData="M22,82 L40,58 L52,70 L64,50 L86,82 Z" />
+    <path android:fillColor="#1E3A8A" android:pathData="M78,78 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M73,83 L83,73 M73,77 L73,83 L79,83 M77,73 L83,73 L83,79" />
+</vector>

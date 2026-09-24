@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 水滴と目盛り -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,24 C54,24 32,50 32,64 A22,22 0 0,0 76,64 C76,50 54,24 54,24 Z" />
+    <path
+        android:fillColor="#06B6D4"
+        android:fillAlpha="0.45"
+        android:pathData="M34,66 L74,66 A20,20 0 0,1 34,66 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#06B6D4"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M44,64 A10,10 0 0,0 54,76" />
+</vector>

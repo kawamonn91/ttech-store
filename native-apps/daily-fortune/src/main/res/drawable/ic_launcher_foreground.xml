@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: おみくじの巻物 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M28,20 L80,20 A7,7 0 0 1 87,27 A7,7 0 0 1 80,34 L28,34 A7,7 0 0 1 21,27 A7,7 0 0 1 28,20 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M32,28 L76,28 L76,86 L32,86 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M28,80 L80,80 A7,7 0 0 1 87,87 A7,7 0 0 1 80,94 L28,94 A7,7 0 0 1 21,87 A7,7 0 0 1 28,80 Z" />
+    <path android:fillColor="#4F46E5" android:pathData="M54,57 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0" />
+</vector>

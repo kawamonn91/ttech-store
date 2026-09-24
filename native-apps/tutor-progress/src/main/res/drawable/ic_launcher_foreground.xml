@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 角帽と右上がりのグラフ -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,22 L88,36 L54,50 L20,36 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,42 L34,54 C34,60 74,60 74,54 L74,42 L54,50 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M84,38 L84,52" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M30,86 L30,80 M44,86 L44,76 M58,86 L58,72 M72,86 L72,68" />
+</vector>
