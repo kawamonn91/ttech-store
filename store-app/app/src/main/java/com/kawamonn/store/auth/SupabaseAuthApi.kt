@@ -19,7 +19,7 @@ class SupabaseAuthApi(
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; explicitNulls = false }
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
-    /** [nonce] は Credential Manager に渡したのと同じ値。リプレイ攻撃を防ぐため Supabase 側でも検証させる */
+    /** [nonce] は、Credential Manager に渡したハッシュ値の「元の値」(SHA-256すると Google に渡した値になる)。リプレイ攻撃を防ぐため Supabase 側でも検証させる */
     override suspend fun signInWithGoogleIdToken(idToken: String, nonce: String): AuthSessionData =
         post("auth/v1/token?grant_type=id_token", json.encodeToString(mapOf("provider" to "google", "id_token" to idToken, "nonce" to nonce)))
 
