@@ -116,7 +116,7 @@ object DriveStatsCalculator {
 
         val durationMs = points.last().timeMs - points.first().timeMs
         val avgMoving = if (movingMs > 0) distance / (movingMs / 1000.0) else 0.0
-        val elevation = elevation(points)
+        val elevation = Elevation.profile(points)
 
         return DriveStats(
             startTimeMs = points.first().timeMs,
@@ -159,34 +159,6 @@ object DriveStatsCalculator {
             out[i] = max(min(a, b), min(max(a, b), c))
         }
         return out
-    }
-
-    private class Elevation(val gain: Double, val loss: Double, val min: Double?, val max: Double?)
-
-    /** 標高の上り下り。GPSの標高は数mずれるので、5点の移動平均にして、3m以上動いたときだけ数える */
-    private fun elevation(points: List<TrackPoint>): Elevation {
-        val alts = points.map { it.altitude }
-        if (alts.none { it != null }) return Elevation(0.0, 0.0, null, null)
-        val smoothed = ArrayList<Double>()
-        for (i in alts.indices) {
-            var sum = 0.0
-            var count = 0
-            for (j in max(0, i - 2)..min(alts.lastIndex, i + 2)) {
-                alts[j]?.let { sum += it; count++ }
-            }
-            if (count > 0) smoothed.add(sum / count)
-        }
-        var ref = smoothed.first()
-        var gain = 0.0
-        var loss = 0.0
-        for (a in smoothed) {
-            val diff = a - ref
-            if (abs(diff) >= 3.0) {
-                if (diff > 0) gain += diff else loss += -diff
-                ref = a
-            }
-        }
-        return Elevation(gain, loss, smoothed.minOrNull(), smoothed.maxOrNull())
     }
 
     /** 信号待ちなどの停止。出発前と到着後に止まっている時間は数えない */

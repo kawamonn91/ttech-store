@@ -1,10 +1,10 @@
-package com.ttech.driverecord.map
+package com.ttech.track.map
 
 import android.content.Context
 import android.location.Address
 import android.location.Geocoder
 import android.os.Build
-import com.ttech.driverecord.domain.PlaceLabel
+import com.ttech.track.domain.PlaceLabel
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers

@@ -6,7 +6,7 @@ import com.ttech.driverecord.data.DriveRepository
 import com.ttech.driverecord.data.SettingsStore
 import com.ttech.driverecord.domain.LiveDrive
 import com.ttech.driverecord.map.DriveImages
-import com.ttech.driverecord.map.PlaceNamer
+import com.ttech.track.map.PlaceNamer
 import com.ttech.track.data.TrackFiles
 import com.ttech.track.location.GpsStatus
 import com.ttech.track.map.RouteImageRenderer
