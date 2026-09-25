@@ -146,21 +146,7 @@ object DriveStatsCalculator {
     }
 
     /** 各点の速度(m/s)。端末が返した速度を使い、無ければ前の点との位置の差から求める */
-    fun pointSpeeds(points: List<TrackPoint>): DoubleArray {
-        val out = DoubleArray(points.size)
-        for (i in points.indices) {
-            val given = points[i].speed
-            out[i] = when {
-                given != null && given >= 0 -> given
-                i == 0 -> 0.0
-                else -> {
-                    val dt = (points[i].timeMs - points[i - 1].timeMs) / 1000.0
-                    if (dt > 0) GeoMath.distanceMeters(points[i - 1].latLon, points[i].latLon) / dt else 0.0
-                }
-            }
-        }
-        return out
-    }
+    fun pointSpeeds(points: List<TrackPoint>): DoubleArray = Speeds.pointSpeeds(points)
 
     /** 3点の中央値。速度が1点だけ跳ねる(瞬間的な誤差)のを、最高速度や加速度から除く */
     private fun medianOf3(values: DoubleArray): DoubleArray {

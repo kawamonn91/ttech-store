@@ -371,51 +371,13 @@ class PlaceLabelTest {
     }
 }
 
-class IdleTrimTest {
-    private fun pts(speeds: List<Double>): List<TrackPoint> =
-        speeds.mapIndexed { i, v -> TrackPoint(1_000L * i, 35.0 + i * 1e-5, 139.0, speed = v, hAcc = 5.0) }
-
-    @Test
-    fun `出発前と到着後の停止を取り除き、前後5秒だけ残す`() {
-        val speeds = List(60) { 0.0 } + List(100) { 12.0 } + List(90) { 0.0 }
-        val trimmed = IdleTrim.trim(pts(speeds))
-        // 走行100点 + 前5点 + 後5点
-        assertEquals(110, trimmed.size)
-        assertEquals(55_000L, trimmed.first().timeMs)
-        assertEquals(164_000L, trimmed.last().timeMs)
-    }
-
-    @Test
-    fun `途中の停止(信号待ち)は取り除かない`() {
-        val speeds = List(30) { 0.0 } + List(20) { 12.0 } + List(40) { 0.0 } + List(20) { 12.0 } + List(30) { 0.0 }
-        val trimmed = IdleTrim.trim(pts(speeds))
-        assertEquals(20 + 40 + 20 + 10, trimmed.size)
-    }
-
-    @Test
-    fun `最初から最後まで走っていれば、そのまま`() {
-        val all = pts(List(50) { 12.0 })
-        assertEquals(all, IdleTrim.trim(all))
-    }
-
-    @Test
-    fun `一度も動いていない記録は、そのまま返す`() {
-        val all = pts(List(50) { 0.1 })
-        assertEquals(all, IdleTrim.trim(all))
-    }
-
-    @Test
-    fun `点が少なければ触らない`() {
-        assertEquals(1, IdleTrim.trim(pts(listOf(0.0))).size)
-        assertTrue(IdleTrim.trim(emptyList()).isEmpty())
-    }
-
+class DriveIdleTrimTest {
     @Test
     fun `記録を終えると、到着後の停止が取り除かれて保存される`() {
         val dir = Files.createTempDirectory("trim").toFile()
         try {
             val files = TrackFiles(dir)
-            var now = 1_790_000_000_000L
+            val now = 1_790_000_000_000L
             val r = DriveRecorder(files, clock = { now })
             val id = r.start(Trigger.ANDROID_AUTO)
             // 走行60秒(約600m)のあと、止まったまま90秒(車を降りたが Android Auto はまだ切れていない)
