@@ -37,6 +37,8 @@ import com.kawamonn.store.data.api.StoreApi
 import com.kawamonn.store.util.formatBytes
 import com.kawamonn.store.util.formatCount
 import com.kawamonn.store.util.shortPermission
+import com.kawamonn.store.util.usesInternet
+import com.kawamonn.store.util.visiblePermissions
 
 class DetailViewModel(private val api: StoreApi, private val slug: String) : LoadViewModel<AppDetailDto>() {
     init {
@@ -126,8 +128,13 @@ private fun DetailBody(app: AppDetailDto) {
                 latest.apkSize?.let { InfoRow("サイズ", formatBytes(it)) }
                 latest.minSdk?.let { InfoRow("必要なOS", "Android ${androidVersionName(it)} 以上") }
                 app.category?.let { InfoRow("カテゴリ", it.name) }
-                if (latest.permissions.isNotEmpty()) {
-                    InfoRow("必要な権限", latest.permissions.joinToString(", ") { shortPermission(it) })
+                InfoRow(
+                    "インターネット",
+                    if (usesInternet(latest.permissions)) "使います(インターネット権限あり)" else "使いません(インターネット権限なし)",
+                )
+                val shown = visiblePermissions(app.packageName, latest.permissions)
+                if (shown.isNotEmpty()) {
+                    InfoRow("必要な権限", shown.joinToString(", ") { shortPermission(it) })
                 }
             }
         }

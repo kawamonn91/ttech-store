@@ -20,3 +20,13 @@ fun formatCount(count: Long): String = when {
 
 /** "android.permission.CAMERA" → "CAMERA" */
 fun shortPermission(name: String): String = name.removePrefix("android.permission.")
+
+/** インターネットの権限を持っているか。持っていなければ、そのアプリはネットワークに接続できない */
+fun usesInternet(permissions: List<String>): Boolean = permissions.any { it == "android.permission.INTERNET" }
+
+/**
+ * 利用者に見せる権限。アプリ自身の名前で始まる権限(AndroidX が自動で足す DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION など、
+ * そのアプリの内部だけで使うもの)は、端末の機能への権限ではないので除く。
+ */
+fun visiblePermissions(packageName: String, permissions: List<String>): List<String> =
+    permissions.filterNot { it.startsWith("$packageName.") }

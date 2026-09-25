@@ -31,13 +31,36 @@ import com.kawamonn.store.ui.LocalContainer
 import com.kawamonn.store.ui.SectionTitle
 import com.kawamonn.store.ui.auth.LoginScreen
 import kotlinx.coroutines.launch
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
+import com.kawamonn.store.ui.openStoreWebPage
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.contentOrNull
 
-private data class MyApp(val name: String, val status: String)
-private data class PendingRelease(val id: String, val appName: String, val versionName: String?, val status: String)
+/** [releaseState] は、最新のリリースの状態(「v1.0.0 公開中(自動審査を通過)」など) */
+private data class MyApp(val name: String, val status: String, val releaseState: String?)
+
+/** [reasons] は、運営の確認が必要とされた理由(自動審査の結果)。運営が中身を確かめてから公開・却下を選べるように出す */
+private data class PendingRelease(
+    val id: String,
+    val appName: String,
+    val developerName: String?,
+    val versionName: String?,
+    val status: String,
+    val reasons: List<String>,
+)
+
+/** 埋め込み(apps や developers)が、オブジェクトでも1要素の配列でも読めるようにする */
+private fun JsonElement?.asObject(): JsonObject? = when (this) {
+    is JsonObject -> this
+    is JsonArray -> firstOrNull() as? JsonObject
+    else -> null
+}
 
 @Composable
 fun AccountScreen(contentPadding: PaddingValues) {
@@ -76,22 +99,43 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
             val profileRows = postgrest.select("profiles", "id=eq.${state.userId}&select=role")
             role = profileRows.firstOrNull()?.jsonObject?.get("role")?.jsonPrimitive?.contentOrNull
 
-            val appRows = postgrest.select("apps", "developer_id=eq.${state.userId}&select=name,status&order=created_at.desc")
-            myApps = appRows.map { MyApp(it.jsonObject["name"]!!.jsonPrimitive.content, it.jsonObject["status"]!!.jsonPrimitive.content) }
+            val appRows = postgrest.select(
+                "apps",
+                "developer_id=eq.${state.userId}&select=name,status,app_releases(version_name,status,auto_approved,policy_verdict,created_at)&order=created_at.desc",
+            )
+            myApps = appRows.map { row ->
+                val obj = row.jsonObject
+                val releases = (obj["app_releases"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
+                val newest = newestRelease(releases) { it["created_at"]?.jsonPrimitive?.contentOrNull ?: "" }
+                MyApp(
+                    name = obj["name"]!!.jsonPrimitive.content,
+                    status = obj["status"]!!.jsonPrimitive.content,
+                    releaseState = newest?.let { r ->
+                        val version = r["version_name"]?.jsonPrimitive?.contentOrNull?.let { "v$it " } ?: ""
+                        version + releaseStateLabel(
+                            status = r["status"]?.jsonPrimitive?.contentOrNull ?: "",
+                            autoApproved = r["auto_approved"]?.jsonPrimitive?.contentOrNull == "true",
+                            verdict = r["policy_verdict"]?.jsonPrimitive?.contentOrNull,
+                        )
+                    },
+                )
+            }
 
             if (role == "admin") {
                 val releaseRows = postgrest.select(
                     "app_releases",
-                    "status=in.(scanned,approved)&select=id,version_name,status,apps(name)&order=created_at.desc",
+                    "status=in.(scanned,approved)&select=id,version_name,status,policy_findings,apps(name,developers(name))&order=created_at.desc",
                 )
                 pending = releaseRows.map {
                     val obj = it.jsonObject
-                    val app = (obj["apps"] as? JsonObject)
+                    val app = obj["apps"].asObject()
                     PendingRelease(
                         id = obj["id"]!!.jsonPrimitive.content,
                         appName = app?.get("name")?.jsonPrimitive?.contentOrNull ?: "?",
+                        developerName = app?.get("developers").asObject()?.get("name")?.jsonPrimitive?.contentOrNull,
                         versionName = obj["version_name"]?.jsonPrimitive?.contentOrNull,
                         status = obj["status"]!!.jsonPrimitive.content,
+                        reasons = reviewReasons(obj["policy_findings"]),
                     )
                 }
             } else {
@@ -146,15 +190,23 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
                 item { Text("承認待ちのリリースはありません。", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp)) }
             }
             items(pending, key = { it.id }) { r ->
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("${r.appName} v${r.versionName ?: "?"}", modifier = Modifier.weight(1f))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { decide(r.id, "publish") }, enabled = busyId != r.id) { Text("公開") }
-                        OutlinedButton(onClick = { decide(r.id, "reject") }, enabled = busyId != r.id) { Text("却下") }
+                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${r.appName} v${r.versionName ?: "?"}", style = MaterialTheme.typography.titleMedium)
+                            r.developerName?.let { Text("開発者: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { decide(r.id, "publish") }, enabled = busyId != r.id) { Text("公開") }
+                            OutlinedButton(onClick = { decide(r.id, "reject") }, enabled = busyId != r.id) { Text("却下") }
+                        }
+                    }
+                    if (r.reasons.isEmpty()) {
+                        Text("確認が必要な点の記録はありません(自動審査を通る前のリリースです)。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("確認が必要な点", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                        r.reasons.forEach { Text("・$it", style = MaterialTheme.typography.bodySmall) }
+                        Text("詳しい根拠は、Webのマイページで確認できます。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -187,9 +239,34 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
             item { Text("まだアプリがありません。", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp)) }
         }
         items(myApps) { app ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(app.name)
-                Text(app.status, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(app.name, style = MaterialTheme.typography.titleMedium)
+                    Text(appStatusLabel(app.status), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                app.releaseState?.let { Text("最新のリリース: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+        }
+
+        item {
+            val context = LocalContext.current
+            HorizontalDivider(Modifier.padding(top = 12.dp))
+            SectionTitle("自分のアプリを公開する")
+            Text(
+                "開発者として登録すると、自分で作ったアプリを、誰でもこのストアに公開できます。APKをアップロードすると自動で検査され、" +
+                    "通信の機能や端末のデータを壊す可能性が見つからなければ、承認を待たずに公開されます(疑わしい点があるときは、運営が確認します)。" +
+                    "登録とアップロードは、ブラウザの開発者ページで行います。",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = { openStoreWebPage(context, "/developer") }) { Text("開発者ページを開く") }
+                TextButton(onClick = { openStoreWebPage(context, "/legal/developer") }) { Text("開発者向け規約") }
+            }
+            HorizontalDivider(Modifier.padding(top = 16.dp))
+            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = { openStoreWebPage(context, "/legal/terms") }) { Text("利用規約") }
+                TextButton(onClick = { openStoreWebPage(context, "/legal/privacy") }) { Text("プライバシーポリシー") }
             }
         }
 
