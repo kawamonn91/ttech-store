@@ -4,11 +4,22 @@ export const metadata: Metadata = { title: "プライバシーポリシー" };
 
 const H2 = "pt-4 text-lg font-bold";
 
+const POLICY_BASE = "https://kawamonn91.github.io/yomumemo";
+
+/** 運営者が公開しているアプリで、個別のポリシーがあるもの */
+const APP_POLICIES = [
+  { name: "ひとこと日記", href: `${POLICY_BASE}/diary-privacy-policy.html` },
+  { name: "ドライブ記録", href: `${POLICY_BASE}/drive-record-privacy-policy.html` },
+  { name: "ランニング記録", href: `${POLICY_BASE}/run-tracker-privacy-policy.html` },
+  { name: "旅のしおり", href: `${POLICY_BASE}/trip-shiori-privacy-policy.html` },
+  { name: "行きたい旅メモ", href: `${POLICY_BASE}/travel-wishlist-privacy-policy.html` },
+];
+
 export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-2xl space-y-4 leading-7">
       <h1 className="text-2xl font-bold">プライバシーポリシー</h1>
-      <p className="text-sm text-muted">最終更新日: 2026年9月24日</p>
+      <p className="text-sm text-muted">最終更新日: 2026年9月25日</p>
       <p>
         T-tech(以下「運営者」)は、「T-tech Store」(Webサイトおよびストアアプリ。以下「本サービス」)における情報の取り扱いについて、以下のとおり定めます。
         アプリを見る・ダウンロードするだけであれば、アカウントは不要です。
@@ -40,8 +51,16 @@ export default function PrivacyPage() {
           パスワードは認証サービスが安全な形で管理し、運営者が平文を見ることはできません。
         </li>
         <li>
-          <b>開発者の申請</b>: 開発者として申請した場合に、申請時に入力された名前、連絡先のメールアドレス、Webサイト(任意)、承認の状態。
-          承認された開発者の名前とWebサイトは、アプリの詳細ページに表示されます。連絡先のメールアドレスは公開しません。
+          <b>開発者の登録</b>: 開発者として登録した場合に、入力された名前、連絡先のメールアドレス、Webサイト(任意)、開発者向け規約に同意した日時、状態(利用中・停止中)。
+          開発者の名前とWebサイトは、アプリの詳細ページに表示されます。連絡先のメールアドレスは公開せず、運営者からの連絡と審査結果の通知にだけ使います。
+        </li>
+        <li>
+          <b>開発者がアップロードしたもの</b>: アプリのAPKファイル、アイコン・スクリーンショット、アプリの名前・説明・カテゴリ・パッケージ名、リリースノート。
+          公開されたアプリのAPK・画像・掲載内容は、誰でも見られ、ダウンロードできます(署名鍵の情報やAPKの中身の解析結果を含みます)。
+        </li>
+        <li>
+          <b>APKの自動審査の記録</b>: アップロードされたAPKの検査結果(権限・署名・コードの解析結果・ハッシュ値)と、その判定(自動で公開した・運営者の確認が必要・却下)、確認が必要とされた理由。
+          開発者は、自分のアプリの結果と理由を、開発者ダッシュボードで見られます。
         </li>
         <li>
           <b>共通のアカウント</b>: このアカウントは、運営者が提供するほかのサービス(例: ひとこと日記)と共通です。
@@ -55,7 +74,8 @@ export default function PrivacyPage() {
       <h2 className={H2}>2. 利用目的</h2>
       <ul className="list-disc space-y-1 pl-5">
         <li>サービスの提供・改善、ダウンロード数の集計</li>
-        <li>ログインと本人確認、開発者の申請の審査</li>
+        <li>ログインと本人確認、開発者の登録の管理</li>
+        <li>アップロードされたAPKの自動審査(通信・端末データの破壊・隠されたコードの有無の確認)と、運営者による確認、審査結果の通知</li>
         <li>不正利用の防止、規約に反する行為への対応</li>
         <li>お問い合わせへの対応</li>
       </ul>
@@ -68,8 +88,9 @@ export default function PrivacyPage() {
           運営者は、内容を確認して対応するために、報告の理由・詳細、報告された投稿の内容、報告した人と報告された人のアカウント情報を確認します。
         </li>
         <li>
-          <b>運営者へのメール通知</b>: 報告や開発者の申請があると、運営者がすぐに確認できるよう、その内容(理由・投稿の内容・表示名・申請時に入力された連絡先など)が、
-          <b>運営者宛のメール</b>で通知されます。メールは運営者だけに送られ、報告された相手やほかの利用者には伝わりません。
+          <b>メールでの通知</b>: 報告があったとき、開発者が登録したとき、アプリが運営者の確認待ちになったとき・自動で公開されたときに、運営者がすぐに確認できるよう、その内容
+          (理由・投稿の内容・表示名・開発者名・アプリ名・確認が必要な点など)が、<b>運営者宛のメール</b>で通知されます。メールは運営者だけに送られ、報告された相手やほかの利用者には伝わりません。
+          また、開発者には、審査の結果(公開した・確認が必要・却下、およびその理由)を、登録された連絡先のメールアドレスにお知らせします。
         </li>
         <li>
           <b>アカウントの停止</b>: 規約に反する行為や不正利用があった場合、運営者はアカウントを停止することがあります。
@@ -89,8 +110,13 @@ export default function PrivacyPage() {
       <ul className="list-disc space-y-1 pl-5">
         <li>Vercel(Webホスティング)</li>
         <li>Supabase(データベース・認証・ファイル保存。アカウント確認などのメールの送信も含む)</li>
-        <li>Cloudflare(アプリのファイル配信)</li>
-        <li>Resend(運営者宛の通知メールの送信。上記「運営者へのメール通知」の内容が渡ります)</li>
+        <li>Cloudflare(アプリのファイルの保管・配信。アップロードされたAPKもここに保管されます)</li>
+        <li>GitHub(アップロードされたAPKの自動審査を実行する環境(GitHub Actions)。検査中のAPKが一時的に処理されます)</li>
+        <li>
+          VirusTotal(Google。ウイルス検査。APKのハッシュ値を照会し、未登録の場合はAPKのファイルそのものを送信します。
+          送信されたファイルは、同サービスの仕組みにより、セキュリティ事業者などに共有されることがあります)
+        </li>
+        <li>Resend(通知メールの送信。上記「メールでの通知」の内容と、開発者の連絡先のメールアドレスが渡ります)</li>
         <li>Google(Google アカウントでログインする場合のログイン機能)</li>
       </ul>
 
@@ -111,11 +137,19 @@ export default function PrivacyPage() {
       <h2 className={H2}>6. アプリごとの取り扱い</h2>
       <p>
         各アプリが取得する情報については、各アプリのプライバシーポリシーをご確認ください。
-        ひとこと日記:{" "}
-        <a className="text-brand underline" href="https://kawamonn91.github.io/yomumemo/diary-privacy-policy.html">
-          プライバシーポリシー
-        </a>
+        運営者(T-tech)が公開しているアプリのポリシーは、次のとおりです。
+        開発者が公開しているアプリについては、各開発者にご確認ください。
       </p>
+      <ul className="list-disc space-y-1 pl-5">
+        {APP_POLICIES.map((p) => (
+          <li key={p.href}>
+            {p.name}:{" "}
+            <a className="text-brand underline" href={p.href}>
+              プライバシーポリシー
+            </a>
+          </li>
+        ))}
+      </ul>
 
       <h2 className={H2}>7. 改定</h2>
       <p>本ポリシーは、必要に応じて改定することがあります。改定後は本ページに掲示し、最終更新日を改めます。</p>

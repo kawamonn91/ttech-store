@@ -92,7 +92,7 @@ export default async function DeveloperAppPage({ params }: { params: Promise<{ i
       <Section title="新しいバージョンをアップロード">
         <ReleaseUploader appId={id} disabled={suspended} />
         <p className="mt-3 text-xs text-muted">
-          アップロードしたAPKは自動で検査され、問題が見つからなければすぐ公開されます(2回目以降は、versionCode を前より大きくしてください)。
+          アップロードしたAPKは自動で検査され、問題が見つからなければすぐ公開されます(2回目以降は、versionCode を前より大きくしてください)。検査のため、APKは VirusTotal にも送信されます(詳しくは開発者向け規約の第2条)。
         </p>
       </Section>
 
