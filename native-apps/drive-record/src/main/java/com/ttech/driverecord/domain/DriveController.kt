@@ -10,14 +10,18 @@ sealed interface DriveCommand {
 data class DriveSettings(
     /** Android Auto につながったら、自動で記録を始める */
     val autoRecord: Boolean = true,
-    /** Android Auto との接続が切れてから、記録を終えるまで待つ秒数(無線接続の一時的な途切れを、別の記録にしないため) */
-    val disconnectGraceSec: Int = 60,
+    /**
+     * Android Auto との接続が切れてから、記録を終えるまで待つ秒数(既定は10秒)。
+     * 接続が一瞬途切れても(無線接続など)、その間に接続し直せば、別々の記録に分かれずに同じ記録を続けられる。
+     * 0 にすると、切れた瞬間に終える。
+     */
+    val disconnectGraceSec: Int = 10,
     /** これより短い(m)ドライブは、記録に残さない(駐車場での出し入れなど) */
     val minDistanceM: Int = 300,
     val mapStyleDark: Boolean = true,
 ) {
     companion object {
-        val GRACE_CHOICES = listOf(30, 60, 120, 300)
+        val GRACE_CHOICES = listOf(10, 30, 60, 120, 300)
         val MIN_DISTANCE_CHOICES = listOf(0, 100, 300, 500, 1000)
     }
 }
@@ -28,7 +32,8 @@ data class DriveSettings(
  *
  * ルール:
  *  - 自動記録がオンで Android Auto につながったら、記録を始める
- *  - 切れたら、待機時間([DriveSettings.disconnectGraceSec])が過ぎてから終える。その間に再接続すれば、そのまま続ける
+ *  - 切れたら、待機時間([DriveSettings.disconnectGraceSec]。既定は10秒)が過ぎてから記録を終える。その間に再接続すれば、そのまま続ける
+ *    (待機時間が0なら、切れた瞬間に終える)
  *  - 手動で始めた記録は、Android Auto の接続とは関係なく、手動で止めるまで続ける
  *  - 自動で始めた記録を手動で止めたら、次に接続し直すまでは、自動で始めない
  */
@@ -62,8 +67,15 @@ class DriveController(private var settings: DriveSettings = DriveSettings()) {
             maybeStartAuto(nowMs)
         } else {
             suppressUntilDisconnect = false
-            if (mode == Mode.Auto) stopAtMs = nowMs + settings.disconnectGraceSec * 1000L
-            null
+            if (mode != Mode.Auto) {
+                null
+            } else if (settings.disconnectGraceSec <= 0) {
+                // 待たずに、切れた瞬間に終える(定期の見張り [onTick] の周期を待たない)
+                stop()
+            } else {
+                stopAtMs = nowMs + settings.disconnectGraceSec * 1000L
+                null
+            }
         }
     }
 

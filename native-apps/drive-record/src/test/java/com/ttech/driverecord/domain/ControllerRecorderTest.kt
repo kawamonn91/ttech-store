@@ -32,6 +32,45 @@ class DriveControllerTest {
     }
 
     @Test
+    fun `既定では、Android Autoが切れて10秒待っても戻らなければ、記録を終える`() {
+        assertEquals(10, DriveSettings().disconnectGraceSec)
+        val c = DriveController()
+        c.onCarConnection(true, 0)
+        assertNull(c.onCarConnection(false, 100_000))
+        assertEquals(110_000L, c.pendingStopAtMs)
+        assertNull(c.onTick(109_999))
+        assertTrue(c.isRecording)
+        assertEquals(DriveCommand.Stop, c.onTick(110_000))
+        assertFalse(c.isRecording)
+        // 次に接続したら、また新しい記録を始める
+        assertEquals(start, c.onCarConnection(true, 200_000))
+    }
+
+    @Test
+    fun `既定の10秒のうちに再接続したら、同じ記録を続ける(一瞬の途切れで分けない)`() {
+        val c = DriveController()
+        c.onCarConnection(true, 0)
+        c.onCarConnection(false, 100_000)
+        assertNull(c.onCarConnection(true, 105_000))
+        assertNull(c.onTick(200_000))
+        assertTrue(c.isRecording)
+    }
+
+    @Test
+    fun `待機時間を0にすれば、切れた瞬間に終える。手動で始めた記録は、切断では終わらない`() {
+        val now = DriveController(DriveSettings(disconnectGraceSec = 0))
+        now.onCarConnection(true, 0)
+        assertEquals(DriveCommand.Stop, now.onCarConnection(false, 10_000))
+        assertFalse(now.isRecording)
+
+        val manual = DriveController(DriveSettings(disconnectGraceSec = 0))
+        manual.manualStart()
+        manual.onCarConnection(true, 0)
+        assertNull(manual.onCarConnection(false, 1000))
+        assertTrue(manual.isRecording)
+    }
+
+    @Test
     fun `切れても、待機時間が過ぎるまでは終えない`() {
         val c = DriveController(DriveSettings(disconnectGraceSec = 60))
         c.onCarConnection(true, 0)

@@ -247,7 +247,8 @@ class DriveService : Service(), GpsTracker.Listener {
         const val ACTION_STOP = "com.ttech.driverecord.STOP"
         const val ACTION_DEBUG_CAR = "com.ttech.driverecord.DEBUG_CAR"
         const val EXTRA_CONNECTED = "connected"
-        private const val TICK_MS = 5_000L
+        /** 待機時間(既定10秒)が過ぎたらすぐ終えられるよう、1秒ごとに確かめる */
+        private const val TICK_MS = 1_000L
         private const val NOTIFY_INTERVAL_MS = 10_000L
 
         /** 待機のサービスが動いていなければ始める */

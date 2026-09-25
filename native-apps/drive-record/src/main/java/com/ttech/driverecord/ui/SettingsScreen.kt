@@ -65,7 +65,11 @@ fun SettingsScreen(container: DriveContainer, onBack: () -> Unit) {
                         Switch(checked = settings.autoRecord, onCheckedChange = { on -> update { it.copy(autoRecord = on) }; if (!on) DriveService.shutdown(context) })
                     }
                     Text("切れてから記録を終えるまでの待ち時間", style = MaterialTheme.typography.labelLarge)
-                    Text("無線接続が一瞬途切れても、別の記録にならないようにします", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Android Auto が切れてから、この時間が過ぎたら記録を終えます。その間に接続し直せば、同じ記録を続けます(無線接続が一瞬途切れても、記録が分かれないように)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         DriveSettings.GRACE_CHOICES.forEach { sec ->
                             FilterChip(selected = settings.disconnectGraceSec == sec, onClick = { update { it.copy(disconnectGraceSec = sec) } }, label = { Text(if (sec < 60) "${sec}秒" else "${sec / 60}分") })

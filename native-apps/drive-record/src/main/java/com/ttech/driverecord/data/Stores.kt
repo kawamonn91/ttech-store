@@ -29,7 +29,9 @@ class SettingsStore(context: Context) {
 
     private object Keys {
         val autoRecord = booleanPreferencesKey("auto_record")
-        val graceSec = intPreferencesKey("disconnect_grace_sec")
+        // 既定を60秒から10秒に変えたので、以前の既定(60秒)が保存されている端末にも新しい既定が効くよう、キー名を改めた。
+        // 待つ時間を選び直したい人は、設定画面で選ぶ
+        val graceSec = intPreferencesKey("disconnect_grace_sec_v2")
         val minDistance = intPreferencesKey("min_distance_m")
         val mapDark = booleanPreferencesKey("map_dark")
     }
