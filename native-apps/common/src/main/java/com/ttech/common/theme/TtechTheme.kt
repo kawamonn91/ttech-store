@@ -7,6 +7,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -49,4 +51,30 @@ val TtechBrandSeed = Color(0xFF2563EB)
 fun TtechTheme(seed: Color = TtechBrandSeed, content: @Composable () -> Unit) {
     val scheme = if (isSystemInDarkTheme()) darkScheme(seed) else lightScheme(seed)
     MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+}
+
+/**
+ * [TtechTheme] の内側で使う。Material 3 の既定では、主色以外(FAB・ナビゲーションバー・カードの地色・補助色)が
+ * 紫がかった既定色のままなので、それらもアプリの色(seed)と、差し色(accent)に寄せる。
+ * すでにあるアプリの見た目は変えない(使ったアプリだけに効く)。
+ */
+@Composable
+fun TtechTintedSurfaces(seed: Color, accent: Color, content: @Composable () -> Unit) {
+    val dark = isSystemInDarkTheme()
+    val base = MaterialTheme.colorScheme
+    fun tint(color: Color, alpha: Float) = color.copy(alpha = alpha).compositeOver(base.surface)
+    val scheme = base.copy(
+        primaryContainer = tint(seed, if (dark) 0.32f else 0.16f),
+        onPrimaryContainer = if (dark) lerp(seed, Color.White, 0.75f) else lerp(seed, Color.Black, 0.55f),
+        secondary = seed,
+        tertiary = if (dark) lerp(accent, Color.White, 0.25f) else accent,
+        tertiaryContainer = tint(accent, if (dark) 0.30f else 0.16f),
+        onTertiaryContainer = if (dark) lerp(accent, Color.White, 0.8f) else lerp(accent, Color.Black, 0.6f),
+        surfaceContainerLowest = base.surface,
+        surfaceContainerLow = tint(seed, if (dark) 0.10f else 0.05f),
+        surfaceContainer = tint(seed, if (dark) 0.14f else 0.08f),
+        surfaceContainerHigh = tint(seed, if (dark) 0.18f else 0.11f),
+        surfaceContainerHighest = tint(seed, if (dark) 0.22f else 0.14f),
+    )
+    MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes, content = content)
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: しおり(ブックマーク)と、その上を飛ぶ紙飛行機 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M36,28 L72,28 L72,82 L54,70 L36,82 Z" />
+    <path android:fillColor="#FBBF24" android:pathData="M40,52 L78,36 L60,62 L56,54 Z" />
+    <path android:fillColor="#F59E0B" android:pathData="M56,54 L60,62 L54,58 Z" />
+</vector>

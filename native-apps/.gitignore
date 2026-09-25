@@ -10,3 +10,7 @@ captures/
 *.jks
 *.keystore
 keystore.properties
+
+# JVM のクラッシュログ
+hs_err_pid*.log
+replay_pid*.log
