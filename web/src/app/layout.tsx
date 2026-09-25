@@ -27,6 +27,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/search" className="hover:text-brand">
                 検索
               </Link>
+              <Link href="/developer" className="hover:text-brand">
+                開発者向け
+              </Link>
               <Link href={user ? "/account" : "/login"} className="hover:text-brand">
                 {user ? "マイページ" : "ログイン"}
               </Link>
@@ -44,6 +47,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </a>
             <Link href="/legal/terms" className="hover:text-brand">
               利用規約
+            </Link>
+            <Link href="/legal/developer" className="hover:text-brand">
+              開発者向け規約
             </Link>
             <Link href="/legal/privacy" className="hover:text-brand">
               プライバシーポリシー

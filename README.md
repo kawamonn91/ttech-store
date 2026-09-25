@@ -16,6 +16,8 @@ docs/           セットアップ手順・API仕様
 1. 管理コンソール(`/admin`)でアプリを登録し、APKをアップロードする(ブラウザから Cloudflare R2 へ直接PUT)。
 2. GitHub Actions が APK を検査(SHA-256・`apksigner` による署名検証・`aapt2` による package/version/権限・VirusTotal)し、結果を署名付きで Web に通知する。
 3. 検査に通ったリリースを管理者が「公開する」。DBトリガーが**署名鍵を初回の値に固定**し、以降は別の鍵のAPKを承認できない。
+   開発者として登録した第三者(`/developer`)のAPKは、通信機能・端末データの破壊・隠れたコードが見つからなければ**自動で公開**され、
+   疑わしい点があれば理由つきで管理者の承認待ちになる([docs/developer-platform.md](docs/developer-platform.md))。
 4. ストアアプリは公開中のアプリを一覧・検索・詳細表示し、インストール時に
    ダウンロード → **SHA-256照合** → **パッケージ名/versionCode/署名証明書の照合** → PackageInstaller でインストールする。
 5. アップデートは端末内で判定する(サーバーにインストール済みアプリ一覧を送らない)。WorkManager が12時間ごとに確認して通知する。
@@ -33,8 +35,8 @@ docs/           セットアップ手順・API仕様
 cd web && npm install && npm run dev      # http://localhost:3000
 npm test && npm run typecheck && npm run build
 
-# APK検査ワーカーのパーサーテスト
-node --test workers/scan/inspect.test.mjs
+# APK検査ワーカーのテスト
+node --test "workers/scan/*.test.mjs"
 
 # ストアアプリ
 cd store-app && ./gradlew testDebugUnitTest assembleDebug

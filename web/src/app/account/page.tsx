@@ -1,8 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminUser, sessionClient, serviceClient } from "@/lib/supabase";
 import { ProfileForm } from "./ProfileForm";
 import { DeleteAccountButton } from "./DeleteAccountButton";
-import { DeveloperApplyForm } from "./DeveloperApplyForm";
 import { TotpSetup } from "./TotpSetup";
 import { PendingReleases } from "./PendingReleases";
 import { PrivateApps } from "./PrivateApps";
@@ -45,7 +45,7 @@ export default async function AccountPage() {
     admin
       ? svc
           .from("app_releases")
-          .select("id, version_name, status, app:apps(id, slug, name)")
+          .select("id, version_name, status, policy_verdict, policy_findings, app:apps(id, slug, name)")
           .in("status", ["scanned", "approved"])
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: null }),
@@ -84,14 +84,27 @@ export default async function AccountPage() {
         </Section>
       )}
 
-      <Section title="開発者登録">
+      <Section title="開発者">
         {developer ? (
           <p className="text-sm">
-            状態:{" "}
-            {developer.status === "approved" ? "承認済み" : developer.status === "pending" ? "承認待ち" : "停止中"}
+            状態: {developer.status === "approved" ? "登録済み" : developer.status === "pending" ? "承認待ち" : "停止中"}
+            {developer.status === "approved" && (
+              <>
+                {" "}
+                ・{" "}
+                <Link href="/developer" className="text-brand underline">
+                  開発者ダッシュボードを開く
+                </Link>
+              </>
+            )}
           </p>
         ) : (
-          <DeveloperApplyForm />
+          <p className="text-sm text-muted">
+            自分のアプリを公開できます。登録は無料で、APKの自動審査を通れば、すぐに公開されます。{" "}
+            <Link href="/developer" className="text-brand underline">
+              開発者として登録する
+            </Link>
+          </p>
         )}
       </Section>
 
@@ -121,6 +134,8 @@ export default async function AccountPage() {
               id: r.id,
               version_name: r.version_name,
               status: r.status,
+              policy_verdict: r.policy_verdict ?? null,
+              policy_findings: r.policy_findings ?? [],
               app: Array.isArray(r.app) ? r.app[0] : r.app,
             }))}
           />

@@ -3,11 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import type { Finding } from "@/lib/policy";
+import { Findings } from "../developer/Findings";
 
 export interface PendingReleaseItem {
   id: string;
   version_name: string | null;
   status: string;
+  policy_verdict?: string | null;
+  policy_findings?: Finding[];
   app: { id: string; slug: string; name: string } | null;
 }
 
@@ -43,7 +47,8 @@ export function PendingReleases({ items }: { items: PendingReleaseItem[] }) {
       {error && <p className="text-sm text-danger">{error}</p>}
       <ul className="space-y-2">
         {items.map((r) => (
-          <li key={r.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm">
+          <li key={r.id} className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm">
+            <div className="flex items-center justify-between gap-3">
             <Link href={`/apps/${r.app?.slug}`} className="min-w-0 flex-1 truncate hover:text-brand">
               {r.app?.name} <span className="text-muted">v{r.version_name ?? "?"}</span>
             </Link>
@@ -64,6 +69,9 @@ export function PendingReleases({ items }: { items: PendingReleaseItem[] }) {
                 却下
               </button>
             </div>
+            </div>
+            {r.policy_verdict === "needs_review" && <p className="mt-2 text-xs font-semibold text-amber-800">自動審査で確認が必要な点が見つかりました。内容を見て、公開・却下を決めてください</p>}
+            <Findings findings={r.policy_findings ?? []} />
           </li>
         ))}
       </ul>

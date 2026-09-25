@@ -22,6 +22,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { collectFacts } from "./facts.mjs";
 
 const run = promisify(execFile);
 const isWin = process.platform === "win32";
@@ -42,7 +43,8 @@ export function findBuildTool(name) {
     .filter((d) => statSync(join(root, d)).isDirectory())
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .reverse();
-  const file = name === "apksigner" ? (isWin ? "apksigner.bat" : "apksigner") : isWin ? "aapt2.exe" : "aapt2";
+  const exe = (n) => (isWin ? `${n}.exe` : n);
+  const file = name === "apksigner" ? (isWin ? "apksigner.bat" : "apksigner") : name === "dexdump" ? exe("dexdump") : exe("aapt2");
   for (const v of versions) {
     const p = join(root, v, file);
     if (existsSync(p)) return p;
@@ -72,6 +74,13 @@ export function parseApksigner(output) {
     ...output.matchAll(/^(?:Signer #\d+|V\d+(?:\.\d+)? Signer(?: \(minSdk=\d+\))?):? certificate SHA-256 digest: ([0-9a-fA-F]{64})\s*$/gm),
   ].map((m) => m[1].toLowerCase());
   return { verified, certs: [...new Set(found)] };
+}
+
+/** `apksigner verify -v --print-certs` の出力から、署名方式(v1/v2/v3)と証明書の持ち主(DN)を取り出す */
+export function parseSignatureFacts(output) {
+  const scheme = (v) => new RegExp(`Verified using ${v} scheme[^\n]*: true`, "i").test(output);
+  const dn = output.match(/certificate DN: (.+)$/m);
+  return { v1: scheme("v1"), v2: scheme("v2"), v3: scheme("v3(?:\.1)?"), subject: dn ? dn[1].trim().slice(0, 300) : undefined };
 }
 
 /** `aapt2 dump badging` の出力から package / version / SDK / 権限を取り出す */
@@ -152,6 +161,18 @@ export async function inspect(file) {
 
   const vt = await virusTotal(hash, file, size, process.env.VT_API_KEY).catch(() => ({ status: "skipped" }));
 
+  // 審査に使う事実(権限・コード・同梱ファイル)。dexdump が無い環境では、その部分は「解析できなかった」として記録する
+  let dexdump = null;
+  try {
+    dexdump = findBuildTool("dexdump");
+  } catch {
+    // 無ければ null のまま(facts.incomplete に理由が残り、自動承認されない)
+  }
+  const facts = await collectFacts(file, { aapt2: findBuildTool("aapt2"), dexdump }).catch((e) => ({
+    version: 1, manifest: null, zip: { entryCount: 0, totalSize: 0, anomalies: [] }, dexFiles: [], nativeLibs: [], embedded: [], dex: null,
+    incomplete: [`事実の収集に失敗しました: ${e instanceof Error ? e.message.slice(0, 200) : e}`],
+  }));
+
   return {
     ...info,
     apkSize: size,
@@ -159,6 +180,8 @@ export async function inspect(file) {
     signingCertSha256: certs[0],
     signerCount: certs.length,
     virusTotal: vt,
+    signature: parseSignatureFacts(signer.stdout),
+    facts,
   };
 }
 

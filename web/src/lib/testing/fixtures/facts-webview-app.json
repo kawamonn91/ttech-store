@@ -1,0 +1,196 @@
+{
+ "version": 1,
+ "manifest": {
+  "package": "com.ttech.invoicemaker",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "sharedUserId": null,
+  "minSdk": 26,
+  "targetSdk": 36,
+  "debuggable": false,
+  "testOnly": false,
+  "hasCode": true,
+  "usesPermissions": [
+   {
+    "name": "android.permission.INTERNET",
+    "maxSdk": null
+   },
+   {
+    "name": "com.ttech.invoicemaker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+    "maxSdk": null
+   }
+  ],
+  "declaredPermissions": [
+   {
+    "name": "com.ttech.invoicemaker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+    "protectionLevel": 2
+   }
+  ],
+  "components": [
+   {
+    "kind": "activity",
+    "name": "com.ttech.invoicemaker.MainActivity",
+    "exported": true,
+    "hasIntentFilter": true,
+    "actions": [
+     "android.intent.action.MAIN"
+    ],
+    "categories": [
+     "android.intent.category.LAUNCHER"
+    ],
+    "permission": null,
+    "readPermission": null,
+    "writePermission": null,
+    "grantUriPermissions": false,
+    "authorities": null
+   },
+   {
+    "kind": "provider",
+    "name": "androidx.core.content.FileProvider",
+    "exported": false,
+    "hasIntentFilter": false,
+    "actions": [],
+    "categories": [],
+    "permission": null,
+    "readPermission": null,
+    "writePermission": null,
+    "grantUriPermissions": true,
+    "authorities": "com.ttech.invoicemaker.fileprovider"
+   },
+   {
+    "kind": "provider",
+    "name": "androidx.startup.InitializationProvider",
+    "exported": false,
+    "hasIntentFilter": false,
+    "actions": [],
+    "categories": [],
+    "permission": null,
+    "readPermission": null,
+    "writePermission": null,
+    "grantUriPermissions": false,
+    "authorities": "com.ttech.invoicemaker.androidx-startup"
+   },
+   {
+    "kind": "receiver",
+    "name": "androidx.profileinstaller.ProfileInstallReceiver",
+    "exported": true,
+    "hasIntentFilter": true,
+    "actions": [
+     "androidx.profileinstaller.action.INSTALL_PROFILE",
+     "androidx.profileinstaller.action.SKIP_FILE",
+     "androidx.profileinstaller.action.SAVE_PROFILE",
+     "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+    ],
+    "categories": [],
+    "permission": "android.permission.DUMP",
+    "readPermission": null,
+    "writePermission": null,
+    "grantUriPermissions": false,
+    "authorities": null
+   }
+  ],
+  "usesLibraries": [
+   "androidx.window.extensions",
+   "androidx.window.sidecar"
+  ]
+ },
+ "zip": {
+  "entryCount": 97,
+  "totalSize": 2592007,
+  "anomalies": []
+ },
+ "dexFiles": [
+  "classes.dex"
+ ],
+ "nativeLibs": [
+  {
+   "path": "lib/arm64-v8a/libandroidx.graphics.path.so",
+   "abi": "arm64-v8a",
+   "size": 10096,
+   "sha256": "41e9a793c43a0f4fddb19e33f346bace464f30f888ba7b9eaf96294ea115bfb6"
+  },
+  {
+   "path": "lib/arm64-v8a/libdatastore_shared_counter.so",
+   "abi": "arm64-v8a",
+   "size": 10360,
+   "sha256": "deed4546c8dafad0e68ea2c25e4c0a62ca97343614ae386b7ed2af6abb7fa999"
+  },
+  {
+   "path": "lib/armeabi-v7a/libandroidx.graphics.path.so",
+   "abi": "armeabi-v7a",
+   "size": 7252,
+   "sha256": "41399eba6fc2a60f6f14642375c1824f3cf25eb8fec7397d753730a3ceda3e2b"
+  },
+  {
+   "path": "lib/armeabi-v7a/libdatastore_shared_counter.so",
+   "abi": "armeabi-v7a",
+   "size": 8432,
+   "sha256": "f51d0b6801896a20be66bd389a024f30be3284b757ac02377833d20e70b9c628"
+  },
+  {
+   "path": "lib/x86/libandroidx.graphics.path.so",
+   "abi": "x86",
+   "size": 9284,
+   "sha256": "eb0570b41fd3bff25d8204a967c03bd7550719e768b791f680cc40cbe35f29af"
+  },
+  {
+   "path": "lib/x86/libdatastore_shared_counter.so",
+   "abi": "x86",
+   "size": 7976,
+   "sha256": "c38104bd173ef2e405d32e90ef753725c54aaeca08f2e9a57820df8782f4d790"
+  },
+  {
+   "path": "lib/x86_64/libandroidx.graphics.path.so",
+   "abi": "x86_64",
+   "size": 10760,
+   "sha256": "4e56c996f13670e70082658de7880c4020eabf4f25e43387f88ed78a713fc9f0"
+  },
+  {
+   "path": "lib/x86_64/libdatastore_shared_counter.so",
+   "abi": "x86_64",
+   "size": 9424,
+   "sha256": "c3973140a0e6144a83e7dd7ee3c4e161f42181591feda254e12c8395d3bbacd0"
+  }
+ ],
+ "embedded": [
+  {
+   "path": "DebugProbesKt.bin",
+   "kind": "java-class",
+   "size": 1728
+  }
+ ],
+ "dex": {
+  "dexFiles": 1,
+  "classes": 2851,
+  "methods": 13112,
+  "apiHits": {
+   "code.native-load": {
+    "count": 1,
+    "examples": [
+     "Landroidx/graphics/path/PathIteratorPreApi34Impl;.<clinit> → Ljava/lang/System;.loadLibrary (呼び出し)"
+    ],
+    "note": "ネイティブライブラリの読み込み"
+   },
+   "net.webview": {
+    "count": 6,
+    "examples": [
+     "Lmc;.a → Landroid/webkit/WebView; (生成)",
+     "Lmc;.a → Landroid/webkit/WebView;.<init> (呼び出し)",
+     "Lmc;.a → Landroid/webkit/WebView;.setWebViewClient (呼び出し)"
+    ],
+    "note": "WebView / android.webkit(ウェブ表示・外部ページへの遷移)"
+   }
+  },
+  "stringHits": {},
+  "urlHosts": [],
+  "nativeMethods": {
+   "count": 8,
+   "examples": [
+    "Landroidx/graphics/path/ConicConverter;.internalConicToQuadratics",
+    "Landroidx/graphics/path/PathIteratorPreApi34Impl;.createInternalPathIterator",
+    "Landroidx/graphics/path/PathIteratorPreApi34Impl;.destroyInternalPathIterator"
+   ]
+  }
+ },
+ "incomplete": []
+}

@@ -28,6 +28,7 @@ export interface FakeSupabaseOptions {
   rpc?: Record<string, ResultSpec>;
   authAdmin?: Partial<Record<"updateUserById" | "getUserById" | "deleteUser", (...args: unknown[]) => unknown>>;
   storageRemove?: (bucket: string, paths: string[]) => { error: { message: string } | null };
+  storageUpload?: (bucket: string, path: string) => { error: { message: string } | null };
 }
 
 const OPS = ["select", "insert", "update", "delete", "upsert"];
@@ -35,7 +36,7 @@ const OPS = ["select", "insert", "update", "delete", "upsert"];
 export function fakeSupabase(options: FakeSupabaseOptions = {}) {
   const calls: FakeCall[] = [];
   const rpcCalls: { fn: string; args: unknown }[] = [];
-  const storageCalls: { bucket: string; op: string; paths: string[] }[] = [];
+  const storageCalls: { bucket: string; op: string; paths: string[]; body?: unknown; options?: unknown }[] = [];
   const authCalls: { fn: string; args: unknown[] }[] = [];
 
   function resolve(spec: ResultSpec | undefined, call: FakeCall, single: boolean): FakeResult {
@@ -96,6 +97,10 @@ export function fakeSupabase(options: FakeSupabaseOptions = {}) {
           async remove(paths: string[]) {
             storageCalls.push({ bucket, op: "remove", paths });
             return options.storageRemove?.(bucket, paths) ?? { data: [], error: null };
+          },
+          async upload(path: string, body: unknown, opts?: unknown) {
+            storageCalls.push({ bucket, op: "upload", paths: [path], body, options: opts });
+            return options.storageUpload?.(bucket, path) ?? { data: { path }, error: null };
           },
         };
       },

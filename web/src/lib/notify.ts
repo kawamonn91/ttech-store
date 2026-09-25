@@ -163,3 +163,115 @@ export async function loadNotification(supabase: SupabaseClient, kind: NotifyKin
     createdAt: data.created_at,
   });
 }
+
+// ---------------------------------------------------------------- APKの自動審査の結果
+
+export interface ReleaseReviewInfo {
+  appId: string;
+  appName: string;
+  packageName: string;
+  versionName: string | null;
+  versionCode: number | null;
+  developerName: string;
+  /** 自動審査の判定。運営に知らせる必要があるのは要確認(needs_review)と自動公開(auto_approve) */
+  decision: "auto_approve" | "needs_review" | "reject";
+  /** 一行ずつの理由(policy.ts の describeFindings) */
+  reasons: string[];
+  siteUrl: string;
+}
+
+const versionLabel = (r: ReleaseReviewInfo) => `${clip(r.versionName ?? "?", 40)} (versionCode ${r.versionCode ?? "?"})`;
+
+/** 運営宛: 自動審査で疑いが見つかったので、内容を確認して承認するかを決めてほしい */
+export function releaseNeedsReviewMail(r: ReleaseReviewInfo): MailMessage {
+  return {
+    subject: `[T-tech Store] 承認待ちのアプリがあります(${clip(r.appName, 40)})`,
+    text:
+      `開発者がアップロードしたアプリに、自動審査で確認が必要な点が見つかりました。公開はまだされていません。
+
+` +
+      `アプリ: ${clip(r.appName, 80)}(${clip(r.packageName, 120)})
+` +
+      `バージョン: ${versionLabel(r)}
+` +
+      `開発者: ${clip(r.developerName, 80)}
+
+` +
+      `--- 確認が必要な点 ---
+${r.reasons.map((x) => clip(x, 300)).join("\n") || "(理由なし)"}
+---
+
+` +
+      `内容を見て、公開・却下を決めてください:
+${r.siteUrl}/admin/apps/${r.appId}` +
+      FOOTER,
+  };
+}
+
+/** 運営宛: 自動審査を通ったので、運営の承認なしに公開した(事後の確認用) */
+export function releaseAutoPublishedMail(r: ReleaseReviewInfo): MailMessage {
+  return {
+    subject: `[T-tech Store] アプリが自動審査を通って公開されました(${clip(r.appName, 40)})`,
+    text:
+      `開発者のアプリが、自動審査(通信機能・端末データの破壊の可能性がないことの確認)を通り、自動で公開されました。
+
+` +
+      `アプリ: ${clip(r.appName, 80)}(${clip(r.packageName, 120)})
+` +
+      `バージョン: ${versionLabel(r)}
+` +
+      `開発者: ${clip(r.developerName, 80)}
+
+` +
+      `問題があれば、管理コンソールから公開を停止できます:
+${r.siteUrl}/admin/apps/${r.appId}` +
+      FOOTER,
+  };
+}
+
+/** 開発者宛: 審査の結果のお知らせ */
+export function developerReleaseMail(r: ReleaseReviewInfo): MailMessage {
+  const label = `${clip(r.appName, 40)} ${versionLabel(r)}`;
+  const portal = `${r.siteUrl}/developer/apps/${r.appId}`;
+  if (r.decision === "auto_approve") {
+    return {
+      subject: `[T-tech Store] ${label} を公開しました`,
+      text: `アップロードしていただいた ${label} が自動審査を通り、公開されました。
+
+${portal}
+
+(このメールは T-tech Store から自動で送られています)`,
+    };
+  }
+  if (r.decision === "needs_review") {
+    return {
+      subject: `[T-tech Store] ${label} は運営が確認します`,
+      text:
+        `アップロードしていただいた ${label} に、自動審査で確認が必要な点が見つかりました。運営が内容を確認するまで、公開されません。
+
+` +
+        `--- 確認が必要な点 ---
+${r.reasons.map((x) => clip(x, 300)).join("\n")}
+---
+
+` +
+        `これらの要素が不要なら、外してビルドし直したAPKをアップロードすると、自動で公開されます。
+${portal}
+
+(このメールは T-tech Store から自動で送られています)`,
+    };
+  }
+  return {
+    subject: `[T-tech Store] ${label} を公開できませんでした`,
+    text:
+      `アップロードしていただいた ${label} は、次の理由で公開できませんでした。
+
+${r.reasons.map((x) => clip(x, 300)).join("\n")}
+
+` +
+      `直したAPKを、同じ versionCode でもう一度アップロードできます。
+${portal}
+
+(このメールは T-tech Store から自動で送られています)`,
+  };
+}

@@ -66,3 +66,30 @@ export async function headObject(key: string): Promise<{ size: number } | null> 
 export function apkKey(appId: string, releaseId: string): string {
   return `apk/${appId}/${releaseId}.apk`;
 }
+
+/**
+ * 開発者がアップロードする先のキー。検査・公開に使うキー(apkKey)とは別にしてある。
+ * 署名付きURLは失効させられないので、検査の後に別のファイルへ差し替えられないよう、
+ * アップロード完了の通知を受けたら、中身を apkKey に複製して、このキーは削除する
+ * (開発者が持っている署名付きURLは、もう使われないキーにしか書き込めなくなる)。
+ */
+export function uploadKey(appId: string, releaseId: string): string {
+  return `upload/${appId}/${releaseId}.apk`;
+}
+
+/** サーバー側でオブジェクトを複製する(R2 の CopyObject)。複製元が無ければ false */
+export async function copyObject(fromKey: string, toKey: string): Promise<boolean> {
+  const source = `/${env.r2Bucket()}/${fromKey.split("/").map(encodeURIComponent).join("/")}`;
+  const signed = await client().sign(objectUrl(toKey).toString(), { method: "PUT", headers: { "x-amz-copy-source": source } });
+  const res = await undiciFetch(signed.url, { method: "PUT", headers: Object.fromEntries(signed.headers), dispatcher: r2Agent });
+  if (res.status === 404) return false;
+  if (!res.ok) throw new Error(`R2 COPY failed: ${res.status}`);
+  return true;
+}
+
+/** オブジェクトを削除する。無くてもエラーにしない */
+export async function deleteObject(key: string): Promise<void> {
+  const signed = await client().sign(objectUrl(key).toString(), { method: "DELETE" });
+  const res = await undiciFetch(signed.url, { method: "DELETE", headers: Object.fromEntries(signed.headers), dispatcher: r2Agent });
+  if (!res.ok && res.status !== 404) throw new Error(`R2 DELETE failed: ${res.status}`);
+}

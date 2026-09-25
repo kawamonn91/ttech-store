@@ -1,21 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signBody } from "@/lib/scan";
 
-let release: unknown;
-const update = vi.fn();
-const updateEq = vi.fn();
-
-vi.mock("@/lib/supabase", () => ({
-  serviceClient: () => ({
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: release }) }) }),
-      update: (cols: unknown) => {
-        update(cols);
-        return { eq: updateEq };
-      },
-    }),
-  }),
-}));
+const review = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/release-review", () => ({ reviewScannedRelease: review }));
+vi.mock("@/lib/supabase", () => ({ serviceClient: () => ({}) }));
 
 import { POST } from "./route";
 
@@ -24,17 +12,8 @@ const SHA = "a".repeat(64);
 const CERT = "b".repeat(64);
 
 const result = (over: Record<string, unknown> = {}) => ({
-  packageName: "jp.yomumemo.app",
-  versionName: "1.0.0",
-  versionCode: 1,
-  minSdk: 26,
-  targetSdk: 36,
-  permissions: ["android.permission.INTERNET"],
-  apkSize: 100,
-  sha256: SHA,
-  signingCertSha256: CERT,
-  signerCount: 1,
-  ...over,
+  packageName: "jp.yomumemo.app", versionName: "1.0.0", versionCode: 1, minSdk: 26, targetSdk: 36, permissions: ["android.permission.INTERNET"],
+  apkSize: 100, sha256: SHA, signingCertSha256: CERT, signerCount: 1, ...over,
 });
 
 function call(body: unknown, opts: { signature?: string | null; secret?: string } = {}) {
@@ -42,65 +21,56 @@ function call(body: unknown, opts: { signature?: string | null; secret?: string 
   const headers: Record<string, string> = {};
   const sig = opts.signature === undefined ? signBody(opts.secret ?? SECRET, raw) : opts.signature;
   if (sig !== null) headers["x-signature"] = sig;
-  return POST(new Request("http://localhost/api", { method: "POST", body: raw, headers }), {
-    params: Promise.resolve({ id: "rel-1" }),
-  });
+  return POST(new Request("http://localhost/api", { method: "POST", body: raw, headers }), { params: Promise.resolve({ id: "rel-1" }) });
 }
 
 beforeEach(() => {
   vi.stubEnv("SCAN_WEBHOOK_SECRET", SECRET);
-  update.mockReset();
-  updateEq.mockReset().mockResolvedValue({ error: null });
-  release = { id: "rel-1", status: "uploaded", app: { package_name: "jp.yomumemo.app", signing_cert_sha256: null } };
+  review.mockReset().mockResolvedValue({ kind: "ok", status: "scanned", reason: null, autoApproved: false, decision: "needs_review" });
 });
 
 describe("POST /api/internal/releases/:id/scan", () => {
-  it("署名なし・誤った署名は 401 で、DBを触らない", async () => {
+  it("署名なし・誤った署名は 401 で、審査処理を呼ばない", async () => {
     expect((await call(result(), { signature: null })).status).toBe(401);
     expect((await call(result(), { secret: "wrong" })).status).toBe(401);
-    expect(update).not.toHaveBeenCalled();
+    expect(review).not.toHaveBeenCalled();
   });
 
-  it("正しい署名の正常結果は「承認待ち(scanned)」にして列を保存する", async () => {
+  it("正しい署名の結果は、リリースIDと検査結果を審査処理に渡し、その結果を返す", async () => {
     const res = await call(result());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ status: "scanned", reason: null });
-    expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "scanned", version_code: 1, sha256: SHA, signing_cert_sha256: CERT }),
-    );
+    expect(await res.json()).toEqual({ status: "scanned", reason: null, autoApproved: false, decision: "needs_review" });
+    expect(review).toHaveBeenCalledWith(expect.anything(), "rel-1", expect.objectContaining({ packageName: "jp.yomumemo.app", versionCode: 1 }));
   });
 
-  it("パッケージ名が違えば却下(rejected)にし、理由を返す", async () => {
-    const res = await call(result({ packageName: "com.evil.app" }));
-    const body = await res.json();
-    expect(body.status).toBe("rejected");
-    expect(body.reason).toContain("パッケージ名");
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: "rejected" }));
+  it("自動公開・却下の結果もそのまま返す", async () => {
+    review.mockResolvedValueOnce({ kind: "ok", status: "published", reason: null, autoApproved: true, decision: "auto_approve" });
+    expect(await (await call(result())).json()).toMatchObject({ status: "published", autoApproved: true });
+    review.mockResolvedValueOnce({ kind: "ok", status: "rejected", reason: "パッケージ名が一致しません", autoApproved: false, decision: null });
+    expect(await (await call(result())).json()).toMatchObject({ status: "rejected", reason: "パッケージ名が一致しません" });
   });
 
-  it("署名鍵が固定済みの鍵と違えば却下する", async () => {
-    release = { id: "rel-1", status: "uploaded", app: { package_name: "jp.yomumemo.app", signing_cert_sha256: "c".repeat(64) } };
-    expect((await (await call(result())).json()).status).toBe("rejected");
-  });
-
-  it("公開済み・承認済みのリリースは検査結果で書き換えさせない(409)", async () => {
-    release = { id: "rel-1", status: "published", app: { package_name: "jp.yomumemo.app", signing_cert_sha256: CERT } };
-    expect((await call(result())).status).toBe(409);
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it("存在しないリリースは 404", async () => {
-    release = null;
+  it("存在しないリリースは 404、公開済みなど書き換えられない状態は 409", async () => {
+    review.mockResolvedValueOnce({ kind: "not_found" });
     expect((await call(result())).status).toBe(404);
+    review.mockResolvedValueOnce({ kind: "conflict" });
+    expect((await call(result())).status).toBe(409);
   });
 
-  it("署名は正しくても形式が不正な結果は 400(sha256 の桁違い)", async () => {
+  it("署名は正しくても形式が不正な結果は 400。審査処理は呼ばない", async () => {
     expect((await call(result({ sha256: "abc" }))).status).toBe(400);
     expect((await call("{not json")).status).toBe(400);
+    expect(review).not.toHaveBeenCalled();
   });
 
-  it("検査側の error は却下として記録される", async () => {
-    const res = await call({ error: "APK の署名を検証できませんでした" });
-    expect((await res.json()).status).toBe("rejected");
+  it("検査側の error は、そのまま審査処理に渡る(却下として記録される)", async () => {
+    await call({ error: "APK の署名を検証できませんでした" });
+    expect(review).toHaveBeenCalledWith(expect.anything(), "rel-1", expect.objectContaining({ error: "APK の署名を検証できませんでした" }));
+  });
+
+  it("審査処理が失敗したら 500(検査ワークフローは再送できる)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    review.mockRejectedValueOnce(new Error("db down"));
+    expect((await call(result())).status).toBe(500);
   });
 });

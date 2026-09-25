@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { apkKey, DOWNLOAD_URL_TTL_SECONDS, presignDownload, presignUpload, UPLOAD_URL_TTL_SECONDS } from "./r2";
+
+// サーバーからR2への直接のリクエスト(複製・削除)は undici の fetch を使う。テストでは実際に通信しないよう差し替える
+const undiciFetch = vi.hoisted(() => vi.fn());
+vi.mock("undici", () => ({ Agent: class {}, fetch: undiciFetch }));
+
+import { apkKey, copyObject, deleteObject, DOWNLOAD_URL_TTL_SECONDS, presignDownload, presignUpload, UPLOAD_URL_TTL_SECONDS, uploadKey } from "./r2";
 
 beforeEach(() => {
   vi.stubEnv("R2_ACCOUNT_ID", "acct123");
@@ -58,5 +63,45 @@ describe("presignUpload", () => {
 describe("apkKey", () => {
   it("アプリID とリリースID から決まる", () => {
     expect(apkKey("app-1", "rel-1")).toBe("apk/app-1/rel-1.apk");
+  });
+});
+
+describe("uploadKey", () => {
+  it("検査・公開に使うキー(apkKey)とは別のキーになる", () => {
+    expect(uploadKey("app-1", "rel-1")).toBe("upload/app-1/rel-1.apk");
+    expect(uploadKey("app-1", "rel-1")).not.toBe(apkKey("app-1", "rel-1"));
+  });
+});
+
+describe("copyObject / deleteObject(アップロード後にAPKを差し替えられないようにするための操作)", () => {
+  beforeEach(() => undiciFetch.mockReset());
+
+  it("複製は、複製先への PUT に、複製元を x-amz-copy-source で指定して署名する", async () => {
+    undiciFetch.mockResolvedValue({ ok: true, status: 200 });
+    expect(await copyObject("upload/app-1/rel-1.apk", "apk/app-1/rel-1.apk")).toBe(true);
+    const [url, init] = undiciFetch.mock.calls[0];
+    expect(new URL(url).pathname).toBe("/ttech-store-apk/apk/app-1/rel-1.apk");
+    expect(init.method).toBe("PUT");
+    expect(init.headers["x-amz-copy-source"]).toBe("/ttech-store-apk/upload/app-1/rel-1.apk");
+    // 認証は署名(Authorization ヘッダー)で行い、秘密鍵そのものは送らない
+    expect(String(init.headers.authorization ?? init.headers.Authorization)).toContain("AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/");
+    expect(JSON.stringify(init.headers)).not.toContain("secret");
+  });
+
+  it("複製元が無ければ false。それ以外の失敗は例外", async () => {
+    undiciFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+    expect(await copyObject("upload/a.apk", "apk/a.apk")).toBe(false);
+    undiciFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    await expect(copyObject("upload/a.apk", "apk/a.apk")).rejects.toThrow("R2 COPY failed: 500");
+  });
+
+  it("削除は DELETE。すでに無くてもエラーにしない", async () => {
+    undiciFetch.mockResolvedValueOnce({ ok: true, status: 204 });
+    await deleteObject("upload/app-1/rel-1.apk");
+    expect(undiciFetch.mock.calls[0][1].method).toBe("DELETE");
+    undiciFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+    await expect(deleteObject("upload/gone.apk")).resolves.toBeUndefined();
+    undiciFetch.mockResolvedValueOnce({ ok: false, status: 403 });
+    await expect(deleteObject("upload/x.apk")).rejects.toThrow("R2 DELETE failed: 403");
   });
 });

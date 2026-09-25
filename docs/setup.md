@@ -68,3 +68,9 @@ keytool -genkeypair -v -keystore store-app/ttech-store.jks -alias ttech-store -k
 2. アイコン・スクリーンショットを登録し、APK をアップロード。
 3. 検査完了後(数分)、「承認待ち」のリリースを確認して「公開する」→「アプリを公開する」。
 4. 最初にストアアプリ自身(`com.kawamonn.store`)を同じ手順で登録すると、Web の `/download` から入手できる。
+
+## 7. 開発者の受け入れ(自動審査)
+
+誰でも `/developer` から開発者として登録し、アプリをアップロードできる。APKは自動で検査され、通信機能や端末データを壊す可能性が見つからなければ、
+承認なしで公開される。疑わしい点があれば運営の承認待ちになる。初回の設定(DBマイグレーション・検査ツール・メール)は
+[developer-platform.md](developer-platform.md) の「初回セットアップ」を参照。

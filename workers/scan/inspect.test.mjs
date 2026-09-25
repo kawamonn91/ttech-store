@@ -61,3 +61,22 @@ test("aapt2 badging から package・version・SDK・権限を取り出す", () 
 test("package 行が無ければ null", () => {
   assert.equal(parseBadging("nothing"), null);
 });
+
+test("署名の情報: 署名方式(v1/v2/v3)と、証明書の持ち主(デバッグ鍵かどうか)を取り出す", async () => {
+  const { parseSignatureFacts } = await import("./inspect.mjs");
+  const out = [
+    "Verifies",
+    "Verified using v1 scheme (JAR signing): false",
+    "Verified using v2 scheme (APK Signature Scheme v2): true",
+    "Verified using v3 scheme (APK Signature Scheme v3): true",
+    "Verified using v3.1 scheme (APK Signature Scheme v3.1): false",
+    "Number of signers: 1",
+    "Signer #1 certificate DN: CN=T-tech Run Tracker, OU=T-tech, O=T-tech, C=JP",
+  ].join("\n");
+  assert.deepEqual(parseSignatureFacts(out), { v1: false, v2: true, v3: true, subject: "CN=T-tech Run Tracker, OU=T-tech, O=T-tech, C=JP" });
+
+  const debug = parseSignatureFacts("Verifies\nVerified using v1 scheme (JAR signing): true\nV1 Signer: certificate DN: C=US, O=Android, CN=Android Debug\n");
+  assert.equal(debug.v1, true);
+  assert.equal(debug.v2, false);
+  assert.match(debug.subject, /CN=Android Debug/);
+});

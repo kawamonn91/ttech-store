@@ -29,6 +29,19 @@ jobs:
       - name: 署名付きURLをログに出さない
         run: |
           echo "::add-mask::${{ github.event.client_payload.downloadUrl || inputs.download_url }}"
+      # dexdump(APKのコードの解析)が無い環境では、コードを解析できず、自動承認されなくなる(すべて運営の確認になる)。
+      # 検査そのものは止めないよう、無いときは警告だけを出す
+      - name: 検査に使うツールを確認
+        run: |
+          root="$ANDROID_HOME/build-tools"
+          for t in aapt2 apksigner dexdump; do
+            found=$(ls "$root"/*/$t 2>/dev/null | sort -V | tail -1)
+            if [ -z "$found" ]; then
+              echo "::warning::$t が $root にありません。"$( [ "$t" = dexdump ] && echo "コードを解析できないため、公開前に必ず運営の確認が必要になります" || echo "検査に失敗します" )
+            else
+              echo "$t: $found"
+            fi
+          done
       - name: APK を検査して結果を通知
         env:
           RELEASE_ID: ${{ github.event.client_payload.releaseId || inputs.release_id }}
