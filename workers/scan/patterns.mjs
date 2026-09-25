@@ -77,7 +77,8 @@ export const API_PATTERNS = [
   {
     id: "destroy.saf-delete",
     cls: /^Landroid\/provider\/DocumentsContract;$/,
-    member: /^(deleteDocument|renameDocument|moveDocument)$/,
+    // renameDocument は名前を変えるだけでデータは失われないので含めない(AndroidX の DocumentsContractCompat が参照する)
+    member: /^(deleteDocument|removeDocument|moveDocument)$/,
     note: "フォルダ内のファイルの削除・移動(Storage Access Framework)",
   },
   {

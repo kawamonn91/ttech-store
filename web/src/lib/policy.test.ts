@@ -4,6 +4,7 @@ import { describeFindings, evaluatePolicy, FactsSchema, POLICY_VERSION, type Fac
 import offlineApp from "./testing/fixtures/facts-offline-app.json";
 import pdfboxApp from "./testing/fixtures/facts-pdfbox-app.json";
 import runTracker from "./testing/fixtures/facts-run-tracker.json";
+import unminifiedOffline from "./testing/fixtures/facts-unminified-offline.json";
 import webviewApp from "./testing/fixtures/facts-webview-app.json";
 
 const PKG = "com.example.offline";
@@ -135,21 +136,58 @@ describe("evaluatePolicy: 外部との通信", () => {
     expect(verdict(g).decision).toBe("auto_approve");
   });
 
-  it("通信APIの呼び出しがあれば要確認(権限がなくても、ライブラリの中にあっても)", () => {
-    const f = clean();
+  it("通信APIの呼び出しがあり、INTERNET 権限もあれば要確認(ライブラリの中にあるものも含む)", () => {
+    const f = withPerms(["android.permission.INTERNET"]);
     f.dex!.apiHits = { "net.java-net": { count: 3, examples: ["La;.b → Ljava/net/Socket;.<init> (呼び出し)"], note: "java.net の通信クラス" } };
     const v = verdict(f);
     expect(v.decision).toBe("needs_review");
-    expect(v.findings[0].code).toBe("net.api");
-    expect(v.findings[0].evidence[0]).toContain("java.net の通信クラス");
+    expect(v.findings.map((x) => x.code)).toEqual(["net.permission", "net.api"]);
+    expect(v.findings[1].evidence[0]).toContain("java.net の通信クラス");
   });
 
-  it("WebView・ダウンロード・Bluetooth も通信につながるAPIとして扱う", () => {
-    for (const id of ["net.webview", "net.download-manager", "net.bluetooth-nfc-usb", "net.android-http", "net.http-library", "net.sms-telephony", "net.nio-channels", "net.javax-net"]) {
+  it("INTERNET 権限が無ければ、通信APIへの参照があっても実行できないので、自動承認される(参考として記録)", () => {
+    const f = clean();
+    f.dex!.apiHits = { "net.java-net": { count: 31, examples: ["Lkotlin/io/TextStreamsKt;.readBytes → Ljava/net/URL;.openStream (呼び出し)"], note: "java.net の通信クラス" } };
+    const v = verdict(f);
+    expect(v.decision).toBe("auto_approve");
+    expect(v.summary.network).toBe("none");
+    const inert = v.findings.find((x) => x.code === "net.api-inert");
+    expect(inert?.severity).toBe("info");
+    expect(inert?.evidence[0]).toContain("TextStreamsKt");
+  });
+
+  it("権限が無くても実行できる通信の手段(Bluetooth・NFC・LocalSocket・VPN)は、参照があれば要確認のまま", () => {
+    for (const id of ["net.bluetooth-nfc-usb", "net.android-http"]) {
       const f = clean();
       f.dex!.apiHits = { [id]: { count: 1, examples: ["x"], note: id } };
       expect(codes(f), id).toContain("net.api");
     }
+  });
+
+  it("WebView・ダウンロード・HTTPライブラリ・SMS も、対応する権限があれば通信につながるAPIとして要確認", () => {
+    const perms: Record<string, string> = {
+      "net.webview": "android.permission.INTERNET",
+      "net.download-manager": "android.permission.INTERNET",
+      "net.http-library": "android.permission.INTERNET",
+      "net.nio-channels": "android.permission.INTERNET",
+      "net.javax-net": "android.permission.INTERNET",
+      "net.sms-telephony": "android.permission.SEND_SMS",
+    };
+    for (const [id, perm] of Object.entries(perms)) {
+      const granted = withPerms([perm]);
+      granted.dex!.apiHits = { [id]: { count: 1, examples: ["x"], note: id } };
+      expect(codes(granted), id).toContain("net.api");
+      // 同じ参照でも、権限が無ければ実行できないので指摘にならない
+      const without = clean();
+      without.dex!.apiHits = { [id]: { count: 1, examples: ["x"], note: id } };
+      expect(codes(without), id).toEqual(["net.api-inert"]);
+    }
+  });
+
+  it("SMS・電話のAPIは、SMS・電話の権限が1つでもあれば要確認。無ければ実行できない", () => {
+    const f = withPerms(["android.permission.READ_PHONE_STATE"]);
+    f.dex!.apiHits = { "net.sms-telephony": { count: 1, examples: ["x"], note: "SMS・電話回線" } };
+    expect(codes(f)).toContain("net.api");
   });
 
   it("コードに外部のURLがあれば要確認(ブラウザ経由で情報を出せる)", () => {
@@ -353,6 +391,30 @@ describe("実際のAPKでの判定", () => {
     expect(v.findings).toEqual([]);
     expect(v.decision).toBe("auto_approve");
     expect(v.summary).toEqual({ network: "none", destruction: "none" });
+  });
+
+  it("縮小(R8)していないビルドの、通信しないアプリは、標準ライブラリの未使用コードにある java.net の参照があっても自動承認される", () => {
+    // 実際のAPK: Kotlin 標準ライブラリの TextStreamsKt.readBytes が URL.openStream を参照している(権限なし)
+    const v = run(unminifiedOffline);
+    expect(v.decision).toBe("auto_approve");
+    expect(v.summary).toEqual({ network: "none", destruction: "none" });
+    expect(v.findings.map((f) => f.code)).toEqual(["net.api-inert"]);
+    // 同じコードに INTERNET 権限が加われば、通信できるので要確認になる
+    const withNet = FactsSchema.parse(structuredClone(unminifiedOffline));
+    withNet.manifest!.usesPermissions.push({ name: "android.permission.INTERNET", maxSdk: null });
+    const w = run(withNet);
+    expect(w.decision).toBe("needs_review");
+    expect(w.findings.map((f) => f.code)).toEqual(["net.permission", "net.api"]);
+  });
+
+  it("縮小していない AndroidX のアプリに含まれる参照(TelephonyManager・WebView.findAddress)は、権限が無ければ問題にしない", () => {
+    const f = FactsSchema.parse(structuredClone(unminifiedOffline));
+    f.dex!.apiHits["net.sms-telephony"] = { count: 3, examples: ["Landroidx/core/telephony/TelephonyManagerCompat$Api26Impl;.getImei → Landroid/telephony/TelephonyManager;.getImei (呼び出し)"], note: "SMS・電話回線" };
+    f.dex!.apiHits["net.webview"] = { count: 1, examples: ["Landroidx/core/text/util/LinkifyCompat;.findAddress → Landroid/webkit/WebView;.findAddress (呼び出し)"], note: "WebView" };
+    const v = run(f);
+    expect(v.decision).toBe("auto_approve");
+    expect(v.findings.map((x) => x.code)).toEqual(["net.api-inert"]);
+    expect(v.findings[0].evidence.length).toBe(3);
   });
 
   it("地図を取得するアプリ(INTERNET・HTTPライブラリ・URLあり)は要確認になり、通信の可能性が示される", () => {

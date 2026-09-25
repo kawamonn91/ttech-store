@@ -157,3 +157,13 @@ test("非同期の行(ストリーム)でも同じ結果になる", async () => 
   const f = await collectDexFacts(gen());
   assert.equal(f.apiHits["net.java-net"].count, 1);
 });
+
+test("フォルダ内のファイルの名前変更(DocumentsContract.renameDocument)は、データを失わないので破壊のAPIに含めない。削除・移動・リンク解除は含める", async () => {
+  const call = (name, n) => `invoke-static {v0, v1}, Landroid/provider/DocumentsContract;.${name}:(Landroid/content/ContentResolver;Landroid/net/Uri;)Z // method@000${n}`;
+  const rename = await facts(classDump("Landroidx/core/provider/DocumentsContractCompat;", [method("Landroidx/core/provider/DocumentsContractCompat;", "renameDocument", "()V", "0x0001 (PUBLIC)", [call("renameDocument", 1)])]));
+  assert.deepEqual(Object.keys(rename.apiHits), []);
+  for (const [i, name] of ["deleteDocument", "removeDocument", "moveDocument"].entries()) {
+    const f = await facts(classDump("La;", [method("La;", "b", "()V", "0x0001 (PUBLIC)", [call(name, i + 1)])]));
+    assert.deepEqual(Object.keys(f.apiHits), ["destroy.saf-delete"], name);
+  }
+});

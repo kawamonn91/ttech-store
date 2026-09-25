@@ -1,0 +1,67 @@
+{
+ "version": 1,
+ "manifest": {
+  "package": "dev.e2etest.hello",
+  "versionCode": 2,
+  "versionName": "1.0.2",
+  "sharedUserId": null,
+  "minSdk": 26,
+  "targetSdk": 36,
+  "debuggable": false,
+  "testOnly": false,
+  "hasCode": true,
+  "usesPermissions": [],
+  "declaredPermissions": [],
+  "components": [
+   {
+    "kind": "activity",
+    "name": "dev.e2etest.hello.MainActivity",
+    "exported": true,
+    "hasIntentFilter": true,
+    "actions": [
+     "android.intent.action.MAIN"
+    ],
+    "categories": [
+     "android.intent.category.LAUNCHER"
+    ],
+    "permission": null,
+    "readPermission": null,
+    "writePermission": null,
+    "grantUriPermissions": false,
+    "authorities": null
+   }
+  ],
+  "usesLibraries": []
+ },
+ "zip": {
+  "entryCount": 13,
+  "totalSize": 2136975,
+  "anomalies": []
+ },
+ "dexFiles": [
+  "classes.dex"
+ ],
+ "nativeLibs": [],
+ "embedded": [],
+ "dex": {
+  "dexFiles": 1,
+  "classes": 1083,
+  "methods": 10384,
+  "apiHits": {
+   "net.java-net": {
+    "count": 1,
+    "examples": [
+     "Lkotlin/io/TextStreamsKt;.readBytes → Ljava/net/URL;.openStream (呼び出し)"
+    ],
+    "note": "java.net の通信クラス(Socket / URL / HttpURLConnection など)"
+   }
+  },
+  "stringHits": {},
+  "urlHosts": [],
+  "nativeMethods": {
+   "count": 0,
+   "examples": []
+  }
+ },
+ "incomplete": []
+}

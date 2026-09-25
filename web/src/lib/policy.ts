@@ -21,7 +21,7 @@ import { KNOWN_NATIVE_LIBS } from "./known-native-libs";
  * は権限の外にあるので、コードと同梱ファイルまで調べて確かめる。
  */
 
-export const POLICY_VERSION = 1;
+export const POLICY_VERSION = 2;
 
 // ---------------------------------------------------------------- 入力(ワーカーが送る事実)
 
@@ -283,6 +283,28 @@ function shortName(permission: string): string {
   return permission.replace(/^android\.permission\./, "");
 }
 
+const SMS_PHONE_PERMISSIONS = [
+  "SEND_SMS", "RECEIVE_SMS", "READ_SMS", "WRITE_SMS", "RECEIVE_MMS", "RECEIVE_WAP_PUSH", "SEND_RESPOND_VIA_MESSAGE",
+  "READ_PHONE_STATE", "READ_PHONE_NUMBERS", "READ_PRIVILEGED_PHONE_STATE", "MODIFY_PHONE_STATE", "CALL_PHONE", "ANSWER_PHONE_CALLS",
+] as const;
+
+/**
+ * OS が、その権限を持つアプリにしか使わせないAPI(ワーカーのパターンの id → 必要な権限のどれか)。
+ * 権限が無ければ、コードに参照があっても実行できない(ソケットを作る時点で OS が拒否する)。
+ * 縮小(R8)していないビルドは、Kotlin 標準ライブラリや AndroidX の使われないコードにこれらの参照を含むので、
+ * 権限が無いときは「実行できない参照」として、指摘ではなく参考情報にとどめる。
+ * ここに無いもの(Bluetooth・NFC・LocalSocket・VPN など、別の手段で使えるもの)は、これまでどおり参照があれば要確認。
+ */
+const PERMISSION_GATED_APIS: Record<string, readonly string[]> = {
+  "net.java-net": ["INTERNET"],
+  "net.nio-channels": ["INTERNET"],
+  "net.javax-net": ["INTERNET"],
+  "net.http-library": ["INTERNET"],
+  "net.webview": ["INTERNET"],
+  "net.download-manager": ["INTERNET"],
+  "net.sms-telephony": SMS_PHONE_PERMISSIONS,
+};
+
 export function evaluatePolicy(input: { facts: Facts | null; signature?: SignatureFacts | null; packageName?: string | null }): PolicyVerdict {
   const findings: Finding[] = [];
   const add = (f: Finding) => findings.push(f);
@@ -529,7 +551,24 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
     const byPrefix = (prefix: string) => hitIds.filter((id) => id.startsWith(prefix));
     const evidenceOf = (ids: string[]) => short(ids.flatMap((id) => dex.apiHits[id].examples.slice(0, 1).map((e) => `${dex.apiHits[id].note ?? id}: ${e}`)));
 
-    const netIds = byPrefix("net.");
+    const granted = new Set((facts.manifest?.usesPermissions ?? []).map((p) => shortName(p.name)));
+    const inert = (id: string) => {
+      const needs = PERMISSION_GATED_APIS[id];
+      return needs !== undefined && !needs.some((p) => granted.has(p));
+    };
+    const netIds = byPrefix("net.").filter((id) => !inert(id));
+    const inertNetIds = byPrefix("net.").filter(inert);
+    if (inertNetIds.length > 0) {
+      add({
+        code: "net.api-inert",
+        severity: "info",
+        category: "network",
+        title: "通信のAPIへの参照がありますが、必要な権限がないため実行できません",
+        detail:
+          "使われないライブラリのコード(縮小していないビルドに含まれる Kotlin 標準ライブラリ・AndroidX など)に、通信のAPIへの参照があります。INTERNET などの権限がないアプリは、OS がこれらの動作を拒否するため、外部と通信できません。",
+        evidence: evidenceOf(inertNetIds),
+      });
+    }
     if (netIds.length > 0) {
       add({
         code: "net.api",

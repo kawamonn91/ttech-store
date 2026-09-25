@@ -8,3 +8,6 @@ keystore.properties
 local.properties
 .vercel/
 supabase/local/
+
+# Supabase CLI の一時ファイル
+supabase/.temp/

@@ -36,7 +36,7 @@ Web(lib/release-review.ts + lib/policy.ts)                        ▼
 
 | 分類 | 見つけるもの | 結果 |
 |---|---|---|
-| 通信 | INTERNET・Wi-Fi・Bluetooth・NFC などの権限 / `java.net`・WebView・DownloadManager・OkHttp などのAPI呼び出し(難読化されていても、OSのAPIへの参照で見つける) / コードに含まれる外部URL / 共有ユーザーID / 権限で守られていない公開の Service・ContentProvider | 要確認 |
+| 通信 | INTERNET・Wi-Fi・Bluetooth・NFC などの権限 / `java.net`・WebView・DownloadManager・OkHttp などのAPI呼び出し(難読化されていても、OSのAPIへの参照で見つける。**INTERNET などの権限があるときだけ**。下の「権限のないアプリの参照」を参照) / コードに含まれる外部URL / 共有ユーザーID / 権限で守られていない公開の Service・ContentProvider | 要確認 |
 | 破壊 | 共有ストレージへの書き込み・連絡先やカレンダーの変更・アプリの削除やインストール・SMS・電話・端末管理者・SYSTEM_ALERT_WINDOW などの権限 / 端末管理者・PackageInstaller・設定の書き換え・フォルダ内のファイル削除のAPI / ユーザー補助・通知リスナー・VPN・キーボードのサービス / フォルダ全体へのアクセス要求 | 要確認 |
 | 隠れたコード | DEX の動的読み込み・外部プロセスの起動 / assets などに隠された DEX・ELF・入れ子のZIP・スクリプト / **既知でないネイティブライブラリ**(SHA-256 が `known-native-libs.ts` に無いもの) / `System.load` があるのに .so が無い | 要確認 |
 | 署名・構造 | デバッグ署名・testOnly・同名ファイルの重複や不正なパスなど構造の異常 | **却下** |
@@ -52,6 +52,19 @@ Web(lib/release-review.ts + lib/policy.ts)                        ▼
 Android は INTERNET 権限のないアプリのネットワーク通信を OS の仕組みで禁止する。そのため通信できないことの決め手は権限だが、
 権限の外にある持ち出しの手段(他のアプリ経由・ブラウザに渡すURL・後から読み込むコード)まで、コードと同梱ファイルを調べて確かめる。
 ネイティブコードは静的に解析できないので、AndroidX など広く使われている公式ライブラリの既知のバイナリ(SHA-256)だけを許可する。
+
+### 権限のないアプリの参照
+
+縮小(R8)していないビルドには、Kotlin 標準ライブラリや AndroidX の**使われないコード**に、`java.net.URL.openStream` や `TelephonyManager.getImei` などへの参照が入っている(Android Studio の既定の release ビルドがこの状態)。
+INTERNET 権限が無ければ OS がソケットの作成を拒否するので、そのAPIを呼んでも通信できない。そこで、**その動作に必要な権限が無いときは、参照があっても指摘にせず、参考情報(`net.api-inert`)として記録するだけ**にしている。
+
+| 参照するAPI | 必要な権限(どれかがあれば指摘する) |
+|---|---|
+| `java.net`・`java.nio.channels`・`javax.net`・HTTPライブラリ・WebView・DownloadManager | INTERNET |
+| SMS・電話(SmsManager・TelephonyManager) | SEND_SMS・READ_PHONE_STATE など(`policy.ts` の `SMS_PHONE_PERMISSIONS`) |
+
+Bluetooth・NFC・USB・ローカルソケット・VPN など、権限がなくても(または別の手段で)使えるものは、参照があれば要確認のまま。
+また、権限を持っているアプリは、権限そのものが指摘される。
 
 ### 限界(正直に)
 
