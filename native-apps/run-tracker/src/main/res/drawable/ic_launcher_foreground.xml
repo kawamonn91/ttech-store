@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 地図の上を走るコースの、オレンジの線。スタート(緑)から一周してゴール(白)へ。丸く切り抜かれても欠けないよう、中央の安全な範囲に収めている -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#66FC4C02"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M38,68 C38,56 46,52 54,52 C64,52 70,46 70,38 C70,31 64,28 58,30 C50,33 48,42 54,50 C60,58 72,60 72,68" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FC4C02"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M38,68 C38,56 46,52 54,52 C64,52 70,46 70,38 C70,31 64,28 58,30 C50,33 48,42 54,50 C60,58 72,60 72,68" />
+    <path android:fillColor="#FFFFFF" android:pathData="M38,63.3 a4.7,4.7 0 1,0 0.01,0 z" />
+    <path android:fillColor="#22C55E" android:pathData="M38,65.5 a2.5,2.5 0 1,0 0.01,0 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M72,62.6 a5.4,5.4 0 1,0 0.01,0 z" />
+    <path android:fillColor="#111111" android:pathData="M68.1,68 h3.9 v-3.9 h-3.9 z M72,68 h3.9 v3.9 h-3.9 z" />
+</vector>
