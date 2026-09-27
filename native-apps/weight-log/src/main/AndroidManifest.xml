@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 共通モジュール(:common)が足す INTERNET 権限は、このアプリでは使わないので外す(通信は一切しない) -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
 
     <application
+        android:name=".WeightApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
