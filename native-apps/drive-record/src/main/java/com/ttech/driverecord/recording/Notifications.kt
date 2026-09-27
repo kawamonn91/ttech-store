@@ -8,7 +8,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.ttech.driverecord.MainActivity
 import com.ttech.driverecord.R
@@ -19,8 +21,10 @@ import com.ttech.track.domain.Format
 object Notifications {
     const val CHANNEL_STATUS = "drive_status"
     const val CHANNEL_RESULT = "drive_result"
+    const val CHANNEL_LAUNCH = "drive_auto_launch"
     const val ID_STATUS = 1001
     private const val ID_RESULT = 1002
+    private const val ID_LAUNCH = 1003
 
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -33,6 +37,11 @@ object Notifications {
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_RESULT, "記録の完了", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "ドライブの記録が終わったときにお知らせします"
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_LAUNCH, "Android Auto 接続時の自動起動", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Android Auto につながったときに、アプリの画面を自動で開きます(端末がロック中のときだけ全画面で開き、使用中のときは通知だけ表示します)"
             },
         )
     }
@@ -76,6 +85,37 @@ object Notifications {
             .setContentIntent(openApp(context, summary.id))
             .build()
         context.getSystemService(NotificationManager::class.java).notify(ID_RESULT, n)
+    }
+
+    /**
+     * Android Auto につながったときに、アプリの画面を自動で開く。
+     * 全画面通知(fullScreenIntent)を使う。端末がロック中ならその画面のまま開き、使用中なら通常の通知として表示するだけになる
+     * (Android の仕組みによる。運転中に他の操作を強引に奪わないようにするため)。
+     */
+    fun launchApp(context: Context) {
+        if (Build_permissionDenied(context)) return
+        val intent = PendingIntent.getActivity(
+            context, 2, Intent(context, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = NotificationCompat.Builder(context, CHANNEL_LAUNCH)
+            .setSmallIcon(R.drawable.ic_stat_drive)
+            .setContentTitle("Android Auto につながりました")
+            .setContentText("タップして開く")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
+            .setAutoCancel(true)
+            .setContentIntent(intent)
+            .setFullScreenIntent(intent, true)
+            .setTimeoutAfter(30_000)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(ID_LAUNCH, n)
+    }
+
+    /** 全画面での自動起動に使える状態か(Android 14以降は、電話・アラーム以外のアプリは利用者が個別に許可する必要がある) */
+    fun canLaunchFullScreen(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 34) return true
+        return NotificationManagerCompat.from(context).canUseFullScreenIntent()
     }
 
     /** 通知の権限(Android 13以降)が無ければ、通知は出さない(記録には影響しない) */

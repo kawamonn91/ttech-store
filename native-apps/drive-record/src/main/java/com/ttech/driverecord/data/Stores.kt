@@ -34,32 +34,30 @@ class SettingsStore(context: Context) {
         val graceSec = intPreferencesKey("disconnect_grace_sec_v2")
         val minDistance = intPreferencesKey("min_distance_m")
         val mapDark = booleanPreferencesKey("map_dark")
+        val autoLaunchApp = booleanPreferencesKey("auto_launch_app")
     }
 
-    val settings: Flow<DriveSettings> = store.data.map { p ->
+    private fun read(p: Preferences): DriveSettings {
         val d = DriveSettings()
-        DriveSettings(
+        return DriveSettings(
             autoRecord = p[Keys.autoRecord] ?: d.autoRecord,
             disconnectGraceSec = p[Keys.graceSec] ?: d.disconnectGraceSec,
             minDistanceM = p[Keys.minDistance] ?: d.minDistanceM,
             mapStyleDark = p[Keys.mapDark] ?: d.mapStyleDark,
+            autoLaunchApp = p[Keys.autoLaunchApp] ?: d.autoLaunchApp,
         )
     }
 
+    val settings: Flow<DriveSettings> = store.data.map(::read)
+
     suspend fun update(transform: (DriveSettings) -> DriveSettings) {
         store.edit { p ->
-            val d = DriveSettings()
-            val current = DriveSettings(
-                autoRecord = p[Keys.autoRecord] ?: d.autoRecord,
-                disconnectGraceSec = p[Keys.graceSec] ?: d.disconnectGraceSec,
-                minDistanceM = p[Keys.minDistance] ?: d.minDistanceM,
-                mapStyleDark = p[Keys.mapDark] ?: d.mapStyleDark,
-            )
-            val next = transform(current)
+            val next = transform(read(p))
             p[Keys.autoRecord] = next.autoRecord
             p[Keys.graceSec] = next.disconnectGraceSec
             p[Keys.minDistance] = next.minDistanceM
             p[Keys.mapDark] = next.mapStyleDark
+            p[Keys.autoLaunchApp] = next.autoLaunchApp
         }
     }
 }

@@ -66,7 +66,9 @@ fun SettingsScreen(container: DriveContainer, onBack: () -> Unit) {
                     }
                     Text("切れてから記録を終えるまでの待ち時間", style = MaterialTheme.typography.labelLarge)
                     Text(
-                        "Android Auto が切れてから、この時間が過ぎたら記録を終えます。その間に接続し直せば、同じ記録を続けます(無線接続が一瞬途切れても、記録が分かれないように)",
+                        "Android Auto が切れてから、この時間が過ぎたら記録を終えます。その間に接続し直せば、同じ記録を続けます。" +
+                            "サービスエリアなどでの休憩に合わせて長めにすると、休憩をまたいで同じドライブの記録を続けられます" +
+                            "(休憩の間もGPSを受信し続けるので、バッテリーを多く使います。休憩は詳細画面に「休憩」として表示されます)。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -74,6 +76,26 @@ fun SettingsScreen(container: DriveContainer, onBack: () -> Unit) {
                         DriveSettings.GRACE_CHOICES.forEach { sec ->
                             FilterChip(selected = settings.disconnectGraceSec == sec, onClick = { update { it.copy(disconnectGraceSec = sec) } }, label = { Text(if (sec < 60) "${sec}秒" else "${sec / 60}分") })
                         }
+                    }
+                }
+            }
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Android Auto につながったら画面を開く", style = MaterialTheme.typography.titleMedium)
+                            Text("端末がロック中ならその画面のまま、使用中なら通知だけを表示します", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = settings.autoLaunchApp, onCheckedChange = { on -> update { it.copy(autoLaunchApp = on) } })
+                    }
+                    if (settings.autoLaunchApp && !perm.fullScreenLaunch) {
+                        Text(
+                            "この端末では、そのままだと通知が出るだけで、画面は自動で開きません。設定で許可すると、ロック中でも自動で開けます。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        OutlinedButton(onClick = actions.openFullScreenIntentSettings) { Text("許可する(設定を開く)") }
                     }
                 }
             }

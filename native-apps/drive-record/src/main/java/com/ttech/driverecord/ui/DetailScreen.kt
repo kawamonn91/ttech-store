@@ -1,6 +1,7 @@
 package com.ttech.driverecord.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,11 +123,28 @@ fun DetailScreen(container: DriveContainer, id: String, onBack: () -> Unit, onDe
         item { ChartsSection(stats, pts, onFocus = { focus = it }) }
         item { SpeedBands(stats) }
         if (stats.events.isNotEmpty()) item { EventsSection(stats.events, onSelect = { focus = LatLon(it.lat, it.lon) }) }
-        if (stats.stops.isNotEmpty()) item {
+        if (stats.breaks.isNotEmpty()) item {
+            SectionHeaderPadded("休憩")
+            Card(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    stats.breaks.forEach { st ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 3.dp).clickable { focus = LatLon(st.lat, st.lon) },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(Format.timeSeconds(st.startMs), style = MaterialTheme.typography.bodyMedium)
+                            Text(Format.duration(st.durationMs), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        }
+        val shortStops = stats.stops.filterNot { it.isBreak }
+        if (shortStops.isNotEmpty()) item {
             SectionHeaderPadded("停止(信号待ちなど)")
             Card(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
-                    stats.stops.forEach { st ->
+                    shortStops.forEach { st ->
                         Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(Format.timeSeconds(st.startMs), style = MaterialTheme.typography.bodyMedium)
                             Text(Format.duration(st.durationMs), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
@@ -205,6 +223,11 @@ private fun Headline(stats: DriveStats) {
             StatTile("動いた時間", Format.duration(stats.movingMs), Modifier.weight(1f))
             StatTile("停止", Format.duration(stats.stoppedMs), Modifier.weight(1f), sub = "${stats.stops.size}回")
             StatTile("標高", if (stats.minAltitudeM == null) "-" else "↑${Format.meters(stats.elevationGainM)}", Modifier.weight(1f), sub = if (stats.minAltitudeM == null) null else "↓${Format.meters(stats.elevationLossM)}")
+        }
+        if (stats.breaks.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                StatTile("休憩", Format.duration(stats.breaks.sumOf { it.durationMs }), Modifier.weight(1f), sub = "${stats.breaks.size}回")
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.ttech.driverecord.recording.Notifications
 
 /** 記録に必要な権限・設定の状況 */
 data class PermState(
@@ -30,6 +31,8 @@ data class PermState(
     val notifications: Boolean,
     /** 端末の位置情報(GPS)がオンか */
     val gpsOn: Boolean,
+    /** Android Auto 接続時の自動起動(全画面通知)に使えるか。Android 14以降だけ意味がある */
+    val fullScreenLaunch: Boolean,
 ) {
     val canRecord: Boolean get() = location && gpsOn
     val canAutoRecord: Boolean get() = location && background && gpsOn
@@ -43,6 +46,7 @@ fun readPermState(context: Context): PermState {
         background = Build.VERSION.SDK_INT < 29 || granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
         notifications = Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS),
         gpsOn = runCatching { lm.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrDefault(false),
+        fullScreenLaunch = Notifications.canLaunchFullScreen(context),
     )
 }
 
@@ -61,6 +65,7 @@ class PermissionActions(
     val requestBackground: () -> Unit,
     val openAppSettings: () -> Unit,
     val openLocationSettings: () -> Unit,
+    val openFullScreenIntentSettings: () -> Unit,
 )
 
 @Composable
@@ -89,6 +94,14 @@ fun rememberPermissionActions(onResult: (PermState) -> Unit): PermissionActions 
         },
         openLocationSettings = {
             context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        },
+        openFullScreenIntentSettings = {
+            if (Build.VERSION.SDK_INT >= 34) {
+                context.startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.fromParts("package", context.packageName, null))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
         },
     )
 }

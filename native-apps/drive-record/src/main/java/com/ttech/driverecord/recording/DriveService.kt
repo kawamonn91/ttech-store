@@ -17,6 +17,7 @@ import com.ttech.driverecord.BuildConfig
 import com.ttech.driverecord.DriveApplication
 import com.ttech.driverecord.DriveContainer
 import com.ttech.driverecord.DriveState
+import com.ttech.driverecord.domain.ConnectionEdge
 import com.ttech.driverecord.domain.DriveCommand
 import com.ttech.driverecord.domain.DriveController
 import com.ttech.driverecord.domain.DriveRecorder
@@ -52,6 +53,7 @@ class DriveService : Service(), GpsTracker.Listener {
     private lateinit var recorder: DriveRecorder
     private lateinit var gps: GpsTracker
     private var carMonitor: CarConnectionMonitor? = null
+    private val launchEdge = ConnectionEdge()
     private var wakeLock: PowerManager.WakeLock? = null
     private var settings = DriveSettings()
     private var settingsJob: Job? = null
@@ -98,6 +100,9 @@ class DriveService : Service(), GpsTracker.Listener {
         }
         carMonitor = CarConnectionMonitor(this) { connected ->
             DriveState.carConnected.value = connected
+            if (launchEdge.onConnected(connected) && settings.autoLaunchApp) {
+                Notifications.launchApp(this)
+            }
             controller.onCarConnection(connected, System.currentTimeMillis())?.let(::execute)
         }.also { it.start() }
         handler.postDelayed(ticker, TICK_MS)
@@ -111,6 +116,9 @@ class DriveService : Service(), GpsTracker.Listener {
             ACTION_DEBUG_CAR -> if (BuildConfig.DEBUG) {
                 val connected = intent.getBooleanExtra(EXTRA_CONNECTED, false)
                 DriveState.carConnected.value = connected
+                if (launchEdge.onConnected(connected) && settings.autoLaunchApp) {
+                    Notifications.launchApp(this)
+                }
                 controller.onCarConnection(connected, System.currentTimeMillis())?.let(::execute)
             }
         }

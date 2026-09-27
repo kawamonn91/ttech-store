@@ -82,6 +82,20 @@ class DriveStatsTest {
     }
 
     @Test
+    fun `5分未満の停止は休憩に数えない。5分以上は休憩`() {
+        val short = constant(10.0, 30) + constant(0.0, 200) + constant(10.0, 30) // 200秒(3分20秒)
+        val statsShort = DriveStatsCalculator.compute(drive(short, jitterWhenStopped = true))
+        assertEquals(1, statsShort.stops.size)
+        assertTrue(statsShort.breaks.isEmpty())
+
+        val long = constant(10.0, 30) + constant(0.0, 320) + constant(10.0, 30) // 320秒(5分20秒)
+        val statsLong = DriveStatsCalculator.compute(drive(long, jitterWhenStopped = true))
+        assertEquals(1, statsLong.stops.size)
+        assertEquals(1, statsLong.breaks.size)
+        assertTrue(statsLong.stops[0].isBreak)
+    }
+
+    @Test
     fun `20秒に満たない停止は数えない`() {
         val speeds = constant(10.0, 20) + constant(0.0, 10) + constant(10.0, 20)
         assertTrue(DriveStatsCalculator.compute(drive(speeds)).stops.isEmpty())

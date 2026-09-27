@@ -13,15 +13,19 @@ data class DriveSettings(
     /**
      * Android Auto との接続が切れてから、記録を終えるまで待つ秒数(既定は10秒)。
      * 接続が一瞬途切れても(無線接続など)、その間に接続し直せば、別々の記録に分かれずに同じ記録を続けられる。
-     * 0 にすると、切れた瞬間に終える。
+     * 長め(数十分)にすると、サービスエリアなどでの休憩の間もGPSを受信し続け、休憩をまたいで
+     * 同じドライブの記録を続けられる(休憩は「停止」として記録に残る)。0 にすると、切れた瞬間に終える。
      */
     val disconnectGraceSec: Int = 10,
     /** これより短い(m)ドライブは、記録に残さない(駐車場での出し入れなど) */
     val minDistanceM: Int = 300,
     val mapStyleDark: Boolean = true,
+    /** Android Auto につながったら、このアプリの画面を自動で開く */
+    val autoLaunchApp: Boolean = true,
 ) {
     companion object {
-        val GRACE_CHOICES = listOf(10, 30, 60, 120, 300)
+        /** 一瞬の途切れ用の短い値と、休憩に対応するための長い値の両方を選べるようにする */
+        val GRACE_CHOICES = listOf(10, 30, 60, 120, 300, 900, 1800, 3600)
         val MIN_DISTANCE_CHOICES = listOf(0, 100, 300, 500, 1000)
     }
 }

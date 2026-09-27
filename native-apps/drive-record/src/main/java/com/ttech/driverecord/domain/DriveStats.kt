@@ -7,7 +7,15 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** 信号待ちなどで止まった場所。出発前・到着後の停止は含めない */
-data class StopInfo(val startMs: Long, val durationMs: Long, val lat: Double, val lon: Double)
+data class StopInfo(val startMs: Long, val durationMs: Long, val lat: Double, val lon: Double) {
+    /** サービスエリアなどでの休憩とみなせる長さ([BREAK_MIN_SECONDS]以上)か */
+    val isBreak: Boolean get() = durationMs >= BREAK_MIN_SECONDS * 1000
+
+    companion object {
+        /** これ以上の停止は、信号待ちではなく「休憩」として表示する(5分) */
+        const val BREAK_MIN_SECONDS = 300.0
+    }
+}
 
 enum class EventType(val label: String, val unit: String) {
     HardBrake("急ブレーキ", "m/s²"),
@@ -53,6 +61,8 @@ data class DriveStats(
 ) {
     val stoppedMs: Long get() = max(0L, durationMs - movingMs)
     val avgSpeedMps: Double get() = if (durationMs > 0) distanceM / (durationMs / 1000.0) else 0.0
+    /** 休憩とみなせる長さの停止(サービスエリアなど)。短い信号待ちは含まない */
+    val breaks: List<StopInfo> get() = stops.filter { it.isBreak }
     val hardBrakeCount: Int get() = events.count { it.type == EventType.HardBrake }
     val hardAccelCount: Int get() = events.count { it.type == EventType.HardAccel }
     val sharpCornerCount: Int get() = events.count { it.type == EventType.SharpCorner }
