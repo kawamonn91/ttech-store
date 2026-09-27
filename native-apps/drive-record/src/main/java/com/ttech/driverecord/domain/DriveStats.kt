@@ -5,11 +5,20 @@ import com.ttech.track.domain.*
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.serialization.Serializable
+
+/** Android Auto が切れてから、設定した時間のうちに再接続した区間([DriveController]が検知する) */
+@Serializable
+data class CarBreakSpan(val startMs: Long, val endMs: Long)
 
 /** 信号待ちなどで止まった場所。出発前・到着後の停止は含めない */
-data class StopInfo(val startMs: Long, val durationMs: Long, val lat: Double, val lon: Double) {
-    /** サービスエリアなどでの休憩とみなせる長さ([BREAK_MIN_SECONDS]以上)か */
-    val isBreak: Boolean get() = durationMs >= BREAK_MIN_SECONDS * 1000
+data class StopInfo(val startMs: Long, val durationMs: Long, val lat: Double, val lon: Double, private val isCarBreak: Boolean = false) {
+    /**
+     * サービスエリアなどでの休憩とみなせるか。
+     * Android Auto の切断・再接続と重なっていれば休憩(主な判定)。それが無い(手動記録など)場合は、
+     * 長さ([BREAK_MIN_SECONDS]以上)で見た目安で判定する
+     */
+    val isBreak: Boolean get() = isCarBreak || durationMs >= BREAK_MIN_SECONDS * 1000
 
     companion object {
         /** これ以上の停止は、信号待ちではなく「休憩」として表示する(5分) */
@@ -94,7 +103,7 @@ object DriveStatsCalculator {
     /** 停止中の測位のぶれ(位置が数mふらつく)で距離が積み上がらないようにするための最小値(m) */
     private const val JITTER_FLOOR_M = 3.0
 
-    fun compute(points: List<TrackPoint>): DriveStats {
+    fun compute(points: List<TrackPoint>, carBreaks: List<CarBreakSpan> = emptyList()): DriveStats {
         if (points.isEmpty()) {
             return DriveStats(0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, emptyList(), emptyList(), 0, 0, null, List(6) { 0L })
         }
@@ -140,7 +149,7 @@ object DriveStatsCalculator {
             elevationLossM = elevation.loss,
             minAltitudeM = elevation.min,
             maxAltitudeM = elevation.max,
-            stops = stops(points, speeds),
+            stops = stops(points, speeds, carBreaks),
             events = events(points, smoothSpeeds),
             gapCount = gaps,
             pointCount = n,
@@ -172,7 +181,7 @@ object DriveStatsCalculator {
     }
 
     /** 信号待ちなどの停止。出発前と到着後に止まっている時間は数えない */
-    private fun stops(points: List<TrackPoint>, speeds: DoubleArray): List<StopInfo> {
+    private fun stops(points: List<TrackPoint>, speeds: DoubleArray, carBreaks: List<CarBreakSpan>): List<StopInfo> {
         val result = ArrayList<StopInfo>()
         var i = 0
         val n = points.size
@@ -185,9 +194,12 @@ object DriveStatsCalculator {
             if (speeds[i] < STOPPED_MPS) {
                 val startIdx = i
                 while (i <= end && speeds[i] < RESUME_MPS) i++
-                val durationMs = points[min(i, n - 1)].timeMs - points[startIdx].timeMs
+                val stopStartMs = points[startIdx].timeMs
+                val stopEndMs = points[min(i, n - 1)].timeMs
+                val durationMs = stopEndMs - stopStartMs
                 if (durationMs / 1000.0 >= MIN_STOP_SECONDS) {
-                    result.add(StopInfo(points[startIdx].timeMs, durationMs, points[startIdx].lat, points[startIdx].lon))
+                    val isCarBreak = carBreaks.any { it.startMs < stopEndMs && stopStartMs < it.endMs }
+                    result.add(StopInfo(stopStartMs, durationMs, points[startIdx].lat, points[startIdx].lon, isCarBreak))
                 }
             } else {
                 i++

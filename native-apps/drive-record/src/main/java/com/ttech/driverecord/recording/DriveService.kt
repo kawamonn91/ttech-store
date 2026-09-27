@@ -129,6 +129,7 @@ class DriveService : Service(), GpsTracker.Listener {
         when (command) {
             is DriveCommand.Start -> startRecording(command.trigger)
             DriveCommand.Stop -> stopRecording()
+            is DriveCommand.BreakRecorded -> recorder.addBreak(command.startMs, command.endMs)
         }
     }
 

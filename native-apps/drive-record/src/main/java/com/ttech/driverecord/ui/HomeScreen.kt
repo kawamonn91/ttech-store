@@ -9,14 +9,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,9 +30,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,10 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ttech.driverecord.DriveContainer
 import com.ttech.driverecord.DriveState
+import com.ttech.driverecord.domain.DailyDriveSummary
 import com.ttech.driverecord.domain.DriveSettings
 import com.ttech.driverecord.domain.DriveSummary
 import com.ttech.driverecord.domain.LiveDrive
 import com.ttech.driverecord.domain.Trigger
+import com.ttech.driverecord.domain.dailySummaries
 import com.ttech.driverecord.recording.DriveService
 import com.ttech.track.domain.Format
 import java.time.Instant
@@ -48,6 +58,9 @@ import java.time.ZoneId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+private enum class HomeViewMode { ByDrive, ByDay }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(container: DriveContainer, onOpen: (String) -> Unit, onSettings: () -> Unit) {
     val context = LocalContext.current
@@ -60,6 +73,8 @@ fun HomeScreen(container: DriveContainer, onOpen: (String) -> Unit, onSettings: 
     val perm by rememberPermState()
     val actions = rememberPermissionActions { }
     var imageVersion by remember { mutableIntStateOf(0) }
+    var viewMode by rememberSaveable { mutableStateOf(HomeViewMode.ByDrive) }
+    var expandedDays by remember { mutableStateOf(setOf<String>()) }
 
     // 待機のサービスは、自動記録がオンで位置情報の権限があれば動かしておく
     LaunchedEffect(settings.autoRecord, perm.location) {
@@ -73,6 +88,7 @@ fun HomeScreen(container: DriveContainer, onOpen: (String) -> Unit, onSettings: 
     }
 
     val grouped = remember(drives) { drives.groupBy { Format.dayKey(it.startTimeMs) }.toList() }
+    val daily = remember(drives) { dailySummaries(drives) }
     val zone = remember { ZoneId.of("Asia/Tokyo") }
 
     LazyColumn(
@@ -116,15 +132,56 @@ fun HomeScreen(container: DriveContainer, onOpen: (String) -> Unit, onSettings: 
                     modifier = Modifier.padding(vertical = 24.dp),
                 )
             }
-        }
-        for ((_, list) in grouped) {
-            item(key = "h-${list.first().id}") {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(Format.date(list.first().startTimeMs), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Text("${list.size}回 ・ ${Format.distance(list.sumOf { it.distanceM })}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            item {
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                    SegmentedButton(selected = viewMode == HomeViewMode.ByDrive, onClick = { viewMode = HomeViewMode.ByDrive }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("ドライブごと") }
+                    SegmentedButton(selected = viewMode == HomeViewMode.ByDay, onClick = { viewMode = HomeViewMode.ByDay }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text("日付ごと") }
                 }
             }
-            items(list, key = { it.id }) { d -> DriveCard(container, d, imageVersion, onClick = { onOpen(d.id) }) }
+        }
+        if (viewMode == HomeViewMode.ByDrive) {
+            for ((_, list) in grouped) {
+                item(key = "h-${list.first().id}") {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(Format.date(list.first().startTimeMs), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text("${list.size}回 ・ ${Format.distance(list.sumOf { it.distanceM })}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                items(list, key = { it.id }) { d -> DriveCard(container, d, imageVersion, onClick = { onOpen(d.id) }) }
+            }
+        } else {
+            for (day in daily) {
+                val expanded = day.dayKey in expandedDays
+                item(key = "day-${day.dayKey}") {
+                    DailyCard(
+                        day, expanded,
+                        onToggle = { expandedDays = if (expanded) expandedDays - day.dayKey else expandedDays + day.dayKey },
+                    )
+                }
+                if (expanded) {
+                    items(day.drives, key = { "dd-" + it.id }) { d -> DriveCard(container, d, imageVersion, onClick = { onOpen(d.id) }) }
+                }
+            }
+        }
+    }
+}
+
+/** 1日ぶんの合計をまとめて出すカード。タップすると、その日の記録が下に展開される */
+@Composable
+private fun DailyCard(day: DailyDriveSummary, expanded: Boolean, onToggle: () -> Unit) {
+    Card(Modifier.fillMaxWidth().clickable(onClick = onToggle)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(Format.date(day.representativeTimeMs), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = if (expanded) "閉じる" else "この日の記録を見る")
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                StatTile("回数", "${day.driveCount}回")
+                StatTile("距離", Format.distance(day.totalDistanceM))
+                StatTile("運転時間", Format.duration(day.totalMovingMs))
+                StatTile("最高速度", Format.speedKmh(day.maxSpeedMps))
+            }
         }
     }
 }

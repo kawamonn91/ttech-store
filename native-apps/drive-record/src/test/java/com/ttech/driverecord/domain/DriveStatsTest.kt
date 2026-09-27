@@ -96,6 +96,29 @@ class DriveStatsTest {
     }
 
     @Test
+    fun `Android Autoの切断・再接続と重なる停止は、5分未満でも休憩になる`() {
+        val speeds = constant(10.0, 30) + constant(0.0, 200) + constant(10.0, 30) // 200秒(3分20秒)の停止
+        val points = drive(speeds, jitterWhenStopped = true)
+        val withoutBreak = DriveStatsCalculator.compute(points)
+        assertTrue(withoutBreak.breaks.isEmpty()) // Android Autoの情報が無ければ、これまで通り休憩にならない
+
+        val stop = withoutBreak.stops.single()
+        val carBreak = CarBreakSpan(stop.startMs, stop.startMs + stop.durationMs)
+        val stats = DriveStatsCalculator.compute(points, listOf(carBreak))
+        assertEquals(1, stats.breaks.size)
+        assertTrue(stats.stops.single().isBreak)
+    }
+
+    @Test
+    fun `Android Autoの切断・再接続と重ならない停止は、休憩にならない`() {
+        val speeds = constant(10.0, 30) + constant(0.0, 200) + constant(10.0, 30)
+        val points = drive(speeds, jitterWhenStopped = true)
+        val farAway = CarBreakSpan(points.first().timeMs - 10_000, points.first().timeMs - 5_000)
+        val stats = DriveStatsCalculator.compute(points, listOf(farAway))
+        assertTrue(stats.breaks.isEmpty())
+    }
+
+    @Test
     fun `20秒に満たない停止は数えない`() {
         val speeds = constant(10.0, 20) + constant(0.0, 10) + constant(10.0, 20)
         assertTrue(DriveStatsCalculator.compute(drive(speeds)).stops.isEmpty())
@@ -281,5 +304,36 @@ class DriveSummaryTest {
         val old = json.decodeFromString<DriveSummary>("""{"id":"2","startTimeMs":5,"unknownFutureField":1}""")
         assertEquals("2", old.id)
         assertEquals(0.0, old.distanceM, 0.0)
+    }
+}
+
+class DailyDriveSummaryTest {
+    private val zone = java.time.ZoneId.of("Asia/Tokyo")
+    private fun ms(day: String, hour: Int) = java.time.LocalDate.parse(day).atTime(hour, 0).atZone(zone).toInstant().toEpochMilli()
+    private fun drive(day: String, hour: Int, distanceM: Double, durationMs: Long = 600_000, maxSpeedMps: Double = 20.0) =
+        DriveSummary(id = ms(day, hour).toString(), startTimeMs = ms(day, hour), distanceM = distanceM, durationMs = durationMs, movingMs = durationMs, maxSpeedMps = maxSpeedMps)
+
+    @Test
+    fun `同じ日の記録がまとまり、合計・最新の時刻・最高速度が求まる`() {
+        val drives = listOf(
+            drive("2026-09-28", 8, distanceM = 1000.0, maxSpeedMps = 15.0),
+            drive("2026-09-28", 18, distanceM = 2000.0, maxSpeedMps = 25.0),
+            drive("2026-09-27", 9, distanceM = 500.0),
+        )
+        val daily = dailySummaries(drives)
+        assertEquals(listOf("2026-09-28", "2026-09-27"), daily.map { it.dayKey }) // 新しい日が先
+
+        val today = daily.first { it.dayKey == "2026-09-28" }
+        assertEquals(2, today.driveCount)
+        assertEquals(3000.0, today.totalDistanceM, 0.0)
+        assertEquals(25.0, today.maxSpeedMps, 0.0)
+        assertEquals(ms("2026-09-28", 18), today.representativeTimeMs)
+        // その日の中では新しい記録が先
+        assertEquals(listOf(ms("2026-09-28", 18), ms("2026-09-28", 8)), today.drives.map { it.startTimeMs })
+    }
+
+    @Test
+    fun `記録が無ければ空`() {
+        assertTrue(dailySummaries(emptyList()).isEmpty())
     }
 }

@@ -4,6 +4,8 @@ package com.ttech.driverecord.domain
 sealed interface DriveCommand {
     data class Start(val trigger: String) : DriveCommand
     data object Stop : DriveCommand
+    /** Android Auto が切れてから、設定した時間のうちに再接続した。その間を「休憩」として記録に残す */
+    data class BreakRecorded(val startMs: Long, val endMs: Long) : DriveCommand
 }
 
 /** ユーザーが変えられる設定 */
@@ -37,7 +39,7 @@ data class DriveSettings(
  * ルール:
  *  - 自動記録がオンで Android Auto につながったら、記録を始める
  *  - 切れたら、待機時間([DriveSettings.disconnectGraceSec]。既定は10秒)が過ぎてから記録を終える。その間に再接続すれば、そのまま続ける
- *    (待機時間が0なら、切れた瞬間に終える)
+ *    (待機時間が0なら、切れた瞬間に終える)。この待機時間のうちに再接続した場合は、その切断していた間を「休憩」として記録に残す
  *  - 手動で始めた記録は、Android Auto の接続とは関係なく、手動で止めるまで続ける
  *  - 自動で始めた記録を手動で止めたら、次に接続し直すまでは、自動で始めない
  */
@@ -47,6 +49,7 @@ class DriveController(private var settings: DriveSettings = DriveSettings()) {
     private var mode = Mode.Idle
     private var carConnected = false
     private var stopAtMs: Long? = null
+    private var disconnectedAtMs: Long? = null
     private var suppressUntilDisconnect = false
 
     val isRecording: Boolean get() = mode != Mode.Idle
@@ -68,8 +71,16 @@ class DriveController(private var settings: DriveSettings = DriveSettings()) {
         if (connected == was) return null
         return if (connected) {
             stopAtMs = null // 待機中に再接続したら、終えずに続ける
-            maybeStartAuto(nowMs)
+            val disconnectedAt = disconnectedAtMs
+            disconnectedAtMs = null
+            // 記録を続けたまま(切れる前と同じ Auto の記録のまま)再接続できたなら、その間は休憩
+            if (mode == Mode.Auto && disconnectedAt != null) {
+                DriveCommand.BreakRecorded(disconnectedAt, nowMs)
+            } else {
+                maybeStartAuto(nowMs)
+            }
         } else {
+            disconnectedAtMs = nowMs
             suppressUntilDisconnect = false
             if (mode != Mode.Auto) {
                 null
@@ -116,6 +127,7 @@ class DriveController(private var settings: DriveSettings = DriveSettings()) {
     private fun stop(): DriveCommand {
         mode = Mode.Idle
         stopAtMs = null
+        disconnectedAtMs = null
         return DriveCommand.Stop
     }
 }

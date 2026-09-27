@@ -66,9 +66,10 @@ fun SettingsScreen(container: DriveContainer, onBack: () -> Unit) {
                     }
                     Text("切れてから記録を終えるまでの待ち時間", style = MaterialTheme.typography.labelLarge)
                     Text(
-                        "Android Auto が切れてから、この時間が過ぎたら記録を終えます。その間に接続し直せば、同じ記録を続けます。" +
+                        "Android Auto が切れてから、この時間が過ぎたら記録を終えます。この時間のうちに接続し直せば、同じ記録を続け、" +
+                            "切れていた間を「休憩」として記録します。" +
                             "サービスエリアなどでの休憩に合わせて長めにすると、休憩をまたいで同じドライブの記録を続けられます" +
-                            "(休憩の間もGPSを受信し続けるので、バッテリーを多く使います。休憩は詳細画面に「休憩」として表示されます)。",
+                            "(休憩の間もGPSを受信し続けるので、バッテリーを多く使います。休憩は詳細画面に表示されます)。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

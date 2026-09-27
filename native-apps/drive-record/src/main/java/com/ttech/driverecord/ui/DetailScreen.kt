@@ -82,7 +82,7 @@ fun DetailScreen(container: DriveContainer, id: String, onBack: () -> Unit, onDe
         Box(Modifier.fillMaxWidth().padding(64.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    val stats = remember(pts) { DriveStatsCalculator.compute(pts) }
+    val stats = remember(pts, s.carBreaks) { DriveStatsCalculator.compute(pts, s.carBreaks) }
     val route = remember(pts) { RouteSegments.from(pts) }
     val mapStyle = if (settings.mapStyleDark) MapStyle.Dark else MapStyle.Light
 

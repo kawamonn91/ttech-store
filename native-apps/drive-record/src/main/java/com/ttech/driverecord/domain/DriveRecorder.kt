@@ -45,6 +45,7 @@ class DriveRecorder(
 ) {
     private val recorder = TrackRecorder(files, filter, clock)
     private var trigger: String = Trigger.MANUAL
+    private val carBreaks = ArrayList<CarBreakSpan>()
 
     val isActive: Boolean get() = recorder.isActive
 
@@ -52,6 +53,7 @@ class DriveRecorder(
     fun start(trigger: String): String {
         recorder.currentId?.let { return it }
         this.trigger = trigger
+        carBreaks.clear()
         val id = recorder.start()
         val startMs = id.toLong()
         // 途中で止まったときに、きっかけ(自動・手動)が分かるように、開始の時点で概要を書いておく
@@ -61,6 +63,11 @@ class DriveRecorder(
 
     /** 点を1つ受け取る。記録に加えたら true、除いたら false */
     fun onPoint(p: TrackPoint): Boolean = recorder.onPoint(p)
+
+    /** Android Auto の切断・再接続から検知した休憩を1件加える(記録中でなければ無視) */
+    fun addBreak(startMs: Long, endMs: Long) {
+        if (isActive) carBreaks.add(CarBreakSpan(startMs, endMs))
+    }
 
     fun live(): LiveDrive? = recorder.live()?.let {
         LiveDrive(
@@ -77,12 +84,14 @@ class DriveRecorder(
     fun finish(minDistanceM: Int): DriveSummary? {
         val finished = recorder.stop(idleMovingMps = CAR_MOVING_MPS) ?: return null
         val all = finished.points
-        val stats = DriveStatsCalculator.compute(all)
+        val breaks = carBreaks.toList()
+        carBreaks.clear()
+        val stats = DriveStatsCalculator.compute(all, breaks)
         if (all.size < 2 || stats.distanceM < minDistanceM) {
             files.delete(finished.id)
             return null
         }
-        val summary = DriveSummary.from(finished.id, stats, all, trigger, finished = true)
+        val summary = DriveSummary.from(finished.id, stats, all, trigger, finished = true, carBreaks = breaks)
         files.writeMeta(finished.id, DriveJson.encodeToString(summary))
         return summary
     }

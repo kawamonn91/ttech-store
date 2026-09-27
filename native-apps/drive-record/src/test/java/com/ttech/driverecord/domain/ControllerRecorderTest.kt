@@ -47,13 +47,31 @@ class DriveControllerTest {
     }
 
     @Test
-    fun `既定の10秒のうちに再接続したら、同じ記録を続ける(一瞬の途切れで分けない)`() {
+    fun `既定の10秒のうちに再接続したら、同じ記録を続け、切れていた間を休憩として記録する`() {
         val c = DriveController()
         c.onCarConnection(true, 0)
         c.onCarConnection(false, 100_000)
-        assertNull(c.onCarConnection(true, 105_000))
+        assertEquals(DriveCommand.BreakRecorded(100_000, 105_000), c.onCarConnection(true, 105_000))
         assertNull(c.onTick(200_000))
         assertTrue(c.isRecording)
+    }
+
+    @Test
+    fun `待機時間を超えて再接続したのは休憩ではなく、別の新しい記録`() {
+        val c = DriveController()
+        c.onCarConnection(true, 0)
+        c.onCarConnection(false, 100_000)
+        assertEquals(DriveCommand.Stop, c.onTick(110_000)) // 10秒(既定)を過ぎて終わる
+        assertEquals(start, c.onCarConnection(true, 200_000)) // 休憩ではなく、新しい記録の開始
+    }
+
+    @Test
+    fun `手動で始めた記録の途中の接続の切れ・つながりは、休憩として記録しない`() {
+        val c = DriveController()
+        c.manualStart()
+        c.onCarConnection(true, 0)
+        c.onCarConnection(false, 1000)
+        assertNull(c.onCarConnection(true, 5000))
     }
 
     @Test
@@ -88,7 +106,7 @@ class DriveControllerTest {
         val c = DriveController(DriveSettings(disconnectGraceSec = 60))
         c.onCarConnection(true, 0)
         c.onCarConnection(false, 10_000)
-        assertNull(c.onCarConnection(true, 30_000)) // 新しい記録は始めない(続行)
+        assertEquals(DriveCommand.BreakRecorded(10_000, 30_000), c.onCarConnection(true, 30_000)) // 新しい記録は始めない(続行)。切れていた間は休憩
         assertNull(c.pendingStopAtMs)
         assertNull(c.onTick(200_000))
         assertTrue(c.isRecording)
@@ -310,6 +328,25 @@ class DriveRecorderTest {
         assertFalse(r.onPoint(TrackPoint(now + 3000, 38.0, 137.0, hAcc = 5.0)))
         assertEquals(1, r.live()!!.points)
         assertEquals(35.0, r.live()!!.lastPoint!!.lat, 1e-9)
+    }
+
+    @Test
+    fun `Android Autoの休憩を記録すると、概要のcarBreaksに保存される`() {
+        val r = recorder()
+        r.start(Trigger.ANDROID_AUTO)
+        for (i in 0..60) r.onPoint(p(i))
+        r.addBreak(now + 5_000, now + 8_000)
+        val s = r.finish(minDistanceM = 300)!!
+        assertEquals(listOf(CarBreakSpan(now + 5_000, now + 8_000)), s.carBreaks)
+    }
+
+    @Test
+    fun `記録中でなければAndroid Autoの休憩は記録しない`() {
+        val r = recorder()
+        r.addBreak(now, now + 1000) // まだ記録を始めていない
+        r.start(Trigger.MANUAL)
+        for (i in 0..60) r.onPoint(p(i))
+        assertTrue(r.finish(minDistanceM = 300)!!.carBreaks.isEmpty())
     }
 
     @Test
