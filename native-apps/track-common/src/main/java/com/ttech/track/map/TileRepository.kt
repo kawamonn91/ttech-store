@@ -59,9 +59,9 @@ class TileBytesCache(
     private fun staleOrNull(f: File): ByteArray? = if (f.exists() && f.length() > 0) runCatching { f.readBytes() }.getOrNull() else null
 }
 
-/** 地図タイルをビットマップにして、メモリにも持つ */
-class TileRepository(private val bytes: TileBytesCache) {
-    private val memory = object : LruCache<String, Bitmap>(128) {}
+/** 地図タイルをビットマップにして、メモリにも持つ。[memoryTiles] は、メモリに持つ枚数(1枚は256px四方) */
+class TileRepository(private val bytes: TileBytesCache, memoryTiles: Int = 128) {
+    private val memory = object : LruCache<String, Bitmap>(memoryTiles) {}
 
     private fun key(z: Int, x: Int, y: Int) = "$z/$x/$y"
 

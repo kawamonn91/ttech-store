@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: 曲がり角の矢印(いま曲がる方向)と、その先に続く2つの点(もう一つ先の案内)。青地に白。丸く切り抜かれても欠けないよう、中央の安全な範囲に収めている -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M40,78 L40,58 C40,50 44,46 52,46 L60,46" />
+    <path android:fillColor="#FFFFFF" android:pathData="M58,35 L73,46 L58,57 Z" />
+    <path android:fillColor="#B3FFFFFF" android:pathData="M79,46 a2.6,2.6 0 1,0 0.01,0 z" />
+    <path android:fillColor="#66FFFFFF" android:pathData="M86,46 a2.2,2.2 0 1,0 0.01,0 z" />
+</vector>
