@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.ttech.navi.domain.NaviJson
 import com.ttech.navi.domain.NaviSettings
 import com.ttech.navi.domain.Place
+import com.ttech.navi.domain.VehicleClass
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,7 @@ class SettingsStore(context: Context) {
         val rate = floatPreferencesKey("speech_rate")
         val headingUp = booleanPreferencesKey("heading_up")
         val mapDark = booleanPreferencesKey("map_dark")
+        val vehicleClass = stringPreferencesKey("vehicle_class")
     }
 
     private fun read(p: Preferences): NaviSettings {
@@ -41,6 +43,7 @@ class SettingsStore(context: Context) {
             speechRate = p[Keys.rate] ?: d.speechRate,
             headingUp = p[Keys.headingUp] ?: d.headingUp,
             mapDark = p[Keys.mapDark] ?: d.mapDark,
+            vehicleClass = p[Keys.vehicleClass]?.let { name -> VehicleClass.entries.find { it.name == name } } ?: d.vehicleClass,
         )
     }
 
@@ -57,6 +60,7 @@ class SettingsStore(context: Context) {
             p[Keys.rate] = next.speechRate
             p[Keys.headingUp] = next.headingUp
             p[Keys.mapDark] = next.mapDark
+            p[Keys.vehicleClass] = next.vehicleClass.name
         }
     }
 }

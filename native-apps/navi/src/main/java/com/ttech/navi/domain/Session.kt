@@ -16,6 +16,8 @@ data class NaviSettings(
     /** 進行方向が上になるように、地図を回す */
     val headingUp: Boolean = true,
     val mapDark: Boolean = false,
+    /** 自分の車の車格(高速道路の通行料金の目安の計算に使う) */
+    val vehicleClass: VehicleClass = VehicleClass.Standard,
 ) {
     companion object {
         val SPEECH_RATES = listOf(0.8f, 1.0f, 1.2f, 1.4f)

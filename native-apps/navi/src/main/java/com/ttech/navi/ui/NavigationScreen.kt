@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import com.ttech.navi.NaviContainer
 import com.ttech.navi.domain.NaviSettings
 import com.ttech.navi.domain.Phrases
+import com.ttech.navi.domain.TollEstimate
+import com.ttech.navi.domain.VehicleClass
 import com.ttech.navi.nav.NavService
 import com.ttech.navi.nav.NavState
 import com.ttech.navi.nav.NavView
@@ -98,6 +100,7 @@ fun NavigationScreen(container: NaviContainer, view: NavView) {
         TripPanel(
             view = view,
             voiceOn = settings.voice,
+            vehicleClass = settings.vehicleClass,
             onToggleVoice = { scope.launch { container.settings.update { it.copy(voice = !it.voice) } } },
             onEnd = { if (view.arrival != null) NavService.stop(context) else confirmEnd = true },
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -182,7 +185,14 @@ private fun StatusChip(text: String, error: Boolean = false) {
 
 /** 残りの距離・時間・到着予定と、音声のオン・オフ、案内の終了 */
 @Composable
-private fun TripPanel(view: NavView, voiceOn: Boolean, onToggleVoice: () -> Unit, onEnd: () -> Unit, modifier: Modifier = Modifier) {
+private fun TripPanel(
+    view: NavView,
+    voiceOn: Boolean,
+    vehicleClass: VehicleClass,
+    onToggleVoice: () -> Unit,
+    onEnd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -195,6 +205,13 @@ private fun TripPanel(view: NavView, voiceOn: Boolean, onToggleVoice: () -> Unit
                 StatTile("時間", Phrases.duration(view.remainingS))
                 StatTile("到着", view.etaMs?.let { clockText(it) } ?: "-")
                 StatTile("速度", "${(view.speedKmh ?: 0.0).toInt()} km/h")
+            }
+            if (view.route.tollDistanceM >= 500.0) {
+                Text(
+                    "通行料金の目安: 約${TollEstimate.estimate(view.route.tollDistanceM, vehicleClass)}円",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             view.regionText?.let { Text("現在地: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             view.lastSpoken?.let {

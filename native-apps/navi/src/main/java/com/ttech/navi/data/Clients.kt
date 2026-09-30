@@ -7,6 +7,7 @@ import com.ttech.navi.domain.OpenMeteoParser
 import com.ttech.navi.domain.OsrmParser
 import com.ttech.navi.domain.Place
 import com.ttech.navi.domain.Route
+import com.ttech.navi.domain.RouteChooser
 import com.ttech.track.domain.GeoMath
 import com.ttech.track.domain.LatLon
 import java.net.URLEncoder
@@ -27,14 +28,22 @@ import kotlinx.serialization.json.jsonPrimitive
 private fun enc(s: String): String = URLEncoder.encode(s, "UTF-8")
 private fun num(v: Double): String = String.format(Locale.US, "%.6f", v)
 
-/** 経路検索(OSRM の公開サーバー。軽い利用向けなので、ルートを引くとき・引き直すときだけ呼ぶ) */
+/**
+ * 経路検索(OSRM の公開サーバー。軽い利用向けなので、ルートを引くとき・引き直すときだけ呼ぶ)。
+ * 公開サーバーは有料道路を避ける指定(exclude)を受け付けないので、代わりに候補(alternatives)を
+ * いくつか取り、その中から選ぶ形にする([RouteChooser]・目的地確認画面での選択)。
+ */
 class OsrmClient(private val http: NaviHttp, private val baseUrl: String = "https://router.project-osrm.org") {
-    suspend fun route(from: LatLon, to: LatLon): Route {
-        val url = "$baseUrl/route/v1/driving/${num(from.lon)},${num(from.lat)};${num(to.lon)},${num(to.lat)}?overview=full&geometries=geojson&steps=true"
+    /** 経路をひとつ選んで返す(再検索・車の画面からの開始など、選ぶ画面が無いときに使う) */
+    suspend fun route(from: LatLon, to: LatLon): Route = RouteChooser.pickDefault(routes(from, to))
+
+    /** 経路の候補をすべて返す(目的地確認画面で、有料道路の有無・進入方向を選べるようにするため) */
+    suspend fun routes(from: LatLon, to: LatLon): List<Route> {
+        val url = "$baseUrl/route/v1/driving/${num(from.lon)},${num(from.lat)};${num(to.lon)},${num(to.lat)}?overview=full&geometries=geojson&steps=true&alternatives=true"
         val r = http.get(url)
         // ルート無し(NoRoute など)は 400 と本文で返ってくるので、本文を解釈して分かりやすい文言にする
         if (!r.ok && r.body.isBlank()) throw NaviException("ルートを取得できませんでした(${r.status})")
-        return withContext(Dispatchers.Default) { OsrmParser.parse(r.body) }
+        return withContext(Dispatchers.Default) { OsrmParser.parseAll(r.body) }
     }
 }
 

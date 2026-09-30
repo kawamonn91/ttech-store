@@ -15,7 +15,11 @@ object OsrmParser {
     /** ルートの折れ線から、この距離(m)以上はなれた場所は、曲がり角の位置として信用せず、道のりの積み上げで求める */
     private const val SNAP_TRUST_M = 40.0
 
-    fun parse(text: String): Route {
+    /** 最初の(OSRMがいちばん良いと判断した)経路だけを取り出す */
+    fun parse(text: String): Route = parseAll(text).first()
+
+    /** OSRMが返した経路の候補すべて(alternatives=trueのとき複数)を取り出す */
+    fun parseAll(text: String): List<Route> {
         val root = try {
             NaviJson.parseToJsonElement(text).jsonObject
         } catch (e: Exception) {
@@ -23,8 +27,12 @@ object OsrmParser {
         }
         val code = root["code"]?.jsonPrimitive?.contentOrNull
         if (code != "Ok") throw NaviException(errorMessage(code))
-        val route = root["routes"]?.jsonArray?.firstOrNull()?.jsonObject ?: throw NaviException("ルートが見つかりませんでした")
+        val routes = root["routes"]?.jsonArray?.map { it.jsonObject }.orEmpty()
+        if (routes.isEmpty()) throw NaviException("ルートが見つかりませんでした")
+        return routes.map(::parseOne)
+    }
 
+    private fun parseOne(route: JsonObject): Route {
         val coordinates = route["geometry"]?.jsonObject?.get("coordinates")?.jsonArray ?: throw NaviException("ルートの形が取得できませんでした")
         val points = ArrayList<LatLon>(coordinates.size)
         for (c in coordinates) {
@@ -48,6 +56,14 @@ object OsrmParser {
             acc += rawLengths[i] * scale
         }
         val durations = DoubleArray(steps.size) { steps[it]["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0 }
+
+        // 高速道路(の目安)を通る区間の距離を合計する(道のりは、折れ線の長さに合わせた按分後の値で数える)
+        var tollDistanceM = 0.0
+        for (i in steps.indices) {
+            val ref = steps[i]["ref"]?.jsonPrimitive?.contentOrNull
+            val name = steps[i]["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            if (isTollRoad(ref, name)) tollDistanceM += rawLengths[i] * scale
+        }
 
         val maneuvers = ArrayList<Maneuver>()
         var searchFrom = 0
@@ -78,7 +94,7 @@ object OsrmParser {
         }
 
         val durationS = route["duration"]?.jsonPrimitive?.doubleOrNull ?: durations.sum()
-        return Route(line, maneuvers, stepStarts, durations, distanceM = line.lengthM, durationS = durationS)
+        return Route(line, maneuvers, stepStarts, durations, distanceM = line.lengthM, durationS = durationS, tollDistanceM = tollDistanceM)
     }
 
     private fun JsonElement.double(): Double = jsonPrimitive.doubleOrNull ?: throw NaviException("ルートの座標を読み取れませんでした")

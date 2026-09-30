@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.ttech.navi.NaviContainer
 import com.ttech.navi.domain.NaviSettings
+import com.ttech.navi.domain.VehicleClass
 import com.ttech.navi.nav.Speaker
 import kotlinx.coroutines.launch
 
@@ -79,6 +80,26 @@ fun SettingsScreen(container: NaviContainer, onBack: () -> Unit) {
             SwitchCard("出発時に天気を案内する", "到着予定時刻と、目的地・道中の天気の予報を、ナビの開始時に読み上げます", settings.weatherBriefing) { on -> update { it.copy(weatherBriefing = on) } }
             SwitchCard("県・市区町村に入ったら案内する", "「宮城県、白石市に入りました」のように、境界をまたいだときにお知らせします", settings.regionAnnouncements) { on -> update { it.copy(regionAnnouncements = on) } }
             SwitchCard("進行方向を上にして地図を回す", "オフにすると、常に北が上になります", settings.headingUp) { on -> update { it.copy(headingUp = on) } }
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("車の車格", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "目的地確認画面で見積もる、高速道路の通行料金に使います",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        VehicleClass.entries.forEach { vc ->
+                            FilterChip(
+                                selected = settings.vehicleClass == vc,
+                                onClick = { update { it.copy(vehicleClass = vc) } },
+                                label = { Text(vc.label) },
+                            )
+                        }
+                    }
+                }
+            }
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
