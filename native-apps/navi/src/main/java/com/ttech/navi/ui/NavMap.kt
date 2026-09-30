@@ -1,5 +1,6 @@
 package com.ttech.navi.ui
 
+import android.graphics.Bitmap
 import android.graphics.Canvas as NativeCanvas
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
@@ -25,6 +26,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import com.ttech.navi.nav.NavView
 import com.ttech.track.domain.GeoMath
+import com.ttech.track.domain.LatLon
 import com.ttech.track.domain.MapStyle
 import com.ttech.track.domain.MapViewport
 import com.ttech.track.domain.RouteSegments
@@ -114,21 +116,42 @@ fun NavMap(view: NavView, tiles: TileRepository, headingUp: Boolean, dark: Boole
     Canvas(modifier.fillMaxSize().clipToBounds().onSizeChanged { size = it }) {
         @Suppress("UNUSED_EXPRESSION") tileVersion // タイルが届くたびに描き直す
         drawIntoCanvas { canvas ->
-            val c = canvas.nativeCanvas
-            MapPainter.drawBackground(c, style)
             val vp = viewport ?: return@drawIntoCanvas
-            c.save()
-            c.translate(w / 2f, carY)
-            c.rotate(-rotation)
-            c.translate(-vp.widthPx / 2f, -vp.heightPx / 2f)
-            MapPainter.drawTiles(c, vp, style) { z, x, y -> tiles.cached(z, x, y) }
-            MapPainter.drawRoute(c, vp, remaining, NaviRouteStyle, density)
-            MapPainter.drawMarkers(c, vp, null, view.route.destination, density)
-            c.restore()
-            drawCar(c, w / 2f, carY, if (headingUp) 0f else animatedHeading, density)
-            MapPainter.drawAttribution(c, w, h, density, style)
+            drawNavFrame(canvas.nativeCanvas, w, h, vp, carY, rotation, headingUp, animatedHeading, style, remaining, view.route.destination, density, tiles::cached)
         }
     }
+}
+
+/**
+ * 地図の1コマを描く。電話の画面(Composeの[NavMap])と、車の画面([com.ttech.navi.car.CarMapRenderer])の
+ * どちらも、この同じ関数で描くので見た目が一致する。[carY] は、車(=画面の中心)を置く縦位置(px)
+ */
+internal fun drawNavFrame(
+    c: NativeCanvas,
+    w: Int,
+    h: Int,
+    vp: MapViewport,
+    carY: Float,
+    rotation: Float,
+    headingUp: Boolean,
+    carHeadingDeg: Float,
+    style: MapStyle,
+    remaining: RouteSegments,
+    destination: LatLon,
+    density: Float,
+    tile: (z: Int, x: Int, y: Int) -> Bitmap?,
+) {
+    MapPainter.drawBackground(c, style)
+    c.save()
+    c.translate(w / 2f, carY)
+    c.rotate(-rotation)
+    c.translate(-vp.widthPx / 2f, -vp.heightPx / 2f)
+    MapPainter.drawTiles(c, vp, style, tile)
+    MapPainter.drawRoute(c, vp, remaining, NaviRouteStyle, density)
+    MapPainter.drawMarkers(c, vp, null, destination, density)
+    c.restore()
+    drawCar(c, w / 2f, carY, if (headingUp) 0f else carHeadingDeg, density)
+    MapPainter.drawAttribution(c, w, h, density, style)
 }
 
 /** 回転した画面に映るタイル(タイルの中心が、画面の周囲に1枚ぶんの余白を足した範囲に入るもの)。車に近い順 */
@@ -156,7 +179,7 @@ internal fun neededTiles(vp: MapViewport, w: Int, h: Int, carY: Float, rotationD
 }
 
 /** 車の位置の印(青い矢印。[headingDeg] は、上を0度とした向き) */
-private fun drawCar(c: NativeCanvas, x: Float, y: Float, headingDeg: Float, density: Float) {
+internal fun drawCar(c: NativeCanvas, x: Float, y: Float, headingDeg: Float, density: Float) {
     c.save()
     c.translate(x, y)
     c.rotate(headingDeg)

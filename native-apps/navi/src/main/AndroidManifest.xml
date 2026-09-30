@@ -26,6 +26,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Navi">
 
+        <meta-data android:name="androidx.car.app.minCarApiLevel" android:value="1" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,5 +44,19 @@
             android:name=".nav.NavService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!--
+            Android Auto(車の画面)にナビ画面を出す入り口。Google Playを通さない配布なので、
+            車のホスト側で「不明な発信元を許可」の設定をしないと車には出ない(実車・DHUどちらも共通)。
+        -->
+        <service
+            android:name=".car.NaviCarAppService"
+            android:exported="true"
+            android:foregroundServiceType="location">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.NAVIGATION" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

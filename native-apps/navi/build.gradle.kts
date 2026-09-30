@@ -19,8 +19,8 @@ android {
         applicationId = "com.ttech.navi"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -86,6 +86,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+
+    // Android Auto(車の画面)にナビ画面を出すため
+    implementation(libs.androidx.car.app)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
