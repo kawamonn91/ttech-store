@@ -57,5 +57,14 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- 待機のサービスが終わっていても、Android Auto への接続そのものをきっかけに立ち上げ直す -->
+        <receiver
+            android:name=".recording.CarConnectionReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.connection.action.CAR_CONNECTION_UPDATED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

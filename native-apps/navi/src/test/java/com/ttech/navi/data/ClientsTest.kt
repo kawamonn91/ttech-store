@@ -215,13 +215,42 @@ class HttpClientsTest {
     }
 
     @Test
-    fun `地名検索は、日本国内に絞り、現在地の周辺を優先する`() = runBlocking {
+    fun `地名検索は、日本国内に絞り、まず現在地の近くだけに絞り込んで探す`() = runBlocking {
+        server.enqueue(MockResponse.Builder().body("[]").build())
         server.enqueue(MockResponse.Builder().body("[]").build())
         NominatimClient(http, base(), RateLimiter(0)).search("仙台駅", LatLon(37.5, 139.9))
         val req = server.takeRequest()
         assertEquals("jp", req.url.queryParameter("countrycodes"))
         assertEquals("仙台駅", req.url.queryParameter("q"))
-        assertEquals("0", req.url.queryParameter("bounded"))
+        assertEquals("1", req.url.queryParameter("bounded")) // 最初は近くだけに絞り込む
         assertNotNull(req.url.queryParameter("viewbox"))
     }
+
+    @Test
+    fun `近くで見つからなければ、絞り込み無しで(全国から)探し直す`() = runBlocking {
+        server.enqueue(MockResponse.Builder().body("[]").build()) // 近く: 見つからない
+        server.enqueue(MockResponse.Builder().body(sendaiStationJson).build()) // 広く: 見つかる
+        val places = NominatimClient(http, base(), RateLimiter(0)).search("仙台駅", LatLon(37.5, 139.9))
+        assertEquals(1, places.size)
+
+        val first = server.takeRequest()
+        assertEquals("1", first.url.queryParameter("bounded"))
+        val second = server.takeRequest()
+        assertEquals("0", second.url.queryParameter("bounded")) // 2回目は絞り込み無し
+
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `現在地が無ければ、絞り込み(viewbox)無しで1回だけ探す`() = runBlocking {
+        server.enqueue(MockResponse.Builder().body("[]").build())
+        NominatimClient(http, base(), RateLimiter(0)).search("仙台駅", near = null)
+        val req = server.takeRequest()
+        assertNull(req.url.queryParameter("viewbox"))
+        assertEquals(1, server.requestCount)
+    }
+
+    private val sendaiStationJson = """
+        [{"lat":"38.2602","lon":"140.8827","display_name":"仙台駅, 青葉区, 仙台市, 宮城県, 日本","category":"railway","type":"station","name":"仙台"}]
+    """.trimIndent()
 }

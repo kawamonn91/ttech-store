@@ -119,15 +119,36 @@ class NominatimClient(
     private val baseUrl: String = "https://nominatim.openstreetmap.org",
     private val limiter: RateLimiter = RateLimiter(1_100),
 ) {
-    /** [near] があれば、その周辺(緯度経度で±2度)を優先して探す(絞り込みはしない) */
+    /**
+     * [near] があれば、まず近く(目安60km四方)だけに絞って探し、何も見つからなければ
+     * 広い範囲(±2度、絞り込みなし)で探し直す。
+     *
+     * コンビニ・チェーン店のように同じ名前の場所が全国にたくさんある検索語だと、絞り込み無し
+     * (bounded=0。周辺を「優先」するだけ)では、Nominatim 内部の重要度の順で、近さとは関係なく
+     * 選ばれてしまう(例: 「セブンイレブン」で検索すると、現在地と関係ない場所が上位に出ることがある)。
+     * 絞り込みあり(bounded=1)で先に近くだけを探すことで、これを避ける。
+     */
     suspend fun search(query: String, near: LatLon? = null): List<Place> {
-        val view = near?.let { "&viewbox=${num(it.lon - 2)},${num(it.lat + 2)},${num(it.lon + 2)},${num(it.lat - 2)}&bounded=0" }.orEmpty()
+        if (near != null) {
+            val nearby = searchOnce(query, box(near, NEARBY_DEG, bounded = true))
+            if (nearby.isNotEmpty()) return nearby
+        }
+        return searchOnce(query, near?.let { box(it, WIDE_DEG, bounded = false) }.orEmpty())
+    }
+
+    private suspend fun searchOnce(query: String, view: String): List<Place> {
         val url = "$baseUrl/search?q=${enc(query)}&format=jsonv2&countrycodes=jp&accept-language=ja&limit=8$view"
         val text = limiter.run { http.getOk(url, "地名の検索結果") }
         return parse(text)
     }
 
+    private fun box(near: LatLon, deg: Double, bounded: Boolean): String =
+        "&viewbox=${num(near.lon - deg)},${num(near.lat + deg)},${num(near.lon + deg)},${num(near.lat - deg)}&bounded=${if (bounded) 1 else 0}"
+
     companion object {
+        /** 「近く」とみなす範囲(度)。緯度1度は約111kmなので、だいたい60km四方 */
+        private const val NEARBY_DEG = 0.27
+        private const val WIDE_DEG = 2.0
         fun parse(text: String): List<Place> {
             val array = runCatching { NaviJson.parseToJsonElement(text) as? JsonArray }.getOrNull() ?: return emptyList()
             return array.mapNotNull { e ->

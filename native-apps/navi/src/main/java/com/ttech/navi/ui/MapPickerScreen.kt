@@ -13,11 +13,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,10 +63,34 @@ import kotlinx.coroutines.launch
 fun MapPickerScreen(container: NaviContainer, onPicked: (Place) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val density = LocalDensity.current.density
+    val scope = rememberCoroutineScope()
+    val perm by rememberPermState()
     var size by remember { mutableStateOf(IntSize.Zero) }
     var viewport by remember { mutableStateOf<MapViewport?>(null) }
     var tileVersion by remember { mutableIntStateOf(0) }
     var label by remember { mutableStateOf<String?>(null) }
+    var locating by remember { mutableStateOf(false) }
+
+    fun locateMe() {
+        locating = true
+        scope.launch {
+            try {
+                val here = CurrentLocation.get(context)
+                if (here != null) {
+                    val current = viewport
+                    viewport = if (current != null) {
+                        current.copy(centerLat = here.lat, centerLon = here.lon, zoom = current.zoom.coerceAtLeast(15.0))
+                    } else {
+                        MapViewport(here.lat, here.lon, 15.0, size.width, size.height, density.toDouble())
+                    }
+                }
+            } finally {
+                locating = false
+            }
+        }
+    }
+
+    val actions = rememberPermissionActions(onResult = { locateMe() })
 
     // 最初は、いまの場所(なければ日本全体)を映す。画面の大きさが変わったら、それに合わせる
     LaunchedEffect(size) {
@@ -150,6 +179,15 @@ fun MapPickerScreen(container: NaviContainer, onPicked: (Place) -> Unit, onBack:
             title = { Text("地図で目的地を選ぶ") },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "戻る") } },
         )
+
+        FloatingActionButton(
+            onClick = {
+                if (!perm.location) actions.requestLocation() else locateMe()
+            },
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 80.dp, end = 16.dp),
+        ) {
+            if (locating) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) else Icon(Icons.Filled.MyLocation, contentDescription = "現在地に戻す")
+        }
 
         Card(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
