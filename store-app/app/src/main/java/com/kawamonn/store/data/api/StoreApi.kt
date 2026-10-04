@@ -30,7 +30,7 @@ interface StoreApi {
 class HttpStoreApi(
     private val client: OkHttpClient,
     baseUrl: String,
-    private val authToken: () -> String? = { null },
+    private val authToken: suspend () -> String? = { null },
 ) : StoreApi {
     private val base: HttpUrl = baseUrl.trimEnd('/').plus("/").toHttpUrl()
     private val json = Json {

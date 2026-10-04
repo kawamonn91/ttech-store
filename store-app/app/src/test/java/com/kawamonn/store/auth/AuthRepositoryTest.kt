@@ -17,6 +17,11 @@ private fun sessionData(accessToken: String, refreshToken: String = "rt") = Auth
     user = AuthUser(id = "u1", email = "a@example.com"),
 )
 
+private fun jwtExpiringAt(expSeconds: Long): String {
+    val payload = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString("""{"exp":$expSeconds}""".toByteArray())
+    return "eyJhbGciOiJIUzI1NiJ9.$payload.signature"
+}
+
 /** 実際のREST通信をしない、テスト用の手作りFake(このプロジェクトの既存の方針: モックライブラリを増やさない) */
 private class FakeAuthApi : AuthApi {
     var passwordResult: Result<AuthSessionData> = Result.success(sessionData("at1"))
@@ -107,16 +112,42 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `currentAccessTokenは保存済みの値をそのまま返す`() {
-        val store = FakeAuthSession().apply { stored = AuthSession.Stored("at1", "rt", "u1", null) }
-        val repo = AuthRepository(FakeAuthApi(), store, scope)
-        assertEquals("at1", scope.runBlockingTest { repo.currentAccessToken() })
+    fun `期限に余裕があるトークンはそのまま返し、更新しない`() {
+        val fresh = jwtExpiringAt(System.currentTimeMillis() / 1000 + 3600)
+        val store = FakeAuthSession().apply { stored = AuthSession.Stored(fresh, "rt", "u1", null) }
+        val api = FakeAuthApi().apply { passwordResult = Result.success(sessionData("refreshed")) }
+        val repo = AuthRepository(api, store, scope)
+
+        assertEquals(fresh, scope.runBlockingTest { repo.ensureFreshToken() })
+        assertEquals(fresh, store.stored?.accessToken)
     }
 
     @Test
-    fun `未ログインならcurrentAccessTokenはnull`() {
+    fun `期限が切れたトークンは更新して、新しいトークンを保存する`() {
+        val expired = jwtExpiringAt(System.currentTimeMillis() / 1000 - 10)
+        val store = FakeAuthSession().apply { stored = AuthSession.Stored(expired, "rt", "u1", null) }
+        val api = FakeAuthApi().apply { passwordResult = Result.success(sessionData("refreshed")) }
+        val repo = AuthRepository(api, store, scope)
+
+        assertEquals("refreshed", scope.runBlockingTest { repo.ensureFreshToken() })
+        assertEquals("refreshed", store.stored?.accessToken)
+        assertEquals("refreshed", (repo.state.value as AuthState.SignedIn).accessToken)
+    }
+
+    @Test
+    fun `更新に失敗したら保存済みのトークンをそのまま返す`() {
+        val expired = jwtExpiringAt(System.currentTimeMillis() / 1000 - 10)
+        val store = FakeAuthSession().apply { stored = AuthSession.Stored(expired, "rt", "u1", null) }
+        val api = FakeAuthApi().apply { passwordResult = Result.failure(AuthApiException("network")) }
+        val repo = AuthRepository(api, store, scope)
+
+        assertEquals(expired, scope.runBlockingTest { repo.ensureFreshToken() })
+    }
+
+    @Test
+    fun `未ログインならensureFreshTokenはnull`() {
         val repo = AuthRepository(FakeAuthApi(), FakeAuthSession(), scope)
-        assertNull(scope.runBlockingTest { repo.currentAccessToken() })
+        assertNull(scope.runBlockingTest { repo.ensureFreshToken() })
     }
 
     @Test

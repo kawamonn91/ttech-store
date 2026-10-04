@@ -45,9 +45,7 @@ class AppContainer(private val app: Application) {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    val api: StoreApi = HttpStoreApi(http, BuildConfig.STORE_API_BASE) {
-        (authRepository.state.value as? com.kawamonn.store.auth.AuthState.SignedIn)?.accessToken
-    }
+    val api: StoreApi = HttpStoreApi(http, BuildConfig.STORE_API_BASE) { authRepository.ensureFreshToken() }
     val installedApps = InstalledApps(app)
     val updatePrefs = UpdatePrefs(app)
     val installEvents = MutableSharedFlow<InstallEvent>(extraBufferCapacity = 32)
@@ -79,8 +77,7 @@ class AppContainer(private val app: Application) {
      * Bearerトークン付きでそのAPIを呼ぶ。
      */
     suspend fun adminReleaseDecision(releaseId: String, action: String) {
-        val token = (authRepository.state.value as? com.kawamonn.store.auth.AuthState.SignedIn)?.accessToken
-            ?: throw IllegalStateException("ログインしてください")
+        val token = authRepository.ensureFreshToken() ?: throw IllegalStateException("ログインしてください")
         withContext(Dispatchers.IO) {
             val body = """{"action":"$action"}""".toRequestBody("application/json".toMediaType())
             val request = okhttp3.Request.Builder()
@@ -107,8 +104,7 @@ class AppContainer(private val app: Application) {
      * インストールは通常のアプリと同じ流れ(ダウンロード情報の取得だけ、管理者のトークンを付けて呼ぶ)。
      */
     suspend fun adminPrivateApps(): List<PrivateApp> {
-        val token = (authRepository.state.value as? com.kawamonn.store.auth.AuthState.SignedIn)?.accessToken
-            ?: throw IllegalStateException("ログインしてください")
+        val token = authRepository.ensureFreshToken() ?: throw IllegalStateException("ログインしてください")
         return withContext(Dispatchers.IO) {
             val request = okhttp3.Request.Builder()
                 .url("${BuildConfig.STORE_WEB_BASE}/api/admin/private-apps")

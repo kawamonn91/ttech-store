@@ -95,6 +95,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
     var totpBusy by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.userId, reloadTick) {
+        container.authRepository.ensureFreshToken()
         val postgrest = container.postgrest
         runCatching {
             val profileRows = postgrest.select("profiles", "id=eq.${state.userId}&select=role")

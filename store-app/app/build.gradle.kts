@@ -54,8 +54,8 @@ android {
         applicationId = "com.kawamonn.store"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.6.1"
+        versionCode = 9
+        versionName = "0.6.2"
 
         buildConfigField("String", "STORE_API_BASE", "\"$storeApiBase\"")
         buildConfigField("String", "STORE_WEB_BASE", "\"$storeWebBase\"")
