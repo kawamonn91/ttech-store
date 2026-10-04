@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getOverview, getUserDetail, listAllApps, listPrivateApps, listReports, listUsers } from "./admin-queries";
+import { getOverview, getUserDetail, listAllApps, listPendingReleases, listPrivateApps, listReports, listUsers } from "./admin-queries";
 import { ModerationError } from "./moderation";
 import { fakeSupabase } from "./testing/fake-supabase";
 
@@ -70,6 +70,37 @@ describe("listPrivateApps", () => {
     const fake = fakeSupabase({ results: { "apps.select": { data: [] } } });
     expect(await listPrivateApps(fake.client)).toEqual([]);
     expect(fake.callsTo("app_releases", "select")).toHaveLength(0);
+  });
+});
+
+describe("listPendingReleases", () => {
+  it("scanned・approved のリリースを、管理アプリ用の形にする", async () => {
+    const fake = fakeSupabase({
+      results: {
+        "app_releases.select": {
+          data: [
+            {
+              id: "r1", version_name: "1.2.0", status: "scanned", policy_verdict: "needs_review",
+              policy_findings: [{ code: "net.permission", severity: "review", category: "network", title: "通信につながる権限", detail: "", evidence: [] }],
+              app: { id: "a1", slug: "foo", name: "フー" },
+            },
+          ],
+        },
+      },
+    });
+    const items = await listPendingReleases(fake.client);
+    expect(items).toEqual([
+      {
+        id: "r1", versionName: "1.2.0", status: "scanned", policyVerdict: "needs_review",
+        policyFindings: [{ code: "net.permission", severity: "review", category: "network", title: "通信につながる権限", detail: "", evidence: [] }],
+        app: { id: "a1", slug: "foo", name: "フー" },
+      },
+    ]);
+  });
+
+  it("リリースが無ければ空", async () => {
+    const fake = fakeSupabase({ results: { "app_releases.select": { data: [] } } });
+    expect(await listPendingReleases(fake.client)).toEqual([]);
   });
 });
 

@@ -104,6 +104,26 @@ class AdminApiTest {
     }
 
     @Test
+    fun `承認待ちリリースの一覧と、公開・却下の決定`() = runBlocking {
+        server.enqueue(
+            json(
+                """{"items":[{"id":"r1","versionName":"1.2.0","status":"scanned","policyVerdict":"needs_review",
+                    "policyFindings":[{"title":"通信につながる権限"}],"app":{"id":"a1","slug":"foo","name":"フー"}}]}""",
+            ),
+        )
+        val list = api.pendingReleases()
+        assertEquals("/api/admin/releases", server.takeRequest().url.encodedPath)
+        assertEquals("フー", list[0].app?.name)
+        assertEquals("needs_review", list[0].policyVerdict)
+
+        server.enqueue(json("""{"ok":true}"""))
+        api.decideRelease("r1", "publish")
+        val req = server.takeRequest()
+        assertEquals("/api/admin/releases/r1/decision", req.url.encodedPath)
+        assertEquals("""{"action":"publish"}""", req.body!!.utf8())
+    }
+
+    @Test
     fun `日記の投稿の削除はDELETE`() = runBlocking {
         server.enqueue(json("""{"ok":true}"""))
         api.deleteDiaryEntry("e1")

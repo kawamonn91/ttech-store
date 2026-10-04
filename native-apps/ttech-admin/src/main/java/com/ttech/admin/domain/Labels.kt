@@ -59,6 +59,12 @@ object Labels {
         else -> code
     }
 
+    fun releaseStatus(code: String): String = when (code) {
+        "scanned" -> "承認待ち"
+        "approved" -> "非公開(承認済み)"
+        else -> code
+    }
+
     fun reviewStatus(code: String): String = if (code == "hidden") "非表示" else "表示中"
 
     /** 監査ログの操作名(例: "user.ban" → "ユーザーをBAN") */

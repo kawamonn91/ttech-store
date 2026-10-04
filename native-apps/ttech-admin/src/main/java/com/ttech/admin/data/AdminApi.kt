@@ -83,6 +83,14 @@ class AdminApi(
         send("POST", "api/admin/apps/$id/status", buildJsonObject { put("status", status) })
     }
 
+    /** 公開・公開停止の承認待ちリリース(他の開発者が申請したアプリを含む) */
+    suspend fun pendingReleases(): List<PendingRelease> = AdminJson.decodeFromString<PendingReleasesResponse>(get("api/admin/releases")).items
+
+    /** [action] は "publish"(公開する)・"reject"(却下する)・"unpublish"(公開停止する) */
+    suspend fun decideRelease(id: String, action: String) {
+        send("POST", "api/admin/releases/$id/decision", buildJsonObject { put("action", action) })
+    }
+
     suspend fun audit(): List<AuditRow> = AdminJson.decodeFromString<AuditResponse>(get("api/admin/audit")).items
 
     private suspend fun get(path: String, vararg query: Pair<String, String?>): String {

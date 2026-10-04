@@ -141,6 +141,20 @@ data class AppRow(
 
 @Serializable data class AppsResponse(val items: List<AppRow> = emptyList())
 
+@Serializable data class ReleaseApp(val id: String = "", val slug: String = "", val name: String = "")
+
+@Serializable
+data class PendingRelease(
+    val id: String,
+    val versionName: String? = null,
+    val status: String = "scanned",
+    val policyVerdict: String? = null,
+    val policyFindings: List<JsonObject> = emptyList(),
+    val app: ReleaseApp? = null,
+)
+
+@Serializable data class PendingReleasesResponse(val items: List<PendingRelease> = emptyList())
+
 @Serializable
 data class AuditRow(
     val id: Long,

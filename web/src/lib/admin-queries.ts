@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sanitizeQuery } from "./catalog";
 import { ModerationError } from "./moderation";
+import type { Finding } from "./policy";
 
 /**
  * 管理アプリ向けの読み取り。service_role のクライアントを渡して使う
@@ -417,6 +418,35 @@ export async function listAudit(svc: SupabaseClient, limit = 50): Promise<AuditR
     adminName: (r.admin_id && names.get(r.admin_id as string)) || "(削除済み)",
     detail: (r.detail as Record<string, unknown>) ?? {},
     createdAt: r.created_at as string,
+  }));
+}
+
+// ---------------------------------------------------------------- 承認待ちリリース
+
+export interface PendingReleaseDto {
+  id: string;
+  versionName: string | null;
+  status: string;
+  policyVerdict: string | null;
+  policyFindings: Finding[];
+  app: { id: string; slug: string; name: string } | null;
+}
+
+/** 公開の承認待ち(scanned)・公開停止の承認待ち(approved)のリリース。新しい順 */
+export async function listPendingReleases(svc: SupabaseClient): Promise<PendingReleaseDto[]> {
+  const { data, error } = await svc
+    .from("app_releases")
+    .select("id, version_name, status, policy_verdict, policy_findings, app:apps(id, slug, name)")
+    .in("status", ["scanned", "approved"])
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    versionName: (r.version_name as string | null) ?? null,
+    status: r.status as string,
+    policyVerdict: (r.policy_verdict as string | null) ?? null,
+    policyFindings: (r.policy_findings as Finding[] | null) ?? [],
+    app: Array.isArray(r.app) ? (r.app[0] ?? null) : (r.app ?? null),
   }));
 }
 

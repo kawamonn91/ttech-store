@@ -43,7 +43,7 @@ fun HomeScreen(onOpenReports: () -> Unit, onOpenUsers: () -> Unit, onOpenMore: (
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard("ダウンロード", o.downloads.total.toString(), "直近7日 +${o.downloads.last7d}", Modifier.weight(1f))
-                StatCard("承認待ちリリース", o.releases.pendingApproval.toString(), "アプリの公開待ち", Modifier.weight(1f))
+                StatCard("承認待ちリリース", o.releases.pendingApproval.toString(), "アプリの公開待ち", Modifier.weight(1f), onOpenMore)
             }
         }
     }
@@ -53,6 +53,7 @@ fun HomeScreen(onOpenReports: () -> Unit, onOpenUsers: () -> Unit, onOpenMore: (
 private fun AttentionCard(o: Overview, onOpenReports: () -> Unit, onOpenMore: () -> Unit) {
     val items = buildList {
         if (o.openReports > 0) add(Triple("未対応の報告が ${o.openReports} 件あります", DangerColor, onOpenReports))
+        if (o.releases.pendingApproval > 0) add(Triple("アプリのリリースが ${o.releases.pendingApproval} 件、承認待ちです", WarnColor, onOpenMore))
         if (o.developers.pending > 0) add(Triple("開発者の申請が ${o.developers.pending} 件、承認待ちです", WarnColor, onOpenMore))
     }
     Card(Modifier.fillMaxWidth()) {
