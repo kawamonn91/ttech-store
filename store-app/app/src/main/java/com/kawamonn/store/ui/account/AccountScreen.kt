@@ -82,6 +82,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
     var myApps by remember { mutableStateOf<List<MyApp>>(emptyList()) }
     var pending by remember { mutableStateOf<List<PendingRelease>>(emptyList()) }
     var privateApps by remember { mutableStateOf<List<com.kawamonn.store.PrivateApp>>(emptyList()) }
+    var privateAppsNeedsTotp by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var busyId by remember { mutableStateOf<String?>(null) }
     var reloadTick by remember { mutableStateOf(0) }
@@ -144,7 +145,22 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
         }.onFailure { error = it.message }
 
         // 管理者専用アプリ(公開カタログに出ないもの)。他の読み込みが失敗しても、ここは独立して試す
-        privateApps = if (role == "admin") runCatching { container.adminPrivateApps() }.getOrDefault(emptyList()) else emptyList()
+        privateAppsNeedsTotp = false
+        if (role == "admin") {
+            runCatching { container.adminPrivateApps() }
+                .onSuccess { privateApps = it }
+                .onFailure { e ->
+                    if (e is TotpRequiredException) {
+                        privateApps = emptyList()
+                        privateAppsNeedsTotp = true
+                    } else {
+                        privateApps = emptyList()
+                        error = e.message
+                    }
+                }
+        } else {
+            privateApps = emptyList()
+        }
     }
 
     fun decide(releaseId: String, action: String) {
@@ -214,7 +230,17 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
 
         if (role == "admin") {
             item { SectionTitle("管理者用アプリ") }
-            if (privateApps.isEmpty()) {
+            if (privateAppsNeedsTotp) {
+                item {
+                    Column(Modifier.padding(bottom = 12.dp)) {
+                        Text("2段階認証が必要です。", color = MaterialTheme.colorScheme.error)
+                        Button(
+                            onClick = { pendingRetry = null; totpPrompt = true },
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) { Text("認証する") }
+                    }
+                }
+            } else if (privateApps.isEmpty()) {
                 item { Text("管理者用のアプリはまだ公開されていません。", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp)) }
             }
             items(privateApps, key = { it.releaseId }) { app ->
@@ -314,7 +340,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
                                 .onSuccess {
                                     val retry = pendingRetry
                                     close()
-                                    if (retry != null) decide(retry.first, retry.second)
+                                    if (retry != null) decide(retry.first, retry.second) else reloadTick++
                                 }
                                 .onFailure { totpError = it.message }
                             totpBusy = false

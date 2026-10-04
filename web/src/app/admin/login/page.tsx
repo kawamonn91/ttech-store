@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { browserClient } from "@/lib/supabase-browser";
 
 type Step = "loading" | "password" | "totp";
@@ -20,8 +20,9 @@ async function needsStepUp(): Promise<boolean> {
   return aal?.currentLevel !== "aal2";
 }
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
+  const next = useSearchParams().get("next") || "/admin";
   const [step, setStep] = useState<Step>("loading");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,7 +49,7 @@ export default function AdminLoginPage() {
       setStep("totp");
       return;
     }
-    router.push("/admin");
+    router.push(next);
     router.refresh();
   }
 
@@ -70,7 +71,7 @@ export default function AdminLoginPage() {
       setError("確認コードが正しくありません");
       return;
     }
-    router.push("/admin");
+    router.push(next);
     router.refresh();
   }
 
@@ -125,5 +126,13 @@ export default function AdminLoginPage() {
         {busy ? "ログイン中…" : "ログイン"}
       </button>
     </form>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminLoginForm />
+    </Suspense>
   );
 }

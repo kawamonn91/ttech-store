@@ -24,6 +24,9 @@ export default async function AccountPage() {
   ]);
 
   const admin = await getAdminUser();
+  // role は admin だが、2段階認証(aal2)未達成でここでは null になっているケース。
+  // 管理メニューを黙って消すのではなく、認証すれば出ることを案内する
+  const needsStepUp = profile?.role === "admin" && !admin;
   const svc = serviceClient();
 
   let totpFactor: { id: string; status: string } | null = null;
@@ -145,6 +148,18 @@ export default async function AccountPage() {
       {admin && (
         <Section title="管理者用アプリ">
           <PrivateApps items={privateApps} />
+        </Section>
+      )}
+
+      {needsStepUp && (
+        <Section title="管理者メニュー">
+          <p className="text-sm text-muted">
+            2段階認証が必要です。{" "}
+            <Link href="/admin/login?next=/account" className="text-brand underline">
+              認証する
+            </Link>{" "}
+            と、承認待ちのリリースや管理者用アプリがここに表示されます。
+          </p>
         </Section>
       )}
 
