@@ -35,6 +35,9 @@ fun NaviApp(container: NaviContainer, debugPlace: MutableState<Place?>) {
     var picking by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var starting by remember { mutableStateOf(false) }
+    var startPlace by remember { mutableStateOf<Place?>(null) }
+    var pickingStart by remember { mutableStateOf(false) }
+    var pickingStartOnMap by remember { mutableStateOf(false) }
 
     // 開発用: adb から目的地を渡されたら、そのルートの確認画面を開く(デバッグビルドだけ)
     LaunchedEffect(debugPlace.value) {
@@ -53,10 +56,12 @@ fun NaviApp(container: NaviContainer, debugPlace: MutableState<Place?>) {
             starting = false
         }
     }
-    BackHandler(enabled = view == null && (preview != null || picking || showSettings)) {
+    BackHandler(enabled = view == null && (preview != null || picking || showSettings || pickingStart || pickingStartOnMap)) {
         when {
             showSettings -> showSettings = false
             picking -> picking = false
+            pickingStartOnMap -> pickingStartOnMap = false
+            pickingStart -> pickingStart = false
             else -> preview = null
         }
     }
@@ -72,10 +77,24 @@ fun NaviApp(container: NaviContainer, debugPlace: MutableState<Place?>) {
         }
         showSettings -> SettingsScreen(container, onBack = { showSettings = false })
         picking -> MapPickerScreen(container, onPicked = { preview = it; picking = false }, onBack = { picking = false })
+        pickingStartOnMap -> MapPickerScreen(
+            container,
+            onPicked = { startPlace = it; pickingStartOnMap = false; pickingStart = false },
+            onBack = { pickingStartOnMap = false },
+            title = "地図で出発地を選ぶ",
+            placeName = "地図で選んだ場所",
+            confirmLabel = "この場所を出発地にする",
+        )
+        pickingStart -> StartSearchScreen(
+            container,
+            onPicked = { startPlace = it; pickingStart = false },
+            onPickOnMap = { pickingStartOnMap = true },
+            onBack = { pickingStart = false },
+        )
         preview != null -> {
             val place = preview!!
             PreviewScreen(
-                container, place,
+                container, place, startPlace,
                 onBack = { preview = null },
                 onStart = { route, briefing, simulate ->
                     NavState.pending = PendingStart(route, place, briefing, simulate)
@@ -85,6 +104,12 @@ fun NaviApp(container: NaviContainer, debugPlace: MutableState<Place?>) {
                 },
             )
         }
-        else -> HomeScreen(container, onPick = { preview = it }, onPickOnMap = { picking = true }, onSettings = { showSettings = true })
+        else -> HomeScreen(
+            container, startPlace,
+            onPick = { preview = it },
+            onPickOnMap = { picking = true },
+            onPickStart = { pickingStart = true },
+            onSettings = { showSettings = true },
+        )
     }
 }

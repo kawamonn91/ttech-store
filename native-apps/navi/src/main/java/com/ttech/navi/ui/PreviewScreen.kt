@@ -65,6 +65,7 @@ import com.ttech.track.ui.RouteMapView
 fun PreviewScreen(
     container: NaviContainer,
     place: Place,
+    start: Place?,
     onBack: () -> Unit,
     onStart: (route: Route, briefing: List<String>?, simulateMps: Double?) -> Unit,
 ) {
@@ -82,15 +83,16 @@ fun PreviewScreen(
 
     // 経路の候補を取る(公開サーバーは「高速道路を使わない」の指定を受け付けないので、
     // 代わりに候補[alternatives]をいくつか取り、有料道路の有無・進入方向を選べるようにする)
-    LaunchedEffect(place, retry, perm.canNavigate) {
+    // 出発地を指定したときは、現在地の位置情報がなくても経路を調べられる
+    LaunchedEffect(place, start, retry, perm.canNavigate) {
         candidates = emptyList()
         selectedIndex = 0
         error = null
         briefing = null
         briefingError = null
-        if (!perm.canNavigate) return@LaunchedEffect
+        if (start == null && !perm.canNavigate) return@LaunchedEffect
         try {
-            val from = CurrentLocation.get(context) ?: throw NaviException("現在地を取得できませんでした。GPSを受信できる場所で、もう一度お試しください")
+            val from = start?.latLon ?: CurrentLocation.get(context) ?: throw NaviException("現在地を取得できませんでした。GPSを受信できる場所で、もう一度お試しください")
             departMs = System.currentTimeMillis()
             val list = container.osrm.routes(from, place.latLon)
             candidates = distinctCandidates(list)
@@ -125,7 +127,7 @@ fun PreviewScreen(
             Box(Modifier.fillMaxWidth().height(260.dp).background(Color(0xFFEEEDE9))) {
                 if (r != null) {
                     RouteMapView(RouteSegments(listOf(r.line.points), emptyList()), container.tiles, MapStyle.Light, NaviRouteStyle)
-                } else if (error == null && perm.canNavigate) {
+                } else if (error == null && (start != null || perm.canNavigate)) {
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
                 }
             }
@@ -133,7 +135,11 @@ fun PreviewScreen(
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (place.detail.isNotEmpty()) Text(place.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                if (!perm.canNavigate) {
+                if (start != null) {
+                    Text("出発地: ${start.name}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
+                if (start == null && !perm.canNavigate) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (!perm.location) {

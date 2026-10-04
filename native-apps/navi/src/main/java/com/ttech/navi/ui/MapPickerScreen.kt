@@ -57,10 +57,17 @@ import kotlin.math.log2
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** 地図を動かして、中心の印(ピン)の場所を目的地にする。検索で見つからない場所を選ぶときに使う */
+/** 地図を動かして、中心の印(ピン)の場所を選ぶ。検索で見つからない場所を選ぶときに使う(出発地・目的地どちらも) */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPickerScreen(container: NaviContainer, onPicked: (Place) -> Unit, onBack: () -> Unit) {
+fun MapPickerScreen(
+    container: NaviContainer,
+    onPicked: (Place) -> Unit,
+    onBack: () -> Unit,
+    title: String = "地図で目的地を選ぶ",
+    placeName: String = "地図で選んだ場所",
+    confirmLabel: String = "この場所を目的地にする",
+) {
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
@@ -176,7 +183,7 @@ fun MapPickerScreen(container: NaviContainer, onPicked: (Place) -> Unit, onBack:
         }
 
         TopAppBar(
-            title = { Text("地図で目的地を選ぶ") },
+            title = { Text(title) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "戻る") } },
         )
 
@@ -198,9 +205,9 @@ fun MapPickerScreen(container: NaviContainer, onPicked: (Place) -> Unit, onBack:
                     onClick = {
                         val v = vp ?: return@Button
                         val coords = String.format(Locale.US, "緯度 %.4f 経度 %.4f", v.centerLat, v.centerLon)
-                        onPicked(Place("地図で選んだ場所", label ?: coords, v.centerLat, v.centerLon))
+                        onPicked(Place(placeName, label ?: coords, v.centerLat, v.centerLon))
                     },
-                ) { Text("この場所を目的地にする") }
+                ) { Text(confirmLabel) }
             }
         }
     }

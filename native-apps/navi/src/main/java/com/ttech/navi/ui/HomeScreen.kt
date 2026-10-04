@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -37,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -55,7 +58,14 @@ private sealed interface SearchState {
 }
 
 @Composable
-fun HomeScreen(container: NaviContainer, onPick: (Place) -> Unit, onPickOnMap: () -> Unit, onSettings: () -> Unit) {
+fun HomeScreen(
+    container: NaviContainer,
+    start: Place?,
+    onPick: (Place) -> Unit,
+    onPickOnMap: () -> Unit,
+    onPickStart: () -> Unit,
+    onSettings: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val perm by rememberPermState()
@@ -63,10 +73,14 @@ fun HomeScreen(container: NaviContainer, onPick: (Place) -> Unit, onPickOnMap: (
     val recents by container.recents.places.collectAsState(initial = emptyList())
     var query by rememberSaveable { mutableStateOf("") }
     var state by remember { mutableStateOf<SearchState>(SearchState.Idle) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     fun search() {
         val q = query.trim()
         if (q.isEmpty()) return
+        keyboard?.hide()
+        focusManager.clearFocus()
         state = SearchState.Loading
         scope.launch {
             state = try {
@@ -109,13 +123,27 @@ fun HomeScreen(container: NaviContainer, onPick: (Place) -> Unit, onPickOnMap: (
         }
 
         item {
+            Card(Modifier.fillMaxWidth().clickable(onClick = onPickStart)) {
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.MyLocation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text("出発地", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(start?.name ?: "現在地", style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                    }
+                    Text("変更", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        item {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("目的地(駅名・施設名・住所)") },
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = {
+                    IconButton(onClick = ::search, enabled = query.isNotBlank()) { Icon(Icons.Filled.Search, contentDescription = "検索") }
+                },
                 trailingIcon = {
                     if (query.isNotEmpty()) IconButton(onClick = { query = ""; state = SearchState.Idle }) { Icon(Icons.Filled.Close, contentDescription = "消す") }
                 },
@@ -160,7 +188,7 @@ fun HomeScreen(container: NaviContainer, onPick: (Place) -> Unit, onPickOnMap: (
 }
 
 @Composable
-private fun PlaceRow(place: Place, onClick: () -> Unit, onRemove: (() -> Unit)? = null) {
+fun PlaceRow(place: Place, onClick: () -> Unit, onRemove: (() -> Unit)? = null) {
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
