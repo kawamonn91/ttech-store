@@ -75,8 +75,8 @@ fun BikeApp(container: BikeContainer, debugPlace: MutableState<Place?>) {
             PreviewScreen(
                 container, place,
                 onBack = { preview = null },
-                onStart = { route, briefing, simulate ->
-                    NavState.pending = PendingStart(route, place, briefing, simulate)
+                onStart = { route, briefing, weatherPlan, simulate ->
+                    NavState.pending = PendingStart(route, place, briefing, weatherPlan, simulate)
                     starting = true
                     preview = null
                     BikeNavService.start(context)

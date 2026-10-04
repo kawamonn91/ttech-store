@@ -54,10 +54,10 @@ data class ArrivalSummary(val distanceM: Double, val durationMs: Long) {
 }
 
 /** [NavSession.onFix] の結果 */
-data class SessionUpdate(val guidance: GuidanceUpdate, val arrival: ArrivalSummary?)
+data class SessionUpdate(val guidance: GuidanceUpdate, val arrival: ArrivalSummary?, val weatherAlert: String? = null)
 
 /** 1回のナビ(出発から到着まで)。ルート・案内・走行の記録をまとめる */
-class NavSession(route: Route, val destination: Place, val startMs: Long) {
+class NavSession(route: Route, val destination: Place, val startMs: Long, weatherPlan: WeatherPlan? = null) {
     var route: Route = route
         private set
     var engine = GuidanceEngine(route)
@@ -67,18 +67,21 @@ class NavSession(route: Route, val destination: Place, val startMs: Long) {
         private set
     var rerouteCount = 0
         private set
+    private var weatherAlert = weatherPlan?.let { WeatherAlertEngine(it.samples, it.weathers) }
 
     fun onFix(fix: Fix): SessionUpdate {
         trip.onFix(fix)
         val g = engine.update(fix)
         if (g.arrived && arrival == null) arrival = ArrivalSummary(trip.distanceM, trip.elapsedMs(fix.timeMs))
-        return SessionUpdate(g, arrival)
+        val alert = weatherAlert?.update(g.progressM)
+        return SessionUpdate(g, arrival, alert)
     }
 
-    /** ルートを引き直したとき。走った距離と時間は、そのまま続ける */
+    /** ルートを引き直したとき。走った距離と時間は、そのまま続ける。天気の地点は旧ルート基準のため、以後の声かけはやめる */
     fun reroute(newRoute: Route) {
         route = newRoute
         engine = GuidanceEngine(newRoute)
+        weatherAlert = null
         rerouteCount++
     }
 }

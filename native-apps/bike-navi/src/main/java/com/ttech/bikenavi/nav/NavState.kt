@@ -4,6 +4,7 @@ import com.ttech.bikenavi.domain.ArrivalSummary
 import com.ttech.bikenavi.domain.Maneuver
 import com.ttech.bikenavi.domain.Place
 import com.ttech.bikenavi.domain.Route
+import com.ttech.bikenavi.domain.WeatherPlan
 import com.ttech.track.domain.LatLon
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -13,6 +14,8 @@ data class PendingStart(
     val destination: Place,
     /** 画面で先に作った天気・補給スポットの案内の文。null なら、サービスが作る */
     val briefing: List<String>?,
+    /** 画面で先に調べた地点ごとの天気予報。案内中、天気が崩れそうな地点に近づいたら声で知らせるのに使う */
+    val weatherPlan: WeatherPlan? = null,
     /** デバッグ用: 実際に走らず、ルートの上を [simulateSpeedMps] m/秒で走ったことにする(null なら、GPSで案内する) */
     val simulateSpeedMps: Double? = null,
 )

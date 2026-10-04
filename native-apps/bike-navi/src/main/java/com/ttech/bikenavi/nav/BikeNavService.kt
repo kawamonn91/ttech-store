@@ -93,7 +93,7 @@ class BikeNavService : Service(), GpsTracker.Listener {
         NavState.notice.value = null
         simulated = BuildConfig.DEBUG && pending.simulateSpeedMps != null
         val startMs = System.currentTimeMillis()
-        val s = NavSession(pending.route, pending.destination, startMs)
+        val s = NavSession(pending.route, pending.destination, startMs, pending.weatherPlan)
         session = s
 
         scope.launch {
@@ -184,6 +184,7 @@ class BikeNavService : Service(), GpsTracker.Listener {
         lastFix = fix
         val update = s.onFix(fix)
         update.guidance.announcements.forEach { speak(it.text) }
+        if (settings.weatherBriefing) update.weatherAlert?.let { speak(it, ttlMs = 30_000) }
         if (BuildConfig.DEBUG && (update.guidance.announcements.isNotEmpty() || update.guidance.offRoute)) {
             val g = update.guidance
             Log.i(TAG, "位置=(%.5f,%.5f) 進み=%.0fm ルートから=%.0fm 次まで=%.0fm 案内=%s はずれ=%s".format(fix.lat, fix.lon, g.progressM, g.offsetM, g.distToNextM ?: -1.0, g.announcements.map { it.maneuverIndex }, g.offRoute))

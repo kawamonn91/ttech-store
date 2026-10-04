@@ -54,6 +54,8 @@ import com.ttech.bikenavi.domain.Phrases
 import com.ttech.bikenavi.domain.Place
 import com.ttech.bikenavi.domain.Route
 import com.ttech.bikenavi.domain.RouteStyle
+import com.ttech.bikenavi.domain.WeatherPlan
+import com.ttech.bikenavi.domain.WeatherPlanner
 import com.ttech.track.domain.MapStyle
 import com.ttech.track.domain.RouteSegments
 import com.ttech.track.ui.RouteMapView
@@ -66,7 +68,7 @@ fun PreviewScreen(
     container: BikeContainer,
     place: Place,
     onBack: () -> Unit,
-    onStart: (route: Route, briefing: List<String>?, simulateMps: Double?) -> Unit,
+    onStart: (route: Route, briefing: List<String>?, weatherPlan: WeatherPlan?, simulateMps: Double?) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -77,6 +79,7 @@ fun PreviewScreen(
     var route by remember { mutableStateOf<Route?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var weather by remember { mutableStateOf<List<String>?>(null) }
+    var weatherPlan by remember { mutableStateOf<WeatherPlan?>(null) }
     var weatherError by remember { mutableStateOf<String?>(null) }
     var supplyStops by remember { mutableStateOf<List<SupplyStop>?>(null) }
     var departMs by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -85,6 +88,7 @@ fun PreviewScreen(
         route = null
         error = null
         weather = null
+        weatherPlan = null
         weatherError = null
         supplyStops = null
         if (!perm.canNavigate) return@LaunchedEffect
@@ -95,7 +99,9 @@ fun PreviewScreen(
             route = r
             container.recents.add(place)
             try {
-                weather = container.briefing.weatherBriefing(r, departMs)
+                val plan = container.briefing.weatherPlan(r, departMs)
+                weatherPlan = plan
+                weather = WeatherPlanner.briefing(plan.samples, plan.weathers, plan.samples.map { null })
             } catch (e: BikeException) {
                 weatherError = e.message
             }
@@ -232,11 +238,11 @@ fun PreviewScreen(
 
         val r = route
         Column(Modifier.navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { r?.let { onStart(it, weather, null) } }, enabled = r != null && perm.canNavigate, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { r?.let { onStart(it, weather, weatherPlan, null) } }, enabled = r != null && perm.canNavigate, modifier = Modifier.fillMaxWidth()) {
                 Text("ナビを開始")
             }
             if (BuildConfig.DEBUG) {
-                OutlinedButton(onClick = { r?.let { onStart(it, weather, 5.0) } }, enabled = r != null, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { r?.let { onStart(it, weather, weatherPlan, 5.0) } }, enabled = r != null, modifier = Modifier.fillMaxWidth()) {
                     Text("デモ走行(開発用・時速18km・10倍速)")
                 }
             }
