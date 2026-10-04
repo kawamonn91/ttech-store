@@ -13,6 +13,7 @@ const APP_POLICIES = [
   { name: "ランニング記録", href: `${POLICY_BASE}/run-tracker-privacy-policy.html` },
   { name: "旅のしおり", href: `${POLICY_BASE}/trip-shiori-privacy-policy.html` },
   { name: "行きたい旅メモ", href: `${POLICY_BASE}/travel-wishlist-privacy-policy.html` },
+  { name: "自転車ナビ", href: `${POLICY_BASE}/bike-navi-privacy-policy.html` },
 ];
 
 export default function PrivacyPage() {
