@@ -32,6 +32,18 @@ export default async function HomePage() {
         </Link>
       </div>
 
+      <Section title="Windows 版ツール">
+        <Link
+          href="/tools/pdf-ja"
+          className="block rounded-2xl border border-border bg-surface p-5 hover:border-brand"
+        >
+          <p className="font-bold">PDF・PowerPoint 日本語化ツール</p>
+          <p className="mt-1 text-sm text-muted">
+            英語の PDF・PowerPoint を、見た目を保ったまま日本語に。はみ出しは自動で調整し、手で直すこともできます。
+          </p>
+        </Link>
+      </Section>
+
       {empty && <p className="text-muted">公開中のアプリはまだありません。</p>}
       {featured.length > 0 && (
         <Section title="おすすめ">
