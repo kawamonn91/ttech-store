@@ -23,8 +23,8 @@ export default function PdfJaToolPage() {
 
       <h2 className="mb-2 text-lg font-bold">はじめかた</h2>
       <ol className="mb-8 list-decimal space-y-2 pl-5">
-        <li>ダウンロードした zip を開き、中の「PDF-JA-Translator」フォルダを好きな場所に展開します。</li>
-        <li>「PDF-JA-Translator.exe」を起動し、「APIキー登録」を押します。画面の手順に沿って、Claude API キーを登録してください。</li>
+        <li>ダウンロードした zip を展開し、「PDF-JA-Translator」フォルダを好きな場所に置きます。</li>
+        <li>フォルダの中の「start.bat」をダブルクリックして起動し、「APIキー登録」を押します。画面の手順に沿って、Claude API キーを登録してください。</li>
         <li>「開く」で PDF または PowerPoint を選び、「すべて翻訳」を押します。</li>
         <li>確認して直したい箇所は、一覧から選んで文字サイズ・位置・訳文を調整します。</li>
         <li>「日本語版を保存」で、日本語版のファイルを書き出します。</li>
