@@ -72,7 +72,9 @@ class ValhallaClient(private val http: NaviHttp, private val baseUrl: String = "
                 }
             }
             put("costing", "auto")
-            putJsonObject("costing_options") { putJsonObject("auto") { put("use_tolls", 0) } }
+            // use_tolls だけでは、遠方のルートは高速道路を使ったまま返ることがある(実際に東京発で確認)。
+            // use_highways も0にして、高速道路を避けきれる経路を求める
+            putJsonObject("costing_options") { putJsonObject("auto") { put("use_tolls", 0); put("use_highways", 0) } }
             putJsonObject("directions_options") {
                 put("units", "km")
                 put("language", "ja-JP")

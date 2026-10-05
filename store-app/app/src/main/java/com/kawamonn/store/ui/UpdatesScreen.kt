@@ -43,9 +43,13 @@ fun UpdatesScreen(onOpenApp: (slug: String) -> Unit, contentPadding: PaddingValu
     val state by vm.state.collectAsState()
     val tick by container.installController.installedTick.collectAsState()
 
-    // 画面に戻るたびにインストール状況を取り直す(設定アプリで更新・削除された場合に備える)
+    // 画面に戻るたびに、一覧(カタログ)とインストール状況を取り直す。
+    // 一覧は ViewModel が最初に1回だけ読むので、戻ったときに読み直さないと、アプリを開いたあとに
+    // 公開された更新が出てこない(詳細ページは毎回読むので、そちらだけ更新ボタンが出る)。
+    // 最初の表示は ViewModel の初期化で読み込み済みなので、2回目以降だけ読み直す
     var resumeCount by remember { mutableStateOf(0) }
     LifecycleResumeEffect(Unit) {
+        if (resumeCount > 0) vm.load()
         resumeCount++
         onPauseOrDispose {}
     }
