@@ -131,6 +131,8 @@ class Route(
     val durationS: Double,
     /** ルートのうち、有料の高速道路・自動車専用道路(の目安)を通る距離(m)。通らなければ0 */
     val tollDistanceM: Double = 0.0,
+    /** 高速道路・有料道路を使わないように求めた経路(一般道のみ) */
+    val tollFree: Boolean = false,
 ) {
     /** 出発してから、道のり [progressM] に着くまでの見積もり時間(秒) */
     fun timeAtM(progressM: Double): Double {

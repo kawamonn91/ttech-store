@@ -95,7 +95,9 @@ fun PreviewScreen(
             val from = start?.latLon ?: CurrentLocation.get(context) ?: throw NaviException("現在地を取得できませんでした。GPSを受信できる場所で、もう一度お試しください")
             departMs = System.currentTimeMillis()
             val list = container.osrm.routes(from, place.latLon)
-            candidates = distinctCandidates(list)
+            // 高速道路・有料道路を使わない経路も選べるように加える(別のサービスで求める。求められなければ出さない)
+            val tollFree = container.valhalla.tollFreeRoute(from, place.latLon)
+            candidates = distinctCandidates(list + listOfNotNull(tollFree))
             selectedIndex = candidates.indexOf(RouteChooser.pickDefault(candidates)).coerceAtLeast(0)
             container.recents.add(place)
         } catch (e: NaviException) {
@@ -223,6 +225,10 @@ private fun distinctCandidates(routes: List<Route>): List<Route> {
     val seen = HashSet<Triple<Long, Boolean, String?>>()
     val out = ArrayList<Route>()
     for (r in routes) {
+        if (r.tollFree) {
+            out.add(r)
+            continue
+        }
         val key = Triple((r.distanceM / 200).toLong(), r.tollDistanceM >= 500.0, r.maneuvers.lastOrNull()?.modifier)
         if (seen.add(key)) out.add(r)
     }
@@ -245,10 +251,10 @@ private fun RouteOptionCard(route: Route, index: Int, selected: Boolean, vehicle
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                if (route.tollDistanceM >= 500.0) {
-                    "・高速道路を使います(通行料金の目安 約${TollEstimate.estimate(route.tollDistanceM, vehicleClass)}円)"
-                } else {
-                    "・高速道路を使いません"
+                when {
+                    route.tollFree -> "・有料の高速道路を使いません(一般道のみ・時間は長くなります)"
+                    route.tollDistanceM >= 500.0 -> "・高速道路を使います(通行料金の目安 約${TollEstimate.estimate(route.tollDistanceM, vehicleClass)}円)"
+                    else -> "・高速道路を使いません"
                 },
                 style = MaterialTheme.typography.bodySmall,
             )

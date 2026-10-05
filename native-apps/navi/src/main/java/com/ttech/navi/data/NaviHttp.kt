@@ -7,8 +7,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /** 応答。エラーの応答も、本文(OSRM は、ルート無しを 400 と本文で返す)を読めるように、そのまま返す */
 data class HttpText(val status: Int, val body: String) {
@@ -31,6 +33,17 @@ open class NaviHttp(private val client: OkHttpClient, private val userAgent: Str
             }
         } catch (e: NaviException) {
             throw e
+        } catch (e: IOException) {
+            throw NaviException("通信に失敗しました。ネットワーク接続を確認してください", e)
+        }
+    }
+
+    /** JSON を送る(POST)。経路の検索で使う。応答の扱いは [get] と同じ(エラーの本文も読めるように返す) */
+    open suspend fun postJson(url: String, json: String): HttpText = withContext(Dispatchers.IO) {
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder().url(url).post(body).header("User-Agent", userAgent).header("Accept-Language", "ja").build()
+        try {
+            client.newCall(request).execute().use { response -> HttpText(response.code, response.body.string()) }
         } catch (e: IOException) {
             throw NaviException("通信に失敗しました。ネットワーク接続を確認してください", e)
         }

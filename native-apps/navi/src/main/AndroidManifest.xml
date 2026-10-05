@@ -15,6 +15,9 @@
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- 車の画面(Android Auto)でナビの画面(地図・案内)を出すための権限。宣言が無いと、車のホストに候補として出ない -->
+    <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
+
     <!-- 目的地・現在地・走行の情報は、端末のバックアップ(クラウド・ADB)には含めない -->
     <application
         android:name=".NaviApplication"

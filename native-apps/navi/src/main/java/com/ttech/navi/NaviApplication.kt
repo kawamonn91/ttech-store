@@ -8,6 +8,7 @@ import com.ttech.navi.data.NaviHttp
 import com.ttech.navi.data.NominatimClient
 import com.ttech.navi.data.OpenMeteoClient
 import com.ttech.navi.data.OsrmClient
+import com.ttech.navi.data.ValhallaClient
 import com.ttech.navi.data.PlaceSearch
 import com.ttech.navi.data.RecentPlaces
 import com.ttech.navi.data.SettingsStore
@@ -42,6 +43,7 @@ class NaviContainer(context: Context) {
     private val naviHttp = NaviHttp(http, userAgent)
 
     val osrm = OsrmClient(naviHttp)
+    val valhalla = ValhallaClient(naviHttp)
     val meteo = OpenMeteoClient(naviHttp)
     val gsi = GsiClient(naviHttp)
     val search = PlaceSearch(NominatimClient(naviHttp), gsi)

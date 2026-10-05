@@ -8,6 +8,7 @@ import com.ttech.navi.domain.OsrmParser
 import com.ttech.navi.domain.Place
 import com.ttech.navi.domain.Route
 import com.ttech.navi.domain.RouteChooser
+import com.ttech.navi.domain.ValhallaParser
 import com.ttech.track.domain.GeoMath
 import com.ttech.track.domain.LatLon
 import java.net.URLEncoder
@@ -19,6 +20,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
@@ -44,6 +50,41 @@ class OsrmClient(private val http: NaviHttp, private val baseUrl: String = "http
         // ルート無し(NoRoute など)は 400 と本文で返ってくるので、本文を解釈して分かりやすい文言にする
         if (!r.ok && r.body.isBlank()) throw NaviException("ルートを取得できませんでした(${r.status})")
         return withContext(Dispatchers.Default) { OsrmParser.parseAll(r.body) }
+    }
+}
+
+/**
+ * 高速道路・有料道路を使わない経路(Valhalla の公開サーバー。有料道路を避ける指定(use_tolls=0)に対応している)。
+ * OSRM の公開サーバーはこの指定を受け付けないので、別のサービスで1本だけ求める。
+ * 求められなかったとき(通信できない・高速道路を避けきれないなど)は null を返し、候補に出さないだけにする。
+ */
+class ValhallaClient(private val http: NaviHttp, private val baseUrl: String = "https://valhalla1.openstreetmap.de") {
+    suspend fun tollFreeRoute(from: LatLon, to: LatLon): Route? {
+        val body = buildJsonObject {
+            putJsonArray("locations") {
+                addJsonObject {
+                    put("lat", from.lat)
+                    put("lon", from.lon)
+                }
+                addJsonObject {
+                    put("lat", to.lat)
+                    put("lon", to.lon)
+                }
+            }
+            put("costing", "auto")
+            putJsonObject("costing_options") { putJsonObject("auto") { put("use_tolls", 0) } }
+            putJsonObject("directions_options") {
+                put("units", "km")
+                put("language", "ja-JP")
+            }
+        }.toString()
+        val r = try {
+            http.postJson("$baseUrl/route", body)
+        } catch (e: NaviException) {
+            return null
+        }
+        if (!r.ok) return null
+        return withContext(Dispatchers.Default) { ValhallaParser.parseTollFree(r.body) }
     }
 }
 
