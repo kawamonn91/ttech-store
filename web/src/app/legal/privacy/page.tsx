@@ -14,6 +14,7 @@ const APP_POLICIES = [
   { name: "アプリのアイデア帳", href: "/policies/idea-memo-privacy-policy.html" },
   { name: "先読みナビ", href: "/policies/navi-privacy-policy.html" },
   { name: "自転車ナビ", href: "/policies/bike-navi-privacy-policy.html" },
+  { name: "PDF日本語化ツール", href: "/policies/pdf-ja-translator-privacy-policy.html" },
 ];
 
 export default function PrivacyPage() {

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF日本語化ツール プライバシーポリシー</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem;
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    line-height: 1.9; color: #2f2a25; background: #faf7f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e8e1d8; background: #17140f; }
+    td, th { border-color: #4a423a !important; }
+  }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2.5rem; border-bottom: 1px solid rgba(128,110,90,.35); padding-bottom: .3rem; }
+  .updated { color: #7a6f63; font-size: .9rem; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .95rem; }
+  th, td { border: 1px solid #d9cfc0; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+  th { background: rgba(139,94,60,.12); }
+  .lead { background: rgba(139,94,60,.1); padding: 1rem 1.2rem; border-radius: .5rem; }
+</style>
+</head>
+<body>
+
+<h1>PDF日本語化ツール プライバシーポリシー</h1>
+<p class="updated">最終更新日: 2026年10月5日</p>
+
+<p class="lead">
+PDF日本語化ツール（以下「本アプリ」）は、英語のPDFを開いて、段落ごとに日本語へ翻訳し、翻訳後のPDFを書き出すアプリです。
+PDFの中身は、<strong>この端末の中で</strong>開いて処理します。開発者のサーバーにPDFや翻訳の内容を送ることはありません。アカウントも不要です。
+翻訳のときだけ、段落の文章が、利用者ご自身の Anthropic（Claude API）のアカウントを使って送信されます（下記「3. 外部への送信」）。
+</p>
+
+<h2>1. 扱う情報と保存する場所</h2>
+<table>
+  <tr><th>情報</th><th>内容</th><th>保存の場所・期間</th></tr>
+  <tr>
+    <td>開いたPDF</td>
+    <td>利用者が選んだPDFファイルのコピー（作業用）</td>
+    <td>アプリの保存領域に置きます。次に別のPDFを開くと上書きされ、アプリを削除すると消えます。</td>
+  </tr>
+  <tr>
+    <td>翻訳の結果</td>
+    <td>段落ごとの日本語の訳文と、利用者が調整した文字の大きさ</td>
+    <td>アプリを開いている間だけ、端末のメモリにあります。アプリを閉じると消えます。</td>
+  </tr>
+  <tr>
+    <td>書き出したPDF</td>
+    <td>翻訳を反映したPDF</td>
+    <td>利用者が選んだ保存先に保存されます。アプリの作業用に一時的なコピーを残すことがあり、次の書き出しで上書きされます。</td>
+  </tr>
+  <tr>
+    <td>Claude API のキー</td>
+    <td>利用者が入力したAPIキー</td>
+    <td>この端末の中で、Android の鍵管理機能（Keystore）により暗号化して保存します。開発者には送られません。</td>
+  </tr>
+</table>
+
+<h2>2. 権限の使いみち</h2>
+<table>
+  <tr><th>権限</th><th>使いみち</th></tr>
+  <tr><td>インターネット</td><td>翻訳のときに、段落の文章を Claude API（Anthropic）へ送り、訳文を受け取るため</td></tr>
+</table>
+<p>
+PDFは、Android の標準のファイル選択画面で利用者が選んだものだけを読みます。端末内のほかのファイルや写真などには、アクセスしません。
+</p>
+
+<h2>3. 外部への送信</h2>
+<p>
+翻訳を実行すると、PDFから取り出した段落の文章（英語）が、<strong>Anthropic の Claude API</strong>（api.anthropic.com）へ送信されます。
+同時に、利用者が登録したAPIキーが、その通信に付けられます。送られた文章は、Anthropic のプライバシーポリシーおよび利用者の API 契約に従って扱われます。
+</p>
+<p>
+開発者（T-tech）のサーバーには、PDF・翻訳結果・APIキーのいずれも送信しません。アカウント登録も、広告も、利用状況の解析（アナリティクス）も、クラッシュ情報の収集もありません。
+翻訳を行わず、PDFを開いて読むだけの場合は、外部への通信は発生しません。
+</p>
+
+<h2>4. 利用者が管理できること</h2>
+<ul>
+  <li>APIキーは、アプリ内の「APIキー」から、いつでも登録し直せます。</li>
+  <li>翻訳の結果は、アプリを閉じると消えます。書き出していない翻訳は、もう一度翻訳し直す必要があります。</li>
+  <li>作業用に残っているPDFのコピーは、アプリのデータを消去するか、アプリを削除すると消えます。</li>
+</ul>
+
+<h2>5. 子どもの利用について</h2>
+<p>本アプリは、子どもから個人情報を集めることを目的としていません。</p>
+
+<h2>6. 改定</h2>
+<p>本ポリシーは、必要に応じて改定することがあります。改定後は本ページに掲示し、最終更新日を改めます。</p>
+
+<h2>7. お問い合わせ</h2>
+<p>
+T-tech（運営統括責任者: 川本登哉） / <a href="mailto:kawamonn91@gmail.com">kawamonn91@gmail.com</a>
+</p>
+
+</body>
+</html>
