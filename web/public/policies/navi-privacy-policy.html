@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>先読みナビ プライバシーポリシー</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem;
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    line-height: 1.9; color: #2f2a25; background: #faf7f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e8e1d8; background: #17140f; }
+    td, th { border-color: #4a423a !important; }
+  }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2.5rem; border-bottom: 1px solid rgba(128,110,90,.35); padding-bottom: .3rem; }
+  .updated { color: #7a6f63; font-size: .9rem; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .95rem; }
+  th, td { border: 1px solid #d9cfc0; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+  th { background: rgba(139,94,60,.12); }
+  code { background: rgba(128,110,90,.15); padding: .1rem .35rem; border-radius: .2rem; }
+  .lead { background: rgba(139,94,60,.1); padding: 1rem 1.2rem; border-radius: .5rem; }
+</style>
+</head>
+<body>
+
+<h1>先読みナビ プライバシーポリシー</h1>
+<p class="updated">最終更新日: 2026年9月29日</p>
+
+<p class="lead">
+先読みナビ（以下「本アプリ」）は、目的地までのルートを調べ、曲がり角などを声で案内するカーナビアプリです。
+案内のために、位置情報と、公開の地図・経路・天気のサービスへの通信を使います。
+<strong>開発者のサーバーは持たず、位置情報や目的地を開発者が受け取ることはありません。</strong>アカウント登録も不要です。
+</p>
+
+<h2>1. 取得・保存する情報</h2>
+<table>
+  <tr><th>情報</th><th>内容</th><th>目的</th></tr>
+  <tr>
+    <td>現在地・走行の情報</td>
+    <td>案内中の位置・速度・進行方向、走った距離と時間</td>
+    <td>ルート上の現在地の判定、次の曲がり角などの案内、到着したときの「走行距離・所要時間」の案内。
+        <strong>端末に保存せず</strong>、案内が終わると消えます</td>
+  </tr>
+  <tr>
+    <td>最近の目的地</td>
+    <td>選んだ目的地の名前・住所・座標（最大10件）</td>
+    <td>次回から選びやすくするため。<strong>この端末の中にだけ</strong>保存され、設定画面の「最近の目的地を消す」で消せます</td>
+  </tr>
+  <tr>
+    <td>設定</td>
+    <td>音声・天気の案内・県や市に入ったときの案内の入切、読み上げの速さ、地図の向き・見た目</td>
+    <td>アプリの動作の設定（端末内のみ）</td>
+  </tr>
+</table>
+
+<h2>2. 権限の使いみち</h2>
+<table>
+  <tr><th>権限</th><th>使いみち</th></tr>
+  <tr><td>位置情報（正確な位置・おおよその位置）</td>
+      <td>出発地（現在地）の取得と、案内中の現在地の判定のため。案内を始めるときと、案内中だけ使います。
+          「常に許可」（バックグラウンドの位置情報）は求めません</td></tr>
+  <tr><td>通知・前面サービス</td>
+      <td>画面を閉じている間も、案内（音声）を続けるため。案内中は、その旨の通知を常に表示します（Android の決まりです）。案内を終えると消えます</td></tr>
+  <tr><td>画面消灯中の動作の維持</td><td>案内中に、画面が消えても音声の案内を続けるため</td></tr>
+  <tr><td>インターネット</td><td>ルート・目的地の検索、天気、市区町村の確認、地図の取得のため（下記「外部への送信」）</td></tr>
+</table>
+<p>位置情報の許可は、端末の設定からいつでも変更できます。許可しない場合、ナビは使えません。</p>
+
+<h2>3. 外部への送信</h2>
+<p>本アプリは、開発者（T-tech）のサーバーにデータを送信しません。広告も、利用状況の解析（アナリティクス）も、クラッシュ情報の収集もありません。
+そのうえで、次の公開サービスと通信します。<strong>いずれも、通信すると、端末のIPアドレスとアプリ名（User-Agent）が相手に伝わります。</strong></p>
+<table>
+  <tr><th>通信</th><th>送られる情報</th><th>送り先・いつ</th></tr>
+  <tr>
+    <td>ルートの検索</td>
+    <td>出発地（現在地）と目的地の座標</td>
+    <td>OSRM（Project OSRM）の公開サーバー。目的地を選んでルートを確認するとき、および案内中にルートから外れて引き直すとき</td>
+  </tr>
+  <tr>
+    <td>目的地の検索</td>
+    <td>入力した検索語。地名検索では、近くを優先して探すために、現在地の周辺（緯度経度の範囲）</td>
+    <td>OpenStreetMap の Nominatim（OpenStreetMap Foundation）、国土地理院の住所検索。検索するとき</td>
+  </tr>
+  <tr>
+    <td>天気予報</td>
+    <td>ルートに沿った数地点（約20kmごと）と目的地の座標</td>
+    <td>Open-Meteo。ルートを確認するとき、および出発時（天気データ: Open-Meteo.com）</td>
+  </tr>
+  <tr>
+    <td>現在の市区町村・地点の名前</td>
+    <td>現在地の座標（案内中は、約10秒ごと・150m以上動いたとき。県や市に入ったことを知らせるため）、天気を伝える地点の座標、「地図で選ぶ」で表示している中心の座標</td>
+    <td>国土地理院の逆ジオコーダー</td>
+  </tr>
+  <tr>
+    <td>地図の背景画像</td>
+    <td>表示している地図の範囲（タイルの番号）。<strong>ルートの座標そのものは送りません</strong></td>
+    <td>OpenStreetMap のタイルサーバー（OpenStreetMap Foundation）。取得した画像は端末に一時的に保存されます。地図の出典: © OpenStreetMap contributors</td>
+  </tr>
+</table>
+<p>各サービスでの情報の扱いは、それぞれのプライバシーポリシー・利用規約に従います
+（例: <a href="https://osmfoundation.org/wiki/Privacy_Policy">OpenStreetMap Foundation のプライバシーポリシー</a>）。
+通信できない環境では、検索・天気・地図・県や市の案内などが使えないことがあります。</p>
+
+<h2>4. 案内の正確さについて</h2>
+<p>
+案内は、公開の経路検索サービスと地図データによる<strong>目安</strong>です。道路の工事・規制・渋滞や、実際の道路の状況とは異なることがあります。
+運転中は、標識・信号・道路の状況と法令を優先し、画面の操作や注視は避け、安全な場所に停車して行ってください。
+天気は予報であり、実際とは異なることがあります。
+</p>
+
+<h2>5. データの削除</h2>
+<ul>
+  <li>最近の目的地は、設定画面の「最近の目的地を消す」、または履歴の各行の「×」で消せます。</li>
+  <li>アプリを削除（アンインストール）すると、端末に保存されたデータはすべて消えます。</li>
+  <li>データは端末の外に（開発者側に）保存されていないため、開発者側で削除する必要のあるデータはありません。</li>
+  <li>端末のバックアップ（Google バックアップなど）には含まれません（アプリ側でバックアップを無効にしています）。</li>
+</ul>
+
+<h2>6. 改定</h2>
+<p>本ポリシーは、必要に応じて改定することがあります。改定後は本ページに掲示し、最終更新日を改めます。</p>
+
+<h2>7. お問い合わせ</h2>
+<p>
+T-tech（運営統括責任者: 川本登哉） / <a href="mailto:kawamonn91@gmail.com">kawamonn91@gmail.com</a>
+</p>
+
+</body>
+</html>

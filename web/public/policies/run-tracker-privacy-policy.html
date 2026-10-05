@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ランニング記録 プライバシーポリシー</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem;
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    line-height: 1.9; color: #2f2a25; background: #faf7f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e8e1d8; background: #17140f; }
+    td, th { border-color: #4a423a !important; }
+  }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2.5rem; border-bottom: 1px solid rgba(128,110,90,.35); padding-bottom: .3rem; }
+  .updated { color: #7a6f63; font-size: .9rem; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .95rem; }
+  th, td { border: 1px solid #d9cfc0; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+  th { background: rgba(139,94,60,.12); }
+  code { background: rgba(128,110,90,.15); padding: .1rem .35rem; border-radius: .2rem; }
+  .lead { background: rgba(139,94,60,.1); padding: 1rem 1.2rem; border-radius: .5rem; }
+</style>
+</head>
+<body>
+
+<h1>ランニング記録 プライバシーポリシー</h1>
+<p class="updated">最終更新日: 2026年9月25日</p>
+
+<p class="lead">
+ランニング記録（以下「本アプリ」）は、走った時間・距離・ペース・ルートをスマートフォンに記録して、ストラバのような一覧で振り返るアプリです。
+身長・体重を入れると、消費カロリーの目安も出せます。記録したデータは<strong>この端末の中にだけ</strong>保存され、開発者のサーバーには送信されません。アカウントも不要です。
+</p>
+
+<h2>1. 取得・保存する情報</h2>
+<table>
+  <tr><th>情報</th><th>内容</th><th>目的</th></tr>
+  <tr>
+    <td>ランの記録</td>
+    <td>位置（緯度・経度・高度）、時刻、走った時間・距離・ペース、一時停止した区間、ルート上の地名</td>
+    <td>記録の一覧・詳細（ルート・ラップ・ペースのグラフ）の表示、統計</td>
+  </tr>
+  <tr>
+    <td>身長・体重</td>
+    <td>利用者が入力した身長（cm）と、体重の記録（日付ごと）</td>
+    <td>消費カロリーの目安の計算と、体重の推移のグラフ。入力は任意です</td>
+  </tr>
+  <tr>
+    <td>設定</td>
+    <td>ルートの間引きの細かさ、地図の見た目（ダーク表示）、画面を消さない設定など</td>
+    <td>アプリの動作の設定</td>
+  </tr>
+</table>
+<p>これらは端末内の保存領域にだけ保存されます。消費カロリーは目安であり、医療上の判断には使えません。</p>
+
+<h2>2. 権限の使いみち</h2>
+<table>
+  <tr><th>権限</th><th>使いみち</th></tr>
+  <tr><td>位置情報（正確な位置・おおよその位置）</td><td>ランの記録中に現在地を取得して、ルート・距離・ペースを記録するため。記録していないときは、位置情報を取得しません</td></tr>
+  <tr><td>通知</td><td>記録中であることを、画面の通知で常にお知らせするため（Android の前面サービスの決まりです）</td></tr>
+  <tr><td>インターネット</td><td>地図の背景画像と地名を取得するため（下記「外部への送信」）</td></tr>
+</table>
+<p>位置情報の許可は、端末の設定からいつでも変更できます。許可しない場合、記録はできません。</p>
+
+<h2>3. 外部への送信</h2>
+<p>本アプリは、開発者（T-tech）のサーバーにデータを送信しません。アカウント登録も、広告も、利用状況の解析（アナリティクス）も、クラッシュ情報の収集もありません。
+そのうえで、地図と地名を表示するために、次の2つの通信が起こります。</p>
+<table>
+  <tr><th>通信</th><th>送られる情報</th><th>送り先</th></tr>
+  <tr>
+    <td>地図の背景画像の取得</td>
+    <td>表示している地図の範囲（タイルの番号）、端末のIPアドレス、アプリ名（User-Agent）。
+        <strong>記録したルートの座標や、記録の内容そのものは送りません。</strong></td>
+    <td>OpenStreetMap のタイルサーバー（OpenStreetMap Foundation）。
+        取得した画像は端末に一時的に保存されます。地図の出典: © OpenStreetMap contributors</td>
+  </tr>
+  <tr>
+    <td>地名の取得</td>
+    <td>端末の住所検索機能（Geocoder）を使います。多くの端末では、座標が、端末の提供元（Google など）の住所検索サービスに送られ、地名が返されます。
+        開発者には送られません。</td>
+    <td>端末の提供元の住所検索サービス</td>
+  </tr>
+</table>
+<p>通信できない環境では、地図の背景や地名が表示されないことがありますが、記録は端末の中で続きます。</p>
+
+<h2>4. 共有・書き出し</h2>
+<p>
+記録は、GPXファイル（地図アプリなどで開ける形式）や、ルート・ラップの画像としてを「共有」から書き出せます。書き出したデータは、利用者が選んだ共有先のアプリ（メール・メッセージ・クラウドなど）に渡されます。
+共有は、利用者が操作したときにだけ行われます。共有した後のデータの取り扱いは、共有先のアプリのポリシーに従います。
+</p>
+
+<h2>5. データの削除</h2>
+<ul>
+  <li>記録は、詳細画面の「削除」から、1件ずつ削除できます。</li>
+  <li>アプリを削除（アンインストール）すると、端末に保存されたデータはすべて消えます。身長・体重の記録も、アプリの設定から削除できます。</li>
+  <li>データは端末の外に保存されていないため、開発者側で削除する必要のあるデータはありません。</li>
+  <li>端末のバックアップ（Google バックアップなど）には含まれません（アプリ側でバックアップを無効にしています）。</li>
+</ul>
+
+<h2>6. 改定</h2>
+<p>本ポリシーは、必要に応じて改定することがあります。改定後は本ページに掲示し、最終更新日を改めます。</p>
+
+<h2>7. お問い合わせ</h2>
+<p>
+T-tech（運営統括責任者: 川本登哉） / <a href="mailto:kawamonn91@gmail.com">kawamonn91@gmail.com</a>
+</p>
+
+</body>
+</html>

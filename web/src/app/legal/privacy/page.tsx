@@ -4,16 +4,16 @@ export const metadata: Metadata = { title: "プライバシーポリシー" };
 
 const H2 = "pt-4 text-lg font-bold";
 
-const POLICY_BASE = "https://kawamonn91.github.io/yomumemo";
-
-/** 運営者が公開しているアプリで、個別のポリシーがあるもの */
+/** 運営者が公開しているアプリで、個別のポリシーがあるもの(ファイルは public/policies/ に置く) */
 const APP_POLICIES = [
-  { name: "ひとこと日記", href: `${POLICY_BASE}/diary-privacy-policy.html` },
-  { name: "ドライブ記録", href: `${POLICY_BASE}/drive-record-privacy-policy.html` },
-  { name: "ランニング記録", href: `${POLICY_BASE}/run-tracker-privacy-policy.html` },
-  { name: "旅のしおり", href: `${POLICY_BASE}/trip-shiori-privacy-policy.html` },
-  { name: "行きたい旅メモ", href: `${POLICY_BASE}/travel-wishlist-privacy-policy.html` },
-  { name: "自転車ナビ", href: `${POLICY_BASE}/bike-navi-privacy-policy.html` },
+  { name: "ひとこと日記", href: "/policies/diary-privacy-policy.html" },
+  { name: "ドライブ記録", href: "/policies/drive-record-privacy-policy.html" },
+  { name: "ランニング記録", href: "/policies/run-tracker-privacy-policy.html" },
+  { name: "旅のしおり", href: "/policies/trip-shiori-privacy-policy.html" },
+  { name: "行きたい旅メモ", href: "/policies/travel-wishlist-privacy-policy.html" },
+  { name: "アプリのアイデア帳", href: "/policies/idea-memo-privacy-policy.html" },
+  { name: "先読みナビ", href: "/policies/navi-privacy-policy.html" },
+  { name: "自転車ナビ", href: "/policies/bike-navi-privacy-policy.html" },
 ];
 
 export default function PrivacyPage() {
