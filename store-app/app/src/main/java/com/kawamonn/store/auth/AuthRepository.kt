@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -28,6 +30,9 @@ class AuthRepository(
     private val _state = MutableStateFlow<AuthState>(AuthState.SignedOut)
     val state: StateFlow<AuthState> = _state.asStateFlow()
 
+    /** リフレッシュトークンは一度しか使えないため、同時に更新させない(後から来た呼び出しは、先の更新結果を使う) */
+    private val refreshMutex = Mutex()
+
     init {
         session.load()?.let {
             _state.value = AuthState.SignedIn(it.userId, it.email, it.accessToken)
@@ -46,12 +51,12 @@ class AuthRepository(
      * 期限が近い(または切れている)アクセストークンは、リフレッシュトークンで更新してから返す。
      * 未ログインなら null。更新に失敗したときは、保存済みのトークンをそのまま返す(呼び出し側のAPIがエラーを返す)。
      */
-    suspend fun ensureFreshToken(): String? {
-        val stored = session.load() ?: return null
-        if (!isExpiringSoon(stored.accessToken, System.currentTimeMillis())) return stored.accessToken
-        val refreshed = runCatching { api.refresh(stored.refreshToken) }.getOrNull() ?: return stored.accessToken
+    suspend fun ensureFreshToken(): String? = refreshMutex.withLock {
+        val stored = session.load() ?: return@withLock null
+        if (!isExpiringSoon(stored.accessToken, System.currentTimeMillis())) return@withLock stored.accessToken
+        val refreshed = runCatching { api.refresh(stored.refreshToken) }.getOrNull() ?: return@withLock stored.accessToken
         applySession(refreshed)
-        return refreshed.accessToken
+        refreshed.accessToken
     }
 
     /**

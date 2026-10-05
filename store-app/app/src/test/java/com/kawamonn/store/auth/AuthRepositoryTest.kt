@@ -1,6 +1,7 @@
 package com.kawamonn.store.auth
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -31,9 +32,16 @@ private class FakeAuthApi : AuthApi {
     var verifyResult: Result<AuthSessionData> = Result.success(sessionData("at2"))
     var verifyCalledWith: Triple<String, String, String>? = null // factorId, challengeId, code
 
+    var refreshCalls = 0
+    var refreshDelayMs = 0L
+
     override suspend fun signInWithGoogleIdToken(idToken: String, nonce: String) = passwordResult.getOrThrow()
     override suspend fun signInWithPassword(email: String, password: String) = passwordResult.getOrThrow()
-    override suspend fun refresh(refreshToken: String) = passwordResult.getOrThrow()
+    override suspend fun refresh(refreshToken: String): AuthSessionData {
+        refreshCalls++
+        if (refreshDelayMs > 0) delay(refreshDelayMs)
+        return passwordResult.getOrThrow()
+    }
     override suspend fun signOut(accessToken: String) {
         signOutCalledWith = accessToken
     }
@@ -132,6 +140,25 @@ class AuthRepositoryTest {
         assertEquals("refreshed", scope.runBlockingTest { repo.ensureFreshToken() })
         assertEquals("refreshed", store.stored?.accessToken)
         assertEquals("refreshed", (repo.state.value as AuthState.SignedIn).accessToken)
+    }
+
+    @Test
+    fun `同時に呼ばれても、リフレッシュトークンでの更新は1回だけ行う`() {
+        val expired = jwtExpiringAt(System.currentTimeMillis() / 1000 - 10)
+        val store = FakeAuthSession().apply { stored = AuthSession.Stored(expired, "rt", "u1", null) }
+        val api = FakeAuthApi().apply {
+            passwordResult = Result.success(sessionData("refreshed"))
+            refreshDelayMs = 100
+        }
+        val repo = AuthRepository(api, store, scope)
+        val results = mutableListOf<String?>()
+
+        scope.launch { results += repo.ensureFreshToken() }
+        scope.launch { results += repo.ensureFreshToken() }
+        scope.advanceUntilIdle()
+
+        assertEquals(1, api.refreshCalls)
+        assertEquals(listOf("refreshed", "refreshed"), results)
     }
 
     @Test

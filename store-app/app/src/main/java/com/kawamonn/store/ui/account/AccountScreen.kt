@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -325,6 +327,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
                         onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) totpCode = it },
                         label = { Text("6桁コード") },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     totpError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }

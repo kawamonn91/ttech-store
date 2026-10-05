@@ -102,13 +102,31 @@ class SupabaseAuthApi(
         try {
             client.newCall(request).execute().use { response ->
                 val bodyText = response.body.string()
-                if (!response.isSuccessful) throw AuthApiException(errorMessage(bodyText) ?: "認証に失敗しました (${response.code})")
+                if (!response.isSuccessful) {
+                    throw AuthApiException(errorCodeMessage(bodyText) ?: errorMessage(bodyText) ?: "認証に失敗しました (${response.code})")
+                }
                 return bodyText
             }
         } catch (e: AuthApiException) {
             throw e
         } catch (e: IOException) {
             throw AuthApiException("通信に失敗しました。ネットワーク接続を確認してください")
+        }
+    }
+
+    /** Supabase の error_code を利用者向けの文言にする。知らないコードは英語の msg のまま出す */
+    private fun errorCodeMessage(body: String): String? {
+        val code = runCatching {
+            (json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject)
+                ?.get("error_code")
+                ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+        }.getOrNull() ?: return null
+        return when (code) {
+            "mfa_verification_failed" -> "確認コードが正しくありません。認証アプリに表示されている今の6桁を入力してください"
+            "mfa_challenge_expired" -> "確認コードの有効期限が切れました。もう一度入力してください"
+            "refresh_token_already_used", "refresh_token_not_found", "session_not_found" ->
+                "ログインの期限が切れました。一度ログアウトして、もう一度ログインしてください"
+            else -> null
         }
     }
 

@@ -137,12 +137,19 @@ class SupabaseAuthApiTest {
     }
 
     @Test
-    fun `verifyTotpのコード不一致エラーを利用者向けメッセージにする`() {
-        server.enqueue(json("""{"msg":"Invalid TOTP code entered"}""", code = 403))
+    fun `verifyTotpのコード不一致エラーは日本語のメッセージにする`() {
+        server.enqueue(json("""{"code":400,"error_code":"mfa_verification_failed","msg":"Invalid TOTP code entered"}""", code = 400))
         val e = assertThrows(AuthApiException::class.java) {
             runBlocking { api.verifyTotp("at1", "factor-1", "challenge-abc", "000000") }
         }
-        assertEquals("Invalid TOTP code entered", e.message)
+        assertTrue(e.message!!.startsWith("確認コードが正しくありません"))
+    }
+
+    @Test
+    fun `リフレッシュトークンが無効なら、ログインし直す案内にする`() {
+        server.enqueue(json("""{"code":400,"error_code":"refresh_token_already_used","msg":"Invalid Refresh Token"}""", code = 400))
+        val e = assertThrows(AuthApiException::class.java) { runBlocking { api.refresh("old-refresh") } }
+        assertTrue(e.message!!.contains("もう一度ログイン"))
     }
 
     @Test
