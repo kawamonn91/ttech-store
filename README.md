@@ -5,11 +5,28 @@ T-tech のAndroidアプリを配布するストア。Webサイト(`store.kawamon
 
 ```
 web/            Next.js (App Router) — 公開サイト・管理コンソール・API(/api/v1)
+                  web/public/policies/ … ストア掲載アプリのプライバシーポリシー
 store-app/      Kotlin + Jetpack Compose — ストアアプリ(com.kawamonn.store)
+native-apps/    ストアで配布するアプリのソース(Kotlin)。各フォルダが1アプリ
 supabase/       DBマイグレーション(スキーマ + RLS)とseed
 workers/scan/   APK検査(署名・パッケージ情報・ウイルススキャン)。GitHub Actionsから実行
+tools/          モックAPIなどの開発用ツール
 docs/           セットアップ手順・API仕様
 ```
+
+## 関連リポジトリ(このストアには含めない)
+
+ストアで配布しているが、開発を独立して進めるアプリは別リポジトリで管理する。
+
+| アプリ | リポジトリ |
+|---|---|
+| ヨムメモ(`jp.yomumemo.app`) | https://github.com/kawamonn91/yomumemo (公開サイトは GitHub Pages) |
+| DebtRun(`com.ttech.debtrun`) | https://github.com/kawamonn91/Digital_detox_app |
+| ひとこと日記(`com.ttech.diary`) | https://github.com/kawamonn91/diary |
+| PDF日本語化ツール(Windows版・Android版) | https://github.com/kawamonn91/PDF_Translate_Tool |
+
+ストアのプライバシーポリシーは、上の `web/public/policies/` で配信する(`https://store.kawamonn.com/policies/…`)。
+ヨムメモ専用のポリシーだけは、ヨムメモのリポジトリの公開サイトにある。
 
 ## 仕組み
 
