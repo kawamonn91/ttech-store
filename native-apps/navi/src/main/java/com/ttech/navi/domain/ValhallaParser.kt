@@ -3,23 +3,22 @@ package com.ttech.navi.domain
 import com.ttech.track.domain.LatLon
 import kotlin.math.pow
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * Valhalla(公開サーバー)の経路検索の応答を [Route] にする。
- * 有料道路を避けるように頼んだ経路だけを扱う。応答の summary.has_highway が false(高速道路・自動車専用道路を使わない)
- * のときだけ、[Route.tollFree] を立てて返す。高速道路を使ってしまった経路は、避けられていないので返さない。
+ * 高速道路を使うかどうかは、応答の summary.has_highway で判定する。使わない経路は [Route.tollFree] を立てる。
  */
 object ValhallaParser {
     private const val PRECISION = 6
 
-    /** 高速道路を使わない経路。使えなかった・応答に問題があるときは null */
-    fun parseTollFree(text: String): Route? {
+    /** 経路の応答を取り出す。経路が無い(error の応答など)ときは null */
+    fun parse(text: String): Route? {
         val root = try {
             NaviJson.parseToJsonElement(text).jsonObject
         } catch (e: Exception) {
@@ -27,7 +26,7 @@ object ValhallaParser {
         }
         val trip = root["trip"]?.jsonObject ?: return null
         val summary = trip["summary"]?.jsonObject ?: return null
-        if (summary["has_highway"]?.jsonPrimitive?.booleanOrNull != false) return null
+        val hasHighway = summary["has_highway"]?.jsonPrimitive?.booleanOrNull ?: return null
 
         val leg = trip["legs"]?.jsonArray?.firstOrNull()?.jsonObject ?: return null
         val shape = leg["shape"]?.jsonPrimitive?.contentOrNull ?: return null
@@ -63,7 +62,7 @@ object ValhallaParser {
             distanceM = line.lengthM,
             durationS = durationS,
             tollDistanceM = 0.0,
-            tollFree = true,
+            tollFree = !hasHighway,
         )
     }
 

@@ -94,7 +94,12 @@ object OsrmParser {
         }
 
         val durationS = route["duration"]?.jsonPrimitive?.doubleOrNull ?: durations.sum()
-        return Route(line, maneuvers, stepStarts, durations, distanceM = line.lengthM, durationS = durationS, tollDistanceM = tollDistanceM)
+        // 高速道路を通る距離が、案内上ほぼ無い(500m未満)なら、高速道路を使わない経路とみなす
+        return Route(
+            line, maneuvers, stepStarts, durations,
+            distanceM = line.lengthM, durationS = durationS, tollDistanceM = tollDistanceM,
+            tollFree = tollDistanceM < TOLL_MIN_DISTANCE_M,
+        )
     }
 
     private fun JsonElement.double(): Double = jsonPrimitive.doubleOrNull ?: throw NaviException("ルートの座標を読み取れませんでした")

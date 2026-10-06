@@ -12,6 +12,9 @@ val NaviJson = Json {
     encodeDefaults = true
 }
 
+/** 高速道路を通る距離(m)がこれ未満なら、高速道路を使わない経路とみなす(入口のランプなどの短い区間) */
+const val TOLL_MIN_DISTANCE_M = 500.0
+
 /** 画面にそのまま出せる文言を持つ例外(通信の失敗・ルートが無い、など) */
 class NaviException(message: String, cause: Throwable? = null) : Exception(message, cause)
 

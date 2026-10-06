@@ -49,7 +49,8 @@ import com.ttech.navi.domain.NaviSettings
 import com.ttech.navi.domain.Phrases
 import com.ttech.navi.domain.Place
 import com.ttech.navi.domain.Route
-import com.ttech.navi.domain.RouteChooser
+import com.ttech.navi.domain.RouteProposal
+import com.ttech.navi.domain.RouteProposer
 import com.ttech.navi.domain.TollEstimate
 import com.ttech.navi.domain.VehicleClass
 import com.ttech.track.domain.MapStyle
@@ -74,7 +75,7 @@ fun PreviewScreen(
     val actions = rememberPermissionActions()
     val settings by container.settings.settings.collectAsState(initial = NaviSettings())
     var retry by remember { mutableIntStateOf(0) }
-    var candidates by remember { mutableStateOf<List<Route>>(emptyList()) }
+    var candidates by remember { mutableStateOf<List<RouteProposal>>(emptyList()) }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var briefing by remember { mutableStateOf<List<String>?>(null) }
@@ -94,18 +95,18 @@ fun PreviewScreen(
         try {
             val from = start?.latLon ?: CurrentLocation.get(context) ?: throw NaviException("現在地を取得できませんでした。GPSを受信できる場所で、もう一度お試しください")
             departMs = System.currentTimeMillis()
-            val list = container.osrm.routes(from, place.latLon)
-            // 高速道路・有料道路を使わない経路も選べるように加える(別のサービスで求める。求められなければ出さない)
-            val tollFree = container.valhalla.tollFreeRoute(from, place.latLon)
-            candidates = distinctCandidates(list + listOfNotNull(tollFree))
-            selectedIndex = candidates.indexOf(RouteChooser.pickDefault(candidates)).coerceAtLeast(0)
+            // 有料道路を使う・使わないそれぞれについて、最短と左折進入優先の経路を選ぶ(RouteProposer)
+            val routes = container.osrm.routes(from, place.latLon) + container.valhalla.routes(from, place.latLon)
+            candidates = RouteProposer.propose(routes)
+            if (candidates.isEmpty()) throw NaviException("ルートが見つかりませんでした")
+            selectedIndex = 0
             container.recents.add(place)
         } catch (e: NaviException) {
             error = e.message
         }
     }
 
-    val route = candidates.getOrNull(selectedIndex)
+    val route = candidates.getOrNull(selectedIndex)?.route
 
     // 天気の案内は、選んだ経路(所要時間・通る場所)が変わるたびに作り直す
     LaunchedEffect(route, departMs) {
@@ -172,7 +173,7 @@ fun PreviewScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("経路を選ぶ", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             candidates.forEachIndexed { i, c ->
-                                RouteOptionCard(c, i, selectedIndex == i, settings.vehicleClass) { selectedIndex = i }
+                                RouteOptionCard(c.route, c.title, selectedIndex == i, settings.vehicleClass) { selectedIndex = i }
                             }
                         }
                     } else if (r.tollDistanceM >= 500.0) {
@@ -220,24 +221,9 @@ fun PreviewScreen(
     }
 }
 
-/** 見た目上、区別する意味のある候補だけを残す(OSRMがほぼ同じ経路を複数返すことがあるため) */
-private fun distinctCandidates(routes: List<Route>): List<Route> {
-    val seen = HashSet<Triple<Long, Boolean, String?>>()
-    val out = ArrayList<Route>()
-    for (r in routes) {
-        if (r.tollFree) {
-            out.add(r)
-            continue
-        }
-        val key = Triple((r.distanceM / 200).toLong(), r.tollDistanceM >= 500.0, r.maneuvers.lastOrNull()?.modifier)
-        if (seen.add(key)) out.add(r)
-    }
-    return out
-}
-
 /** 経路の候補1件分。高速道路の有無(と通行料金の目安)・目的地への進入方向を添えて、タップで選べる */
 @Composable
-private fun RouteOptionCard(route: Route, index: Int, selected: Boolean, vehicleClass: VehicleClass, onClick: () -> Unit) {
+private fun RouteOptionCard(route: Route, title: String, selected: Boolean, vehicleClass: VehicleClass, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -245,14 +231,14 @@ private fun RouteOptionCard(route: Route, index: Int, selected: Boolean, vehicle
         border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(
-                "経路${index + 1}・${Phrases.distanceExact(route.distanceM)}・${Phrases.duration(route.durationS)}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                "${Phrases.distanceExact(route.distanceM)}・${Phrases.duration(route.durationS)}",
+                style = MaterialTheme.typography.bodyMedium,
             )
             Text(
                 when {
-                    route.tollFree -> "・有料の高速道路を使いません(一般道のみ・時間は長くなります)"
+                    route.tollFree -> "・有料の高速道路を使いません"
                     route.tollDistanceM >= 500.0 -> "・高速道路を使います(通行料金の目安 約${TollEstimate.estimate(route.tollDistanceM, vehicleClass)}円)"
                     else -> "・高速道路を使いません"
                 },

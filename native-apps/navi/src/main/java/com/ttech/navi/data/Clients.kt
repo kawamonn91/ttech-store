@@ -16,6 +16,7 @@ import java.text.Normalizer
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -54,12 +55,21 @@ class OsrmClient(private val http: NaviHttp, private val baseUrl: String = "http
 }
 
 /**
- * 高速道路・有料道路を使わない経路(Valhalla の公開サーバー。有料道路を避ける指定(use_tolls=0)に対応している)。
- * OSRM の公開サーバーはこの指定を受け付けないので、別のサービスで1本だけ求める。
- * 求められなかったとき(通信できない・高速道路を避けきれないなど)は null を返し、候補に出さないだけにする。
+ * 経路検索(Valhalla の公開サーバー)。OSRM の公開サーバーは有料道路を避ける指定を受け付けないので、
+ * こちらで、有料道路を使う最短の経路と、使わない経路をそれぞれ求める。
+ * 求められなかった経路は外す(通信できない・経路が無いなど)。
  */
 class ValhallaClient(private val http: NaviHttp, private val baseUrl: String = "https://valhalla1.openstreetmap.de") {
-    suspend fun tollFreeRoute(from: LatLon, to: LatLon): Route? {
+    /** 3通り(指定なし=有料道路を使う最短、有料道路を避ける、高速道路も避ける)を並べて求める */
+    suspend fun routes(from: LatLon, to: LatLon): List<Route> = coroutineScope {
+        listOf(
+            async { request(from, to, emptyMap()) },
+            async { request(from, to, mapOf("use_tolls" to 0)) },
+            async { request(from, to, mapOf("use_tolls" to 0, "use_highways" to 0)) },
+        ).awaitAll().filterNotNull()
+    }
+
+    private suspend fun request(from: LatLon, to: LatLon, autoOptions: Map<String, Int>): Route? {
         val body = buildJsonObject {
             putJsonArray("locations") {
                 addJsonObject {
@@ -72,9 +82,9 @@ class ValhallaClient(private val http: NaviHttp, private val baseUrl: String = "
                 }
             }
             put("costing", "auto")
-            // use_tolls だけでは、遠方のルートは高速道路を使ったまま返ることがある(実際に東京発で確認)。
-            // use_highways も0にして、高速道路を避けきれる経路を求める
-            putJsonObject("costing_options") { putJsonObject("auto") { put("use_tolls", 0); put("use_highways", 0) } }
+            if (autoOptions.isNotEmpty()) {
+                putJsonObject("costing_options") { putJsonObject("auto") { autoOptions.forEach { (k, v) -> put(k, v) } } }
+            }
             putJsonObject("directions_options") {
                 put("units", "km")
                 put("language", "ja-JP")
@@ -86,7 +96,13 @@ class ValhallaClient(private val http: NaviHttp, private val baseUrl: String = "
             return null
         }
         if (!r.ok) return null
-        return withContext(Dispatchers.Default) { ValhallaParser.parseTollFree(r.body) }
+        return withContext(Dispatchers.Default) {
+            try {
+                ValhallaParser.parse(r.body)
+            } catch (e: NaviException) {
+                null
+            }
+        }
     }
 }
 

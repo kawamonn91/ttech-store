@@ -2,6 +2,7 @@ package com.ttech.navi.domain
 
 import com.ttech.track.domain.LatLon
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,7 +24,7 @@ class ValhallaParserTest {
 
     @Test
     fun `高速道路を使わない応答は、一般道のみのルートとして取り出せる`() {
-        val route = ValhallaParser.parseTollFree(response(hasHighway = false))!!
+        val route = ValhallaParser.parse(response(hasHighway = false))!!
         assertTrue(route.tollFree)
         assertEquals(0.0, route.tollDistanceM, 0.0)
         assertEquals(3600.0, route.durationS, 0.0)
@@ -38,9 +39,9 @@ class ValhallaParserTest {
     }
 
     @Test
-    fun `実際のValhallaの応答(東京→名古屋・有料道路を避ける指定)から、高速道路を使わないルートを取り出せる`() {
+    fun `実際のValhallaの応答(東京→名古屋・高速道路を避ける指定)から、高速道路を使わないルートを取り出せる`() {
         val text = Fixtures.text("valhalla_tokyo_nagoya.json")
-        val route = ValhallaParser.parseTollFree(text)!!
+        val route = ValhallaParser.parse(text)!!
         assertTrue(route.tollFree)
         assertEquals(394.8, route.distanceM / 1000.0, 1.0)
         assertEquals(34300.9, route.durationS, 1.0)
@@ -52,13 +53,14 @@ class ValhallaParserTest {
     }
 
     @Test
-    fun `高速道路を使ってしまった応答は、候補にしない`() {
-        assertNull(ValhallaParser.parseTollFree(response(hasHighway = true)))
+    fun `高速道路を使う応答は、使うルートとして取り出す`() {
+        val route = ValhallaParser.parse(response(hasHighway = true))!!
+        assertFalse(route.tollFree)
     }
 
     @Test
     fun `応答に経路が無いときは、候補にしない`() {
-        assertNull(ValhallaParser.parseTollFree("""{"error_code":171,"error":"No path could be found"}"""))
+        assertNull(ValhallaParser.parse("""{"error_code":171,"error":"No path could be found"}"""))
     }
 
     @Test
