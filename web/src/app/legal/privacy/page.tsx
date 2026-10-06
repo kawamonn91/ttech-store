@@ -21,7 +21,7 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-2xl space-y-4 leading-7">
       <h1 className="text-2xl font-bold">プライバシーポリシー</h1>
-      <p className="text-sm text-muted">最終更新日: 2026年9月25日</p>
+      <p className="text-sm text-muted">最終更新日: 2026年10月6日</p>
       <p>
         T-tech(以下「運営者」)は、「T-tech Store」(Webサイトおよびストアアプリ。以下「本サービス」)における情報の取り扱いについて、以下のとおり定めます。
         アプリを見る・ダウンロードするだけであれば、アカウントは不要です。
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         </li>
         <li>
           <b>アクセスログ</b>:
-          不正利用の防止と障害対応のため、ホスティング事業者(Vercel、Supabase、Cloudflare)にIPアドレス等のアクセスログが一定期間記録されます。
+          不正利用の防止と障害対応のため、運営者のサーバーと、利用している事業者(Cloudflare、Supabase)にIPアドレス等のアクセスログが一定期間記録されます。
         </li>
         <li>
           <b>インストール済みアプリの情報</b>:
@@ -110,9 +110,8 @@ export default function PrivacyPage() {
         法令に基づく場合を除き、本人の同意なく第三者に個人情報を提供しません。ただし、サービスの提供に必要な範囲で、次の事業者のサービスを利用します。
       </p>
       <ul className="list-disc space-y-1 pl-5">
-        <li>Vercel(Webホスティング)</li>
         <li>Supabase(データベース・認証・ファイル保存。アカウント確認などのメールの送信も含む)</li>
-        <li>Cloudflare(アプリのファイルの保管・配信。アップロードされたAPKもここに保管されます)</li>
+        <li>Cloudflare(Webサイトへの通信の中継と保護、アプリのファイルの保管・配信。アップロードされたAPKもここに保管されます)</li>
         <li>GitHub(アップロードされたAPKの自動審査を実行する環境(GitHub Actions)。検査中のAPKが一時的に処理されます)</li>
         <li>
           VirusTotal(Google。ウイルス検査。APKのハッシュ値を照会し、未登録の場合はAPKのファイルそのものを送信します。
@@ -121,6 +120,7 @@ export default function PrivacyPage() {
         <li>Resend(通知メールの送信。上記「メールでの通知」の内容と、開発者の連絡先のメールアドレスが渡ります)</li>
         <li>Google(Google アカウントでログインする場合のログイン機能)</li>
       </ul>
+      <p>なお、Webサイトと API は、運営者が管理するサーバーで動作しています。</p>
 
       <h2 className={H2}>5. データの削除</h2>
       <ul className="list-disc space-y-1 pl-5">
