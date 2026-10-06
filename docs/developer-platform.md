@@ -124,7 +124,7 @@ ANDROID_HOME=<Android SDK> node workers/scan/facts-cli.mjs app-release.apk
    - 検証: `supabase test db`(CI)/ Docker だけで確かめる場合は `supabase/sql-tests/developer-platform/README.md`。
 2. **GitHub の検査ワークフロー**: `scan-release.yml` は既存のもの(変更は、ツールの存在確認の手順の追加のみ)。
    実行環境に `dexdump`(Android SDK の build-tools)があることを確認する。無いと、コードを解析できず、すべて要確認になる(安全側に倒れる)。
-   Vercel の環境変数 `GITHUB_DISPATCH_TOKEN` / `GITHUB_REPO`、GitHub の Secrets `SCAN_WEBHOOK_SECRET` は、管理コンソールからのアップロードで使っているものと同じ。
+   Web の環境変数 `GITHUB_DISPATCH_TOKEN` / `GITHUB_REPO`、GitHub の Secrets `SCAN_WEBHOOK_SECRET` は、管理コンソールからのアップロードで使っているものと同じ。
 3. **メール(Resend)**: 運営宛は今の設定で届く。**開発者宛**のメールは、差出人が `onboarding@resend.dev` のうちは、自分以外のアドレスには送れない。
    独自ドメインを Resend で認証し、`MAIL_FROM` を設定すると届く(未設定でも、開発者の画面には結果が出る)。
 4. **R2 の CORS**: 開発者のブラウザから直接アップロードする。管理コンソールで使っている設定(サイトのオリジンからの PUT)と同じ。

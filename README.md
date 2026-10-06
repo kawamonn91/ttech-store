@@ -82,5 +82,6 @@ node tools/mock-api/server.mjs <任意のAPK>     # good / tampered(ハッシュ
 
 - 課金は未実装。`apps.price_yen` は将来用(常に0)。導入時は Stripe + `entitlements` + ダウンロード時の権限チェック(`web/src/lib/download.ts`)を想定。
   既存アプリの Google Play Billing は Play 配布でないと使えないため、ストア配布版には別方式が必要。
-- Vercel CLI はこのPCのホスト名が日本語のため `vercel login` が失敗する。Personal Access Token を作って `--token` を付けて使う。
+- 本番の Web は自前のサーバーで `next start` を PM2 で常駐させ、Cloudflare Tunnel で `store.kawamonn.com` に公開している(2026-10 に Vercel から移行)。
+  反映は main に push してから `web/scripts/deploy-web.ps1`。手順は [docs/setup.md](docs/setup.md) の 4.
 - ストアアプリの署名鍵(`store-app/keystore.properties`)は**失くさない・変えない**(ストア経由の自己更新ができなくなる)。

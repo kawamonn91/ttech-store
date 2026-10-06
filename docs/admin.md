@@ -42,9 +42,9 @@
 2. **メールの準備**: [Resend](https://resend.com) のアカウントを作り、API キーを発行する。
    独自ドメインを認証していない間は、差出人が `onboarding@resend.dev` になり、
    **Resend のアカウントに登録したメールアドレス宛にだけ**届く(運営自身宛の通知なので、それで足りる)。
-3. **Vercel の環境変数**(Production): `RESEND_API_KEY`、`ADMIN_NOTIFY_EMAIL`(通知の宛先)、`NOTIFY_WEBHOOK_SECRET`
-   (ランダムな長い文字列)。独自ドメインを認証したら `MAIL_FROM` も設定する。
-4. **DBに通知先を登録**: SQL Editor で次を実行する(`secret` は Vercel の `NOTIFY_WEBHOOK_SECRET` と同じ値)。
+3. **本番サーバーの環境変数**([setup.md](setup.md) の 4): `RESEND_API_KEY`、`ADMIN_NOTIFY_EMAIL`(通知の宛先)、`NOTIFY_WEBHOOK_SECRET`
+   (ランダムな長い文字列)。独自ドメインを認証したら `MAIL_FROM` も設定する。変えたら `pm2 restart ttech-store-web` で読み込ませる。
+4. **DBに通知先を登録**: SQL Editor で次を実行する(`secret` は Web の `NOTIFY_WEBHOOK_SECRET` と同じ値)。
    ```sql
    insert into private.notify_settings (key, value) values
      ('url', 'https://store.kawamonn.com/api/internal/notify'),

@@ -1,6 +1,6 @@
 # セットアップ手順
 
-外部サービスのアカウント作業(★)はご自身で行う必要があります。得られた値は `web/.env.local`(ローカル)と Vercel の環境変数(本番)に設定します。
+外部サービスのアカウント作業(★)はご自身で行う必要があります。得られた値は `web/.env.local`(ローカル)と、本番サーバーの環境変数ファイル(リポジトリの外。4 を参照)に設定します。
 **`SUPABASE_SERVICE_ROLE_KEY` / `R2_SECRET_ACCESS_KEY` / `SCAN_WEBHOOK_SECRET` は秘密情報です。チャットやリポジトリに貼らないでください。**
 
 ## 1. Supabase ★
@@ -39,17 +39,32 @@ APK は常に期限付き署名URLで配信するため、R2 の公開ドメイ�
 2. リポジトリの Settings > Secrets and variables > Actions に登録:
    - `SCAN_WEBHOOK_SECRET` … ランダムな長い文字列(Web の環境変数と同じ値)
    - `VT_API_KEY` … (任意)VirusTotal の API キー。無ければウイルススキャンは skipped 扱い
-3. Web から検査を起動するための Fine-grained PAT を作成(対象リポジトリのみ、`Contents: Read and write`)→ Vercel の `GITHUB_DISPATCH_TOKEN`。`GITHUB_REPO` は `owner/repo`。
+3. Web から検査を起動するための Fine-grained PAT を作成(対象リポジトリのみ、`Contents: Read and write`)→ Web の環境変数 `GITHUB_DISPATCH_TOKEN`。`GITHUB_REPO` は `owner/repo`。
 
-## 4. Vercel + ドメイン ★
+## 4. 本番サーバー + ドメイン ★
 
-`store.kawamonn.com` に Web を、`kawamonn.com` にハブ(別リポジトリ `kawamonn-site`)を割り当てる。
+Web は自前のサーバー(Node.js 24 と PM2 が入った Linux。今は Raspberry Pi)で動かし、Cloudflare Tunnel で
+`store.kawamonn.com` に公開する(ルーターのポート開放は不要)。`kawamonn.com` のハブ(別リポジトリ `kawamonn-site`)も同じサーバーから配信している。
+Web は SSR/API が必要なので static export ではなく `next start` で動かす。`web/` は単独プロジェクトなので、`web/` だけあれば動く。
 
-1. vercel.com/account/tokens で Personal Access Token を作成(この端末では `vercel login` が使えないため)。
-2. `web/` を Vercel プロジェクトとして作成し、`.env.example` の環境変数をすべて設定。
-   Web は SSR/API が必要なので static export ではなく通常の Next.js デプロイ。`web/` は単独プロジェクト(pnpm workspace ではない)なので、Vercel 側のビルドでそのまま動く。
-3. Vercel の Domains に `store.kawamonn.com` を追加。表示される CNAME を Cloudflare DNS に登録(プロキシは OFF = DNS only を推奨)。
-4. `kawamonn-site` を別プロジェクトとしてデプロイし、`kawamonn.com` を割り当てる(Apex は A レコード `76.76.21.21` か CNAME フラットニング)。
+1. サーバーでリポジトリを取得する(Web だけなら sparse checkout でよい):
+   ```bash
+   git clone --filter=blob:none --sparse https://github.com/kawamonn91/ttech-store.git
+   cd ttech-store && git sparse-checkout set web
+   ```
+2. `.env.example` の環境変数をすべて入れたファイルを**リポジトリの外**(例: `~/.config/ttech-store/env`、権限 600)に作り、
+   `web/.env.production.local` からシンボリックリンクで参照する(`.env*` は .gitignore 済み)。
+   `NEXT_PUBLIC_*` はビルド時に埋め込まれるので、変えたらビルドし直す。
+3. ビルドして PM2 で常駐させる。待ち受けは `127.0.0.1` だけにして、外からは Tunnel 経由でしか届かないようにする:
+   ```bash
+   cd web && npm ci && npm run build
+   pm2 start npm --name ttech-store-web -- run start -- -p 3200 -H 127.0.0.1
+   pm2 save
+   ```
+4. Cloudflare の Tunnels で、トンネルの公開アプリケーションに `store.kawamonn.com` → `http://localhost:3200` を追加する。
+   同じ名前の DNS レコードが既にあると自動では作られないので、`store` をトンネルの CNAME(プロキシ有効)に書き換える。
+5. 以後の反映は、main に push してから手元で `web/scripts/deploy-web.ps1` を実行する(サーバーで pull → `npm ci` → build → `pm2 restart`)。
+   接続先は `web/.env.local` の `DEPLOY_SSH`(例: `user@host`)と `DEPLOY_DIR`(サーバー上のリポジトリの場所)で指定する(リポジトリには入れない)。
 
 ## 5. ストアアプリの署名鍵
 
