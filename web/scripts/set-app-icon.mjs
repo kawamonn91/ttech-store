@@ -6,7 +6,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { loadEnvLocal, parseArgs, need } from "./lib/cli-env.mjs";
 
