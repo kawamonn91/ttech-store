@@ -1,8 +1,23 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { AppGrid } from "@/components/AppCard";
 import { getHome, listApps } from "@/lib/catalog";
 
+// レイアウトがログイン状態を読むのでページは毎回組み立てる(ビルド時に DB へ繋がないためにも必要)
 export const dynamic = "force-dynamic";
+
+// トップの一覧はログイン不要の公開情報で、全員に同じ内容を返す。Web を動かしているサーバーから
+// Supabase への問い合わせは、回線の遅延で 1.5〜5 秒かかり、つながりにくいこともあるため、結果を 60 秒キャッシュする。
+// 期限が切れた後の最初の表示では直前の内容を返し、裏で取り直す。
+// そのため新しく公開したアプリがトップに出るまで、最大 60 秒ほど遅れる(運営者の了承済み)。
+const loadHome = unstable_cache(
+  async () => {
+    const [home, { total }] = await Promise.all([getHome(), listApps({ limit: 1 })]);
+    return { ...home, total };
+  },
+  ["home-page"],
+  { revalidate: 60 },
+);
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -14,7 +29,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default async function HomePage() {
-  const [{ featured, newest, popular }, { total }] = await Promise.all([getHome(), listApps({ limit: 1 })]);
+  const { featured, newest, popular, total } = await loadHome();
   const empty = featured.length + newest.length + popular.length === 0;
 
   return (
