@@ -27,6 +27,7 @@ import androidx.navigation.navArgument
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.kawamonn.store.ui.account.AccountScreen
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -107,7 +108,7 @@ fun StoreNavHost(pendingRoute: String?, onRouteConsumed: () -> Unit) {
             composable("all") { AllAppsScreen(openApp, padding) }
             composable("search") { SearchScreen(openApp, padding) }
             composable("updates") { UpdatesScreen(openApp, padding) }
-            composable("account") { com.kawamonn.store.ui.account.AccountScreen(padding) }
+            composable("account") { AccountScreen(padding) }
             composable("detail/{slug}", arguments = listOf(navArgument("slug") { type = NavType.StringType })) { entry ->
                 DetailScreen(slug = entry.arguments?.getString("slug").orEmpty(), onBack = { nav.popBackStack() })
             }

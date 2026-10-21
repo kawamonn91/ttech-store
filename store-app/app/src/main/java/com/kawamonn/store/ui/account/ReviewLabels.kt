@@ -3,6 +3,7 @@ package com.kawamonn.store.ui.account
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -35,9 +36,9 @@ fun reviewReasons(findings: JsonElement?, max: Int = 6): List<String> {
     val array = findings as? JsonArray ?: return emptyList()
     return array.mapNotNull { element ->
         val obj = element as? JsonObject ?: return@mapNotNull null
-        val severity = (obj["severity"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+        val severity = (obj["severity"] as? JsonPrimitive)?.contentOrNull
         if (severity != "review" && severity != "block") return@mapNotNull null
-        (obj["title"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotEmpty() }
+        (obj["title"] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotEmpty() }
     }.distinct().take(max)
 }
 

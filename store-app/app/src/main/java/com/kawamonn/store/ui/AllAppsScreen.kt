@@ -25,14 +25,12 @@ import com.kawamonn.store.data.api.ApiException
 import com.kawamonn.store.data.api.AppSummaryDto
 import com.kawamonn.store.data.api.CategoryDto
 import com.kawamonn.store.data.api.StoreApi
+import com.kawamonn.store.data.api.allApps
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
-/** 1回のリクエストで取る件数(APIの上限) */
-private const val PAGE_SIZE = 100
 
 private data class SortOption(val key: String, val label: String)
 
@@ -72,22 +70,12 @@ class AllAppsViewModel(private val api: StoreApi) : ViewModel() {
         load()
     }
 
-    /** 件数が増えても全部見えるように、1回で取り切れない分は続きのページも取る(APIは1回100件まで) */
-    private suspend fun fetchAll(): List<AppSummaryDto> {
-        val all = mutableListOf<AppSummaryDto>()
-        while (true) {
-            val page = api.apps(query = null, category = _category.value, sort = _sort.value, limit = PAGE_SIZE, offset = all.size)
-            all += page.items
-            if (page.items.isEmpty() || all.size >= page.total) return all
-        }
-    }
-
     fun load() {
         job?.cancel()
         job = viewModelScope.launch {
             _results.value = Load.Loading
             _results.value = try {
-                Load.Ready(fetchAll())
+                Load.Ready(api.allApps(query = null, category = _category.value, sort = _sort.value))
             } catch (e: ApiException) {
                 Load.Failed(e.message ?: "読み込みに失敗しました")
             }

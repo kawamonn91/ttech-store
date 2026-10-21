@@ -81,6 +81,23 @@ data class IndexDto(val items: List<IndexEntryDto> = emptyList())
 @Serializable
 data class DownloadRequestDto(val deviceId: String)
 
+/** 管理者専用アプリ(公開カタログに出ないもの)の1件分。Web の管理API(/api/admin/private-apps)が返す */
+@Serializable
+data class PrivateAppDto(
+    val name: String,
+    val packageName: String,
+    val releaseId: String,
+    val versionName: String? = null,
+    val versionCode: Long,
+    val apkSize: Long? = null,
+) {
+    /** 画面に出すバージョン(versionName が無ければ versionCode) */
+    val versionLabel: String get() = versionName ?: versionCode.toString()
+}
+
+@Serializable
+data class PrivateAppsDto(val items: List<PrivateAppDto> = emptyList())
+
 @Serializable
 data class DownloadInfoDto(
     val url: String,

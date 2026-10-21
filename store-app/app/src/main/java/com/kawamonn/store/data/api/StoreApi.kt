@@ -14,6 +14,9 @@ import java.io.IOException
 
 class ApiException(message: String, val status: Int? = null, cause: Throwable? = null) : IOException(message, cause)
 
+/** /apps を1回で取れる件数の上限(サーバーの limit の上限) */
+const val APPS_PAGE_SIZE = 100
+
 interface StoreApi {
     suspend fun home(): HomeDto
     suspend fun categories(): CategoriesDto
@@ -96,8 +99,15 @@ class HttpStoreApi(
         }
     }
 
-    private fun errorMessage(body: String): String? = runCatching {
-        (json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject)
-            ?.get("error")?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
-    }.getOrNull()
+    private fun errorMessage(body: String): String? = json.parseObjectOrNull(body).stringField("error")
+}
+
+/** 条件に合うアプリをすべて取る。1回で取り切れない分は、続きのページも取る */
+suspend fun StoreApi.allApps(query: String?, category: String?, sort: String): List<AppSummaryDto> {
+    val all = mutableListOf<AppSummaryDto>()
+    while (true) {
+        val page = apps(query, category, sort = sort, limit = APPS_PAGE_SIZE, offset = all.size)
+        all += page.items
+        if (page.items.isEmpty() || all.size >= page.total) return all
+    }
 }

@@ -3,9 +3,11 @@ package com.kawamonn.store
 import android.app.Application
 import android.content.Context
 import com.kawamonn.store.auth.AuthRepository
+import com.kawamonn.store.auth.AuthState
 import com.kawamonn.store.auth.SharedPreferencesAuthSession
 import com.kawamonn.store.auth.SupabaseAuthApi
 import com.kawamonn.store.data.InstalledApps
+import com.kawamonn.store.data.api.AdminApi
 import com.kawamonn.store.data.api.HttpStoreApi
 import com.kawamonn.store.data.api.PostgrestApi
 import com.kawamonn.store.data.api.StoreApi
@@ -19,22 +21,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-
-/** 管理者専用アプリ(公開カタログに出ない)の1件分 */
-data class PrivateApp(
-    val name: String,
-    val packageName: String,
-    val releaseId: String,
-    val versionName: String,
-    val versionCode: Long,
-    val apkSize: Long?,
-)
 
 /** アプリ全体で共有するオブジェクトの置き場(手動DI) */
 class AppContainer(private val app: Application) {
@@ -68,71 +57,11 @@ class AppContainer(private val app: Application) {
 
     /** マイページ用。Webの管理コンソールと同じテーブル・同じRLSでデータを読み書きする */
     val postgrest = PostgrestApi(http, BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY) {
-        (authRepository.state.value as? com.kawamonn.store.auth.AuthState.SignedIn)?.accessToken
+        (authRepository.state.value as? AuthState.SignedIn)?.accessToken
     }
 
-    /**
-     * マイページからのリリース承認・却下。ロジックはWeb側の /api/admin/releases/:id/decision に
-     * 集約されている(公開時にアプリ本体も合わせて公開する処理を含む)ため、Kotlin側では再実装せず
-     * Bearerトークン付きでそのAPIを呼ぶ。
-     */
-    suspend fun adminReleaseDecision(releaseId: String, action: String) {
-        val token = authRepository.ensureFreshToken() ?: throw IllegalStateException("ログインしてください")
-        withContext(Dispatchers.IO) {
-            val body = """{"action":"$action"}""".toRequestBody("application/json".toMediaType())
-            val request = okhttp3.Request.Builder()
-                .url("${BuildConfig.STORE_WEB_BASE}/api/admin/releases/$releaseId/decision")
-                .header("Authorization", "Bearer $token")
-                .post(body)
-                .build()
-            http.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    val text = response.body.string()
-                    val json = runCatching {
-                        kotlinx.serialization.json.Json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject
-                    }.getOrNull()
-                    fun field(name: String) = (json?.get(name) as? kotlinx.serialization.json.JsonPrimitive)?.content
-                    if (field("code") == "totp_required") throw com.kawamonn.store.auth.TotpRequiredException()
-                    throw IllegalStateException(field("error") ?: "操作に失敗しました (${response.code})")
-                }
-            }
-        }
-    }
-
-    /**
-     * 管理者専用アプリ(公開カタログに出ないもの)の一覧。管理者としてログインしているときだけ返る。
-     * インストールは通常のアプリと同じ流れ(ダウンロード情報の取得だけ、管理者のトークンを付けて呼ぶ)。
-     */
-    suspend fun adminPrivateApps(): List<PrivateApp> {
-        val token = authRepository.ensureFreshToken() ?: throw IllegalStateException("ログインしてください")
-        return withContext(Dispatchers.IO) {
-            val request = okhttp3.Request.Builder()
-                .url("${BuildConfig.STORE_WEB_BASE}/api/admin/private-apps")
-                .header("Authorization", "Bearer $token")
-                .get()
-                .build()
-            http.newCall(request).execute().use { response ->
-                val text = response.body.string()
-                val json = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject }.getOrNull()
-                fun field(obj: kotlinx.serialization.json.JsonObject?, name: String) = (obj?.get(name) as? kotlinx.serialization.json.JsonPrimitive)?.content
-                if (!response.isSuccessful) {
-                    if (field(json, "code") == "totp_required") throw com.kawamonn.store.auth.TotpRequiredException()
-                    throw IllegalStateException(field(json, "error") ?: "管理者用アプリを読み込めませんでした (${response.code})")
-                }
-                (json?.get("items") as? kotlinx.serialization.json.JsonArray).orEmpty().mapNotNull { element ->
-                    val o = element as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
-                    PrivateApp(
-                        name = field(o, "name") ?: return@mapNotNull null,
-                        packageName = field(o, "packageName") ?: return@mapNotNull null,
-                        releaseId = field(o, "releaseId") ?: return@mapNotNull null,
-                        versionName = field(o, "versionName") ?: field(o, "versionCode") ?: "?",
-                        versionCode = field(o, "versionCode")?.toLongOrNull() ?: return@mapNotNull null,
-                        apkSize = field(o, "apkSize")?.toLongOrNull(),
-                    )
-                }
-            }
-        }
-    }
+    /** マイページの管理者向けの欄(リリースの承認・却下、管理者専用アプリ)。Web の管理APIを管理者のトークンで呼ぶ */
+    val adminApi = AdminApi(http, BuildConfig.STORE_WEB_BASE) { authRepository.ensureFreshToken() }
 
     /** マイページの2段階認証コード入力から呼ぶ。成功すればaal2セッションが保存され、直後の管理操作が通るようになる */
     suspend fun verifyTotp(code: String): Result<Unit> = authRepository.verifyTotpCode(code)

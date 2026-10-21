@@ -1,9 +1,11 @@
 package com.kawamonn.store.auth
 
+import com.kawamonn.store.data.api.parseObjectOrNull
+import com.kawamonn.store.data.api.stringField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.JsonArray
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -40,8 +42,7 @@ class SupabaseAuthApi(
     override suspend fun listFactors(accessToken: String): List<MfaFactor> {
         val text = getRaw("auth/v1/user", accessToken)
         return try {
-            val obj = json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject
-            val factors = obj?.get("factors") as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+            val factors = json.parseObjectOrNull(text)?.get("factors") as? JsonArray ?: return emptyList()
             factors.map { json.decodeFromJsonElement(MfaFactor.serializer(), it) }
         } catch (e: Exception) {
             throw AuthApiException("サーバーの応答を解釈できませんでした")
@@ -50,13 +51,7 @@ class SupabaseAuthApi(
 
     override suspend fun challengeTotp(accessToken: String, factorId: String): String {
         val text = postRaw("auth/v1/factors/$factorId/challenge", "{}", accessToken)
-        return try {
-            (json.parseToJsonElement(text) as kotlinx.serialization.json.JsonObject)["id"]!!.let {
-                (it as kotlinx.serialization.json.JsonPrimitive).content
-            }
-        } catch (e: Exception) {
-            throw AuthApiException("サーバーの応答を解釈できませんでした")
-        }
+        return json.parseObjectOrNull(text).stringField("id") ?: throw AuthApiException("サーバーの応答を解釈できませんでした")
     }
 
     override suspend fun verifyTotp(accessToken: String, factorId: String, challengeId: String, code: String): AuthSessionData {
@@ -116,11 +111,7 @@ class SupabaseAuthApi(
 
     /** Supabase の error_code を利用者向けの文言にする。知らないコードは英語の msg のまま出す */
     private fun errorCodeMessage(body: String): String? {
-        val code = runCatching {
-            (json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject)
-                ?.get("error_code")
-                ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
-        }.getOrNull() ?: return null
+        val code = json.parseObjectOrNull(body).stringField("error_code") ?: return null
         return when (code) {
             "mfa_verification_failed" -> "確認コードが正しくありません。認証アプリに表示されている今の6桁を入力してください"
             "mfa_challenge_expired" -> "確認コードの有効期限が切れました。もう一度入力してください"
@@ -130,8 +121,8 @@ class SupabaseAuthApi(
         }
     }
 
-    private fun errorMessage(body: String): String? = runCatching {
-        val obj = json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonObject ?: return null
-        (obj["msg"] ?: obj["error_description"] ?: obj["error"])?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
-    }.getOrNull()
+    private fun errorMessage(body: String): String? {
+        val obj = json.parseObjectOrNull(body)
+        return obj.stringField("msg") ?: obj.stringField("error_description") ?: obj.stringField("error")
+    }
 }

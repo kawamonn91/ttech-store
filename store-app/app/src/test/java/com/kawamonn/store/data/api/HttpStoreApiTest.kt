@@ -68,6 +68,29 @@ class HttpStoreApiTest {
     }
 
     @Test
+    fun `allAppsは、全件(total)に届くまで続きのページを取る`() = runBlocking {
+        val page = { n: Int, from: Int -> (from until from + n).joinToString(",") { summaryJson.replace("\"id\":\"a1\"", "\"id\":\"a$it\"") } }
+        server.enqueue(json("""{"items":[${page(APPS_PAGE_SIZE, 0)}],"total":${APPS_PAGE_SIZE + 2}}"""))
+        server.enqueue(json("""{"items":[${page(2, APPS_PAGE_SIZE)}],"total":${APPS_PAGE_SIZE + 2}}"""))
+
+        val all = api.allApps(query = "メモ", category = null, sort = "popular")
+        assertEquals(APPS_PAGE_SIZE + 2, all.size)
+        assertEquals("0", server.takeRequest().url.queryParameter("offset"))
+        val second = server.takeRequest().url
+        assertEquals("$APPS_PAGE_SIZE", second.queryParameter("offset"))
+        assertEquals("メモ", second.queryParameter("q"))
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `allAppsは、空のページが返ったらそこで止める(totalが実際より多くても終わる)`() = runBlocking {
+        server.enqueue(json("""{"items":[$summaryJson],"total":5}"""))
+        server.enqueue(json("""{"items":[],"total":5}"""))
+        assertEquals(1, api.allApps(query = null, category = "hobby", sort = "new").size)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
     fun `詳細はスラッグのパスで取得する`() = runBlocking {
         server.enqueue(json("""{"id":"a1","slug":"yomumemo","packageName":"p.q","name":"N","screenshots":["u1"],"developerName":"T-tech"}"""))
         val detail = api.app("yomumemo")

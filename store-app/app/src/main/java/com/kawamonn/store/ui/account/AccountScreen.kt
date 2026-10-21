@@ -7,15 +7,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,23 +27,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kawamonn.store.auth.AuthState
 import com.kawamonn.store.auth.TotpRequiredException
+import com.kawamonn.store.data.api.LatestReleaseDto
+import com.kawamonn.store.data.api.PrivateAppDto
+import com.kawamonn.store.ui.InstallButton
 import com.kawamonn.store.ui.LocalContainer
 import com.kawamonn.store.ui.SectionTitle
 import com.kawamonn.store.ui.auth.LoginScreen
-import kotlinx.coroutines.launch
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.platform.LocalContext
 import com.kawamonn.store.ui.openStoreWebPage
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /** [releaseState] は、最新のリリースの状態(「v1.0.0 公開中(自動審査を通過)」など) */
 private data class MyApp(val name: String, val status: String, val releaseState: String?)
@@ -83,7 +86,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
     var role by remember { mutableStateOf<String?>(null) }
     var myApps by remember { mutableStateOf<List<MyApp>>(emptyList()) }
     var pending by remember { mutableStateOf<List<PendingRelease>>(emptyList()) }
-    var privateApps by remember { mutableStateOf<List<com.kawamonn.store.PrivateApp>>(emptyList()) }
+    var privateApps by remember { mutableStateOf<List<PrivateAppDto>>(emptyList()) }
     var privateAppsNeedsTotp by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var busyId by remember { mutableStateOf<String?>(null) }
@@ -150,7 +153,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
         // 管理者専用アプリ(公開カタログに出ないもの)。他の読み込みが失敗しても、ここは独立して試す
         privateAppsNeedsTotp = false
         if (role == "admin") {
-            runCatching { container.adminPrivateApps() }
+            runCatching { container.adminApi.privateApps() }
                 .onSuccess { privateApps = it }
                 .onFailure { e ->
                     if (e is TotpRequiredException) {
@@ -170,7 +173,7 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
         busyId = releaseId
         error = null
         scope.launch {
-            runCatching { container.adminReleaseDecision(releaseId, action) }
+            runCatching { container.adminApi.releaseDecision(releaseId, action) }
                 .onFailure { e ->
                     if (e is TotpRequiredException) {
                         pendingRetry = releaseId to action
@@ -248,12 +251,12 @@ private fun SignedInAccount(state: AuthState.SignedIn, contentPadding: PaddingVa
             }
             items(privateApps, key = { it.releaseId }) { app ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("${app.name} v${app.versionName}", style = MaterialTheme.typography.titleMedium)
-                    com.kawamonn.store.ui.InstallButton(
+                    Text("${app.name} v${app.versionLabel}", style = MaterialTheme.typography.titleMedium)
+                    InstallButton(
                         packageName = app.packageName,
-                        latest = com.kawamonn.store.data.api.LatestReleaseDto(
+                        latest = LatestReleaseDto(
                             releaseId = app.releaseId,
-                            versionName = app.versionName,
+                            versionName = app.versionLabel,
                             versionCode = app.versionCode,
                             apkSize = app.apkSize,
                         ),
