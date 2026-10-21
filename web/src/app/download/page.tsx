@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { formatBytes } from "@/components/AppCard";
 import { getAppByPackage } from "@/lib/catalog";
 import { env } from "@/lib/env";
+import { formatBytes } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "ストアアプリを入手" };

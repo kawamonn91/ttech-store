@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { callApi, putWithProgress } from "@/lib/client-api";
+import { formatBytes, shortPermission } from "@/lib/format";
+import { ADMIN_RELEASE_STATUS_LABEL } from "@/lib/release-status";
 
 export interface ReleaseView {
   id: string;
@@ -15,41 +18,6 @@ export interface ReleaseView {
   release_notes: string;
   scan_result: { error?: string; virusTotal?: { status: string; permalink?: string } } | null;
   created_at: string;
-}
-
-const STATUS_LABEL: Record<ReleaseView["status"], string> = {
-  uploaded: "検査待ち",
-  scanned: "承認待ち",
-  approved: "非公開(承認済み)",
-  rejected: "却下",
-  published: "公開中",
-};
-
-function mb(bytes: number | null) {
-  return bytes == null ? "-" : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-async function api(path: string, body?: unknown): Promise<{ ok: boolean; data: Record<string, unknown> }> {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
-}
-
-/** APK を署名付きURLで R2 に直接PUTする。進捗を出すため fetch ではなく XHR を使う */
-function putWithProgress(url: string, file: File, onProgress: (ratio: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", "application/vnd.android.package-archive");
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`アップロードに失敗しました (${xhr.status})`)));
-    xhr.onerror = () => reject(new Error("アップロードに失敗しました(通信エラー / R2 の CORS 設定を確認してください)"));
-    xhr.send(file);
-  });
 }
 
 export function ReleaseManager({
@@ -74,19 +42,26 @@ export function ReleaseManager({
     if (!file.name.toLowerCase().endsWith(".apk")) return setError("APK ファイルを選んでください(AAB は配布できません)");
     try {
       setProgress(0);
-      const init = await api(`/api/admin/apps/${appId}/releases`, { releaseNotes: notes });
-      if (!init.ok) throw new Error(String(init.data.error ?? "リリースを作成できませんでした"));
-      const { releaseId, uploadUrl } = init.data as { releaseId: string; uploadUrl: string };
+      const init = await callApi<{ releaseId: string; uploadUrl: string }>(`/api/admin/apps/${appId}/releases`, {
+        json: { releaseNotes: notes },
+        fallbackError: "リリースを作成できませんでした",
+      });
+      if (!init.ok) throw new Error(init.error);
 
-      await putWithProgress(uploadUrl, file, setProgress);
+      await putWithProgress(init.data.uploadUrl, file, setProgress, {
+        contentType: "application/vnd.android.package-archive",
+        networkError: "アップロードに失敗しました(通信エラー / R2 の CORS 設定を確認してください)",
+      });
       setProgress(null);
 
-      const done = await api(`/api/admin/releases/${releaseId}/uploaded`);
-      if (!done.ok) throw new Error(String(done.data.error ?? "検査を開始できませんでした"));
+      const done = await callApi<{ dispatched: boolean; note?: string }>(`/api/admin/releases/${init.data.releaseId}/uploaded`, {
+        fallbackError: "検査を開始できませんでした",
+      });
+      if (!done.ok) throw new Error(done.error);
       setMessage(
         done.data.dispatched
           ? "アップロードしました。APK検査が完了するまで数分かかります(画面を再読み込みして確認してください)。"
-          : String(done.data.note ?? "アップロードしました。"),
+          : (done.data.note ?? "アップロードしました。"),
       );
       setNotes("");
       router.refresh();
@@ -100,8 +75,8 @@ export function ReleaseManager({
 
   async function decide(id: string, action: "publish" | "reject" | "unpublish") {
     setError(null);
-    const res = await api(`/api/admin/releases/${id}/decision`, { action });
-    if (!res.ok) setError(String(res.data.error ?? "操作に失敗しました"));
+    const res = await callApi(`/api/admin/releases/${id}/decision`, { json: { action } });
+    if (!res.ok) setError(res.error);
     router.refresh();
   }
 
@@ -142,7 +117,7 @@ export function ReleaseManager({
                 <div>
                   <span className="font-semibold">{r.version_name ?? "(検査中)"}</span>
                   {r.version_code != null && <span className="ml-2 text-sm text-muted">versionCode {r.version_code}</span>}
-                  <span className="ml-3 rounded-full bg-border px-2 py-0.5 text-xs">{STATUS_LABEL[r.status]}</span>
+                  <span className="ml-3 rounded-full bg-border px-2 py-0.5 text-xs">{ADMIN_RELEASE_STATUS_LABEL[r.status]}</span>
                 </div>
                 <div className="flex gap-2">
                   {(r.status === "scanned" || r.status === "approved") && (
@@ -164,7 +139,7 @@ export function ReleaseManager({
               </div>
               <dl className="mt-2 grid grid-cols-[7rem_1fr] gap-y-0.5 text-xs text-muted">
                 <dt>サイズ</dt>
-                <dd>{mb(r.apk_size)}</dd>
+                <dd>{r.apk_size == null ? "-" : formatBytes(r.apk_size)}</dd>
                 {r.sha256 && (
                   <>
                     <dt>SHA-256</dt>
@@ -180,7 +155,7 @@ export function ReleaseManager({
                 {r.permissions.length > 0 && (
                   <>
                     <dt>権限</dt>
-                    <dd>{r.permissions.map((p) => p.replace("android.permission.", "")).join(", ")}</dd>
+                    <dd>{r.permissions.map(shortPermission).join(", ")}</dd>
                   </>
                 )}
                 {r.scan_result?.virusTotal && (

@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { ensureAdminDeveloper } from "@/lib/admin";
+import { DEVELOPER_LIMITS, PACKAGE_RE, SLUG_RE } from "@/lib/app-rules";
+import { isUniqueViolation } from "@/lib/db";
+import { ModerationError, setAppStatus as setAppStatusWithAudit } from "@/lib/moderation";
 import { getAdminUser, serviceClient } from "@/lib/supabase";
 
 async function requireAdminOrThrow() {
@@ -13,10 +16,8 @@ async function requireAdminOrThrow() {
 }
 
 const AppFields = z.object({
-  slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,62}$/, "スラッグは半角英小文字・数字・ハイフンで2〜63文字"),
-  packageName: z
-    .string()
-    .regex(/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/, "パッケージ名の形式が正しくありません (例: com.example.app)"),
+  slug: z.string().regex(SLUG_RE, "スラッグは半角英小文字・数字・ハイフンで2〜63文字"),
+  packageName: z.string().regex(PACKAGE_RE, "パッケージ名の形式が正しくありません (例: com.example.app)"),
   name: z.string().min(1, "名前を入力してください").max(60),
   shortDesc: z.string().max(80).default(""),
   description: z.string().max(4000).default(""),
@@ -54,7 +55,7 @@ export async function createApp(_prev: ActionState, form: FormData): Promise<Act
     .select("id")
     .single();
   if (error) {
-    return { error: error.code === "23505" ? "同じスラッグまたはパッケージ名のアプリが既にあります" : error.message };
+    return { error: isUniqueViolation(error) ? "同じスラッグまたはパッケージ名のアプリが既にあります" : error.message };
   }
   redirect(`/admin/apps/${data.id}`);
 }
@@ -74,20 +75,15 @@ export async function updateApp(appId: string, _prev: ActionState, form: FormDat
   return {};
 }
 
-/** アプリ自体の公開/非公開/おすすめ。公開には「公開中のリリース」が1つ以上必要 */
-export async function setAppStatus(appId: string, status: "draft" | "published" | "suspended"): Promise<ActionState> {
-  await requireAdminOrThrow();
-  const supabase = serviceClient();
-  if (status === "published") {
-    const { count } = await supabase
-      .from("app_releases")
-      .select("id", { count: "exact", head: true })
-      .eq("app_id", appId)
-      .eq("status", "published");
-    if (!count) return { error: "公開中のリリースがありません。先にリリースを公開してください" };
+/** アプリ自体の公開・公開停止。公開には「公開中のリリース」が1つ以上必要。管理アプリからの操作と同じく監査ログに残す */
+export async function setAppStatus(appId: string, status: "published" | "suspended"): Promise<ActionState> {
+  const admin = await requireAdminOrThrow();
+  try {
+    await setAppStatusWithAudit(serviceClient(), admin, appId, status);
+  } catch (e) {
+    if (e instanceof ModerationError) return { error: e.message };
+    throw e;
   }
-  const { error } = await supabase.from("apps").update({ status }).eq("id", appId);
-  if (error) return { error: error.message };
   revalidatePath(`/admin/apps/${appId}`);
   revalidatePath("/admin");
   return {};
@@ -114,7 +110,7 @@ export async function saveMedia(
   const update: Record<string, unknown> = {};
   if (change.icon) update.icon_path = change.icon;
   let shots: string[] = app.screenshots ?? [];
-  if (change.addScreenshot) shots = [...shots, change.addScreenshot].slice(0, 8);
+  if (change.addScreenshot) shots = [...shots, change.addScreenshot].slice(0, DEVELOPER_LIMITS.maxScreenshots);
   if (change.removeScreenshot) shots = shots.filter((s) => s !== change.removeScreenshot);
   if (change.addScreenshot || change.removeScreenshot) update.screenshots = shots;
 

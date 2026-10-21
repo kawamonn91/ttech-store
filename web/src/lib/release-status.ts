@@ -34,6 +34,22 @@ export const APP_STATUS_LABEL: Record<string, { label: string; tone: Tone }> = {
   suspended: { label: "停止中", tone: "bad" },
 };
 
+/** 運営の画面(管理コンソール・マイページの承認欄)で使う、リリースの状態の短い言葉 */
+export const ADMIN_RELEASE_STATUS_LABEL: Record<string, string> = {
+  uploaded: "検査待ち",
+  scanned: "承認待ち",
+  approved: "非公開(承認済み)",
+  rejected: "却下",
+  published: "公開中",
+};
+
+/** 自動審査で見つかった点(Finding)の重大度 */
+export const SEVERITY_LABEL: Record<string, { label: string; tone: Tone }> = {
+  block: { label: "却下", tone: "bad" },
+  review: { label: "要確認", tone: "wait" },
+  info: { label: "参考", tone: "muted" },
+};
+
 export const TONE_CLASS: Record<Tone, string> = {
   ok: "bg-green-100 text-green-800",
   wait: "bg-amber-100 text-amber-800",

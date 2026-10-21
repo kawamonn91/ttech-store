@@ -1,12 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { env } from "@/lib/env";
-import { internalError, jsonError, jsonOk } from "@/lib/http";
+import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 import { MailNotConfiguredError, sendAdminMail } from "@/lib/mail";
 import { loadNotification, NOTIFY_KINDS } from "@/lib/notify";
 import { serviceClient } from "@/lib/supabase";
 
-const Body = z.object({ kind: z.enum(NOTIFY_KINDS as [string, ...string[]]), id: z.string().min(1).max(64) });
+const Body = z.object({ kind: z.enum(NOTIFY_KINDS), id: z.string().min(1).max(64) });
 
 function secretMatches(given: string | null): boolean {
   if (!given) return false;
@@ -23,11 +23,11 @@ function secretMatches(given: string | null): boolean {
 export async function POST(request: Request) {
   if (!secretMatches(request.headers.get("x-notify-secret"))) return jsonError("unauthorized", 401);
 
-  const body = Body.safeParse(await request.json().catch(() => null));
+  const body = await parseJsonBody(request, Body);
   if (!body.success) return jsonError("リクエストが不正です", 400);
 
   try {
-    const message = await loadNotification(serviceClient(), body.data.kind as Parameters<typeof loadNotification>[1], body.data.id);
+    const message = await loadNotification(serviceClient(), body.data.kind, body.data.id);
     if (!message) return jsonError("対象が見つかりません", 404);
     await sendAdminMail(message);
     return jsonOk({ ok: true });

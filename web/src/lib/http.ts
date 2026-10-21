@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import type { z } from "zod";
+
+/** リクエスト本文の JSON を schema で検証する。JSON として読めない本文は、空のオブジェクトとして検証する */
+export async function parseJsonBody<T extends z.ZodType>(request: Request, schema: T) {
+  return schema.safeParse(await request.json().catch(() => ({})));
+}
 
 /** 公開カタログ用: CDN で少しだけキャッシュして Supabase への負荷を減らす */
 const PUBLIC_CACHE = "public, s-maxage=60, stale-while-revalidate=300";

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { env } from "@/lib/env";
 import { sessionClient } from "@/lib/supabase";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://store.kawamonn.com"),
+  metadataBase: new URL(env.siteUrl()),
   title: { default: "T-tech Store", template: "%s | T-tech Store" },
   description: "T-tech のAndroidアプリをまとめて配布するストア。専用アプリからインストール・更新ができます。",
 };

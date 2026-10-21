@@ -1,3 +1,4 @@
+import { first } from "./db";
 import { env } from "./env";
 
 // ストアアプリ(store-app/.../data/api/Models.kt)が受け取る JSON と1対1で対応する。
@@ -85,11 +86,6 @@ export interface ReleaseRow {
   permissions: string[];
   release_notes: string;
   published_at: string | null;
-}
-
-/** Supabase の埋め込みは 1:1 でも配列で返ることがあるため、どちらでも受け取れるようにする */
-function first<T>(value: T | T[] | null): T | null {
-  return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
 export function mediaUrl(path: string | null): string | null {

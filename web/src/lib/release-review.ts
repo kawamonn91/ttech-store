@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { first, isUniqueViolation } from "./db";
 import { env } from "./env";
 import { sendAdminMail, sendMailTo, type MailMessage } from "./mail";
 import { developerReleaseMail, releaseAutoPublishedMail, releaseNeedsReviewMail, type ReleaseReviewInfo } from "./notify";
 import { describeFindings } from "./policy";
-import { decideRelease, type ReleaseDecision, type ReviewMode, type ScanResult } from "./scan";
+import { decideRelease, rejectedColumns, type ReleaseDecision, type ReviewMode, type ScanResult } from "./scan";
 
 export type ReviewResult =
   | { kind: "not_found" }
@@ -26,8 +27,6 @@ interface AppRow {
   signing_cert_sha256: string | null;
   developer: DeveloperRow | DeveloperRow[] | null;
 }
-
-const first = <T>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
 /** 通知は本来の処理(審査結果の反映)を止めない。送れなかったら記録だけ残す */
 async function bestEffort(label: string, send: () => Promise<void>): Promise<void> {
@@ -69,16 +68,15 @@ export async function reviewScannedRelease(supabase: SupabaseClient, releaseId: 
     .in("status", ["published", "approved"])
     .order("version_code", { ascending: false })
     .limit(1);
-  const latestCode = Array.isArray(latest) ? ((latest[0] as { version_code: number | null } | undefined)?.version_code ?? null) : null;
+  const latestCode = (latest?.[0] as { version_code: number | null } | undefined)?.version_code ?? null;
 
   let decision = decideRelease(result, app, mode, { latestPublishedVersionCode: latestCode });
   let { error } = await supabase.from("app_releases").update({ ...decision.columns, status: decision.status }).eq("id", releaseId);
   if (error) {
     // 同じ versionCode のリリースがすでにある(unique 制約)。開発者に分かる理由で却下する
-    const code = (error as { code?: string }).code;
-    if (code === "23505" || /duplicate|unique/i.test(error.message)) {
+    if (isUniqueViolation(error)) {
       const reason = `同じバージョンコード(${result.versionCode})のリリースがすでにあります。versionCode を上げてビルドし直してください`;
-      decision = { status: "rejected", reason, columns: { scan_result: { ...result, error: reason } }, verdict: decision.verdict, autoApproved: false };
+      decision = { status: "rejected", reason, columns: rejectedColumns(result, reason), verdict: decision.verdict, autoApproved: false };
       ({ error } = await supabase.from("app_releases").update({ ...decision.columns, status: "rejected" }).eq("id", releaseId));
     }
     if (error) throw error;

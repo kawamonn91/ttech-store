@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { callApi } from "@/lib/client-api";
 import { browserClient } from "@/lib/supabase-browser";
 
 export function DeleteAccountButton({ hasApps }: { hasApps: boolean }) {
@@ -13,10 +14,9 @@ export function DeleteAccountButton({ hasApps }: { hasApps: boolean }) {
   async function doDelete() {
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/account/delete", { method: "POST" });
+    const res = await callApi("/api/account/delete", { fallbackError: "削除に失敗しました" });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "削除に失敗しました");
+      setError(res.error);
       setBusy(false);
       return;
     }

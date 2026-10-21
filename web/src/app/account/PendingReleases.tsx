@@ -1,24 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Link from "next/link";
-import type { Finding } from "@/lib/policy";
+import type { PendingReleaseDto } from "@/lib/admin-queries";
+import { callApi } from "@/lib/client-api";
+import { ADMIN_RELEASE_STATUS_LABEL } from "@/lib/release-status";
 import { Findings } from "../developer/Findings";
 
-export interface PendingReleaseItem {
-  id: string;
-  version_name: string | null;
-  status: string;
-  policy_verdict?: string | null;
-  policy_findings?: Finding[];
-  app: { id: string; slug: string; name: string } | null;
-}
-
-const STATUS_LABEL: Record<string, string> = { scanned: "承認待ち", approved: "非公開(承認済み)" };
-
 /** マイページ内で完結する承認UI。管理コンソール(/admin)へ移動しなくても公開・却下できる */
-export function PendingReleases({ items }: { items: PendingReleaseItem[] }) {
+export function PendingReleases({ items }: { items: PendingReleaseDto[] }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,17 +17,9 @@ export function PendingReleases({ items }: { items: PendingReleaseItem[] }) {
   async function decide(releaseId: string, action: "publish" | "reject") {
     setBusyId(releaseId);
     setError(null);
-    const res = await fetch(`/api/admin/releases/${releaseId}/decision`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
+    const res = await callApi(`/api/admin/releases/${releaseId}/decision`, { json: { action } });
     setBusyId(null);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(String(body.error ?? "操作に失敗しました"));
-      return;
-    }
+    if (!res.ok) return setError(res.error);
     router.refresh();
   }
 
@@ -49,29 +32,29 @@ export function PendingReleases({ items }: { items: PendingReleaseItem[] }) {
         {items.map((r) => (
           <li key={r.id} className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm">
             <div className="flex items-center justify-between gap-3">
-            <Link href={`/apps/${r.app?.slug}`} className="min-w-0 flex-1 truncate hover:text-brand">
-              {r.app?.name} <span className="text-muted">v{r.version_name ?? "?"}</span>
-            </Link>
-            <span className="shrink-0 text-xs text-muted">{STATUS_LABEL[r.status] ?? r.status}</span>
-            <div className="flex shrink-0 gap-2">
-              <button
-                onClick={() => decide(r.id, "publish")}
-                disabled={busyId === r.id}
-                className="rounded-full bg-brand px-3 py-1 text-xs font-semibold text-brand-foreground disabled:opacity-60"
-              >
-                公開する
-              </button>
-              <button
-                onClick={() => decide(r.id, "reject")}
-                disabled={busyId === r.id}
-                className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-60"
-              >
-                却下
-              </button>
+              <Link href={`/apps/${r.app?.slug}`} className="min-w-0 flex-1 truncate hover:text-brand">
+                {r.app?.name} <span className="text-muted">v{r.versionName ?? "?"}</span>
+              </Link>
+              <span className="shrink-0 text-xs text-muted">{ADMIN_RELEASE_STATUS_LABEL[r.status] ?? r.status}</span>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  onClick={() => decide(r.id, "publish")}
+                  disabled={busyId === r.id}
+                  className="rounded-full bg-brand px-3 py-1 text-xs font-semibold text-brand-foreground disabled:opacity-60"
+                >
+                  公開する
+                </button>
+                <button
+                  onClick={() => decide(r.id, "reject")}
+                  disabled={busyId === r.id}
+                  className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-60"
+                >
+                  却下
+                </button>
+              </div>
             </div>
-            </div>
-            {r.policy_verdict === "needs_review" && <p className="mt-2 text-xs font-semibold text-amber-800">自動審査で確認が必要な点が見つかりました。内容を見て、公開・却下を決めてください</p>}
-            <Findings findings={r.policy_findings ?? []} />
+            {r.policyVerdict === "needs_review" && <p className="mt-2 text-xs font-semibold text-amber-800">自動審査で確認が必要な点が見つかりました。内容を見て、公開・却下を決めてください</p>}
+            <Findings findings={r.policyFindings} />
           </li>
         ))}
       </ul>

@@ -1,21 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { PACKAGE_RE, SLUG_RE, slugFromPackage } from "./app-rules";
+import { isUuid } from "./db";
 import { jsonError } from "./http";
 import { serviceClient, sessionClient } from "./supabase";
-
-// ---------------------------------------------------------------- 利用枠(1人の開発者あたり)
-
-export const DEVELOPER_LIMITS = {
-  /** 登録できるアプリの数 */
-  maxApps: 10,
-  /** 24時間にアップロードできるAPKの数(検査・配信の負荷と、悪用の防止) */
-  maxReleasesPerDay: 10,
-  /** APK1つの最大サイズ */
-  maxApkBytes: 200 * 1024 * 1024,
-  maxScreenshots: 8,
-  /** 画像1枚の最大サイズ(アップロード時) */
-  maxImageBytes: 3 * 1024 * 1024,
-} as const;
+import { hasControlChars } from "./text";
 
 // ---------------------------------------------------------------- 名前の検証
 
@@ -65,25 +54,15 @@ export function isReservedPackage(packageName: string): boolean {
 /** アプリのURL(/apps/<slug>)や既存のページと衝突するので、slug に使えないもの */
 const RESERVED_SLUGS = new Set(["new", "admin", "api", "search", "legal", "developer", "account", "login", "download", "auth", "apps", "static", "_next"]);
 
-/** パッケージ名の最後の区切りから、URL用の名前(slug)の案を作る */
+/** パッケージ名から、URL用の名前(slug)の案を作る。使える部分が無ければランダムな名前 */
 export function suggestSlug(packageName: string): string {
-  const parts = packageName.toLowerCase().split(".").filter(Boolean);
-  const generic = new Set(["app", "android", "mobile", "client", "com", "co", "jp", "org", "net", "io"]);
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const seg = parts[i].replace(/_/g, "-").replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "");
-    if (seg.length >= 2 && !generic.has(seg)) return seg.slice(0, 40);
-  }
-  return `app-${Math.random().toString(36).slice(2, 8)}`;
+  return slugFromPackage(packageName) ?? `app-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 // ---------------------------------------------------------------- 入力の形式(zod)
 
-const PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,62}$/;
-const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
-
 const text = (min: number, max: number) =>
-  z.string().trim().min(min).max(max).refine((v) => !CONTROL_CHARS.test(v), "使えない文字が含まれています");
+  z.string().trim().min(min).max(max).refine((v) => !hasControlChars(v), "使えない文字が含まれています");
 
 const httpUrl = z
   .string()
@@ -128,7 +107,7 @@ export function firstIssue(error: z.ZodError): string {
 }
 
 /** 使えない名前・パッケージ名・slug のときの、利用者に見せる理由。使えるなら null */
-export function nameProblem(kind: "developer" | "app", name: string): string | null {
+export function nameProblem(name: string): string | null {
   const w = findReservedWord(name);
   return w ? `「${w}」を含む名前は、他社や運営と紛らわしいため使えません` : null;
 }
@@ -202,6 +181,17 @@ export async function requireDeveloper(): Promise<{ user: SessionUser; developer
   return { user: auth.user, developer, svc: auth.svc };
 }
 
+/** 運営に停止されたアプリは、開発者からは変更できない */
+export function appSuspendedResponse(): Response {
+  return jsonError("このアプリは停止されています。運営にお問い合わせください", 403);
+}
+
+/** 指定されたカテゴリがあるか */
+export async function categoryExists(svc: SupabaseClient, categoryId: number): Promise<boolean> {
+  const { data } = await svc.from("categories").select("id").eq("id", categoryId).maybeSingle();
+  return Boolean(data);
+}
+
 /** 自分のアプリを取得する。他人のアプリ・存在しないアプリは、どちらも null(存在を知らせない) */
 export async function loadOwnApp<T extends string = "id, slug, name, package_name, status, developer_id">(
   svc: SupabaseClient,
@@ -209,7 +199,7 @@ export async function loadOwnApp<T extends string = "id, slug, name, package_nam
   userId: string,
   columns: T = "id, slug, name, package_name, status, developer_id" as T,
 ) {
-  if (!/^[0-9a-f-]{36}$/i.test(appId)) return null;
+  if (!isUuid(appId)) return null;
   const { data } = await svc.from("apps").select(columns).eq("id", appId).eq("developer_id", userId).maybeSingle();
   return data as Record<string, unknown> | null;
 }

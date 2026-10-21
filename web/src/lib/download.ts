@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { first } from "./db";
 import { env } from "./env";
 import { DOWNLOAD_URL_TTL_SECONDS, presignDownload } from "./r2";
 import { serviceClient } from "./supabase";
@@ -56,7 +57,7 @@ export async function issueDownload(
   if (error) throw error;
 
   const release = data as unknown as ReleaseWithApp | null;
-  const app = release && (Array.isArray(release.app) ? release.app[0] : release.app);
+  const app = first(release?.app);
   if (!release || !app || release.status !== "published" || app.status !== "published") {
     throw new DownloadError("このアプリは現在ダウンロードできません", 404);
   }

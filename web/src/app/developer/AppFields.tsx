@@ -12,7 +12,8 @@ export interface AppFieldValues {
   categoryId: number | null;
 }
 
-const INPUT = "w-full rounded-xl border border-border bg-surface px-4 py-2";
+/** 開発者ポータルの入力欄の見た目 */
+export const INPUT = "w-full rounded-xl border border-border bg-surface px-4 py-2";
 
 /** アプリの掲載内容の入力欄(新規登録と編集で共通) */
 export function AppFields({ values, onChange, categories }: { values: AppFieldValues; onChange: (v: AppFieldValues) => void; categories: Category[] }) {

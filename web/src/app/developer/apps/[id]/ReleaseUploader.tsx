@@ -2,22 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { DEVELOPER_LIMITS } from "@/lib/app-rules";
+import { callApi, putWithProgress } from "@/lib/client-api";
 
-const MAX_BYTES = 200 * 1024 * 1024;
+const MAX_BYTES = DEVELOPER_LIMITS.maxApkBytes;
 
 type Phase = { kind: "idle" } | { kind: "uploading"; percent: number } | { kind: "registering" };
-
-/** R2 へ直接アップロードする(進み具合を出すため XMLHttpRequest を使う) */
-function put(url: string, file: File, onProgress: (percent: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`アップロードに失敗しました (${xhr.status})`)));
-    xhr.onerror = () => reject(new Error("アップロードに失敗しました。通信状況を確認して、もう一度お試しください"));
-    xhr.send(file);
-  });
-}
 
 /** 新しいバージョンのAPKをアップロードする。アップロード後は自動で検査され、結果はこの画面に出る */
 export function ReleaseUploader({ appId, disabled }: { appId: string; disabled: boolean }) {
@@ -37,19 +27,19 @@ export function ReleaseUploader({ appId, disabled }: { appId: string; disabled: 
 
     try {
       setPhase({ kind: "uploading", percent: 0 });
-      const created = await fetch(`/api/developer/apps/${appId}/releases`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ releaseNotes: notes }),
+      const created = await callApi<{ releaseId: string; uploadUrl: string }>(`/api/developer/apps/${appId}/releases`, {
+        json: { releaseNotes: notes },
+        fallbackError: "アップロードを始められませんでした",
       });
-      const info = await created.json().catch(() => ({}));
-      if (!created.ok) throw new Error(String(info.error ?? "アップロードを始められませんでした"));
+      if (!created.ok) throw new Error(created.error);
 
-      await put(info.uploadUrl, file, (percent) => setPhase({ kind: "uploading", percent }));
+      await putWithProgress(created.data.uploadUrl, file, (ratio) => setPhase({ kind: "uploading", percent: Math.round(ratio * 100) }), {
+        networkError: "アップロードに失敗しました。通信状況を確認して、もう一度お試しください",
+      });
 
       setPhase({ kind: "registering" });
-      const uploaded = await fetch(`/api/developer/releases/${info.releaseId}/uploaded`, { method: "POST" });
-      if (!uploaded.ok) throw new Error(String((await uploaded.json().catch(() => ({}))).error ?? "検査を始められませんでした"));
+      const uploaded = await callApi(`/api/developer/releases/${created.data.releaseId}/uploaded`, { fallbackError: "検査を始められませんでした" });
+      if (!uploaded.ok) throw new Error(uploaded.error);
       setDone(true);
       setNotes("");
       router.refresh();

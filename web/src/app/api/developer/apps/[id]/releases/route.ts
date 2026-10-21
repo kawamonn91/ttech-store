@@ -1,5 +1,6 @@
-import { CreateReleaseBody, DEVELOPER_LIMITS, firstIssue, loadOwnApp, requireDeveloper } from "@/lib/developer";
-import { internalError, jsonError, jsonOk } from "@/lib/http";
+import { DEVELOPER_LIMITS } from "@/lib/app-rules";
+import { appSuspendedResponse, CreateReleaseBody, firstIssue, loadOwnApp, requireDeveloper } from "@/lib/developer";
+import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 import { presignUpload, UPLOAD_URL_TTL_SECONDS, uploadKey } from "@/lib/r2";
 
 /**
@@ -12,13 +13,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { user, svc } = auth;
   const { id: appId } = await params;
 
-  const body = CreateReleaseBody.safeParse(await request.json().catch(() => ({})));
+  const body = await parseJsonBody(request, CreateReleaseBody);
   if (!body.success) return jsonError(firstIssue(body.error), 400);
 
   try {
     const app = await loadOwnApp(svc, appId, user.id);
     if (!app) return jsonError("アプリが見つかりません", 404);
-    if (app.status === "suspended") return jsonError("このアプリは停止されています。運営にお問い合わせください", 403);
+    if (app.status === "suspended") return appSuspendedResponse();
 
     // 直近24時間に、自分の全アプリで作ったリリースの数
     const { data: mine } = await svc.from("apps").select("id").eq("developer_id", user.id);

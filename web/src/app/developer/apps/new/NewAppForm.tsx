@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AppFields, type AppFieldValues, type Category } from "../../AppFields";
-
-const INPUT = "w-full rounded-xl border border-border bg-surface px-4 py-2";
+import { callApi } from "@/lib/client-api";
+import { AppFields, INPUT, type AppFieldValues, type Category } from "../../AppFields";
 
 export function NewAppForm({ categories }: { categories: Category[] }) {
   const router = useRouter();
@@ -18,18 +17,10 @@ export function NewAppForm({ categories }: { categories: Category[] }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/developer/apps", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packageName, slug, ...values }),
-    });
-    const body = await res.json().catch(() => ({}));
+    const res = await callApi<{ id: string }>("/api/developer/apps", { json: { packageName, slug, ...values }, fallbackError: "登録に失敗しました" });
     setBusy(false);
-    if (!res.ok) {
-      setError(String(body.error ?? "登録に失敗しました"));
-      return;
-    }
-    router.push(`/developer/apps/${body.id}`);
+    if (!res.ok) return setError(res.error);
+    router.push(`/developer/apps/${res.data.id}`);
   }
 
   return (

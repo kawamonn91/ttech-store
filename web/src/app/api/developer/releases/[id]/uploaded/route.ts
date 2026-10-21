@@ -1,4 +1,6 @@
-import { DEVELOPER_LIMITS, requireDeveloper } from "@/lib/developer";
+import { DEVELOPER_LIMITS } from "@/lib/app-rules";
+import { first, isUuid } from "@/lib/db";
+import { appSuspendedResponse, requireDeveloper } from "@/lib/developer";
 import { internalError, jsonError, jsonOk } from "@/lib/http";
 import { apkKey, copyObject, deleteObject, headObject } from "@/lib/r2";
 import { dispatchScan } from "@/lib/scan-dispatch";
@@ -15,16 +17,17 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if ("response" in auth) return auth.response;
   const { user, svc } = auth;
   const { id } = await params;
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return jsonError("リリースが見つかりません", 404);
+  if (!isUuid(id)) return jsonError("リリースが見つかりません", 404);
 
   try {
     const { data } = await svc.from("app_releases").select("id, app_id, apk_key, status, app:apps(id, developer_id, status)").eq("id", id).maybeSingle();
-    const release = data as { id: string; app_id: string; apk_key: string; status: string; app: { developer_id: string; status: string } | { developer_id: string; status: string }[] | null } | null;
-    const app = Array.isArray(release?.app) ? release?.app[0] : release?.app;
+    type AppRef = { developer_id: string; status: string };
+    const release = data as { id: string; app_id: string; apk_key: string; status: string; app: AppRef | AppRef[] | null } | null;
+    const app = first(release?.app);
     // 他人のリリースは、存在しないものと同じに見せる
     if (!release || !app || app.developer_id !== user.id) return jsonError("リリースが見つかりません", 404);
     if (release.status !== "uploaded") return jsonError("このリリースは、すでに検査に進んでいます", 409);
-    if (app.status === "suspended") return jsonError("このアプリは停止されています。運営にお問い合わせください", 403);
+    if (app.status === "suspended") return appSuspendedResponse();
 
     const head = await headObject(release.apk_key);
     if (!head) return jsonError("APKのアップロードを確認できません。アップロードが終わってから、もう一度お試しください", 409);

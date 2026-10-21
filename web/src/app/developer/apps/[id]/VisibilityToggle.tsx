@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { callApi } from "@/lib/client-api";
 
 /** 公開・非公開の切り替え(公開できるのは、公開済みのリリースがあるアプリだけ) */
 export function VisibilityToggle({ appId, status, canPublish }: { appId: string; status: string; canPublish: boolean }) {
@@ -13,13 +14,9 @@ export function VisibilityToggle({ appId, status, canPublish }: { appId: string;
   async function toggle() {
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/developer/apps/${appId}/visibility`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visible: !published }),
-    });
+    const res = await callApi(`/api/developer/apps/${appId}/visibility`, { json: { visible: !published }, fallbackError: "変更に失敗しました" });
     setBusy(false);
-    if (!res.ok) setError(String((await res.json().catch(() => ({}))).error ?? "変更に失敗しました"));
+    if (!res.ok) setError(res.error);
     else router.refresh();
   }
 

@@ -1,5 +1,5 @@
-import { firstIssue, loadOwnApp, nameProblem, requireDeveloper, UpdateAppBody } from "@/lib/developer";
-import { internalError, jsonError, jsonOk } from "@/lib/http";
+import { appSuspendedResponse, categoryExists, firstIssue, loadOwnApp, nameProblem, requireDeveloper, UpdateAppBody } from "@/lib/developer";
+import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 
 /** 自分のアプリの掲載内容(名前・説明・カテゴリ)を更新する。パッケージ名・状態・アイコン等は、この経路では変えられない */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,22 +8,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { user, svc } = auth;
   const { id } = await params;
 
-  const body = UpdateAppBody.safeParse(await request.json().catch(() => null));
+  const body = await parseJsonBody(request, UpdateAppBody);
   if (!body.success) return jsonError(firstIssue(body.error), 400);
   const input = body.data;
   if (input.name !== undefined) {
-    const problem = nameProblem("app", input.name);
+    const problem = nameProblem(input.name);
     if (problem) return jsonError(problem, 400);
   }
 
   try {
     const app = await loadOwnApp(svc, id, user.id);
     if (!app) return jsonError("アプリが見つかりません", 404);
-    if (app.status === "suspended") return jsonError("このアプリは停止されています。運営にお問い合わせください", 403);
-    if (input.categoryId) {
-      const { data: category } = await svc.from("categories").select("id").eq("id", input.categoryId).maybeSingle();
-      if (!category) return jsonError("カテゴリが見つかりません", 400);
-    }
+    if (app.status === "suspended") return appSuspendedResponse();
+    if (input.categoryId && !(await categoryExists(svc, input.categoryId))) return jsonError("カテゴリが見つかりません", 400);
 
     const patch: Record<string, unknown> = {};
     if (input.name !== undefined) patch.name = input.name;

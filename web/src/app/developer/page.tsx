@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/developer";
 import { APP_STATUS_LABEL, TONE_CLASS } from "@/lib/release-status";
-import { serviceClient, sessionClient } from "@/lib/supabase";
+import { serviceClient } from "@/lib/supabase";
 import { RegisterForm } from "./RegisterForm";
 
 export const metadata: Metadata = { title: "開発者向け" };
@@ -18,9 +19,7 @@ const CHECKS = [
 ];
 
 export default async function DeveloperPage() {
-  const supabase = await sessionClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  const user = await getSessionUser();
   if (!user) redirect("/login?next=/developer");
 
   const svc = serviceClient();
@@ -56,7 +55,7 @@ export default async function DeveloperPage() {
         {intro}
         <Card>
           <h2 className="mb-3 font-bold">登録(無料・すぐに使えます)</h2>
-          {user.email_confirmed_at ? (
+          {user.emailConfirmed ? (
             <RegisterForm defaultEmail={user.email ?? ""} />
           ) : (
             <p className="text-sm text-danger">メールアドレスの確認が済んでいません。届いた確認メールのリンクを開いてから、このページを開き直してください。</p>

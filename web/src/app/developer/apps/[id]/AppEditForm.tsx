@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { callApi } from "@/lib/client-api";
 import { AppFields, type AppFieldValues, type Category } from "../../AppFields";
 
 export function AppEditForm({ appId, initial, categories, disabled }: { appId: string; initial: AppFieldValues; categories: Category[]; disabled: boolean }) {
@@ -14,16 +15,9 @@ export function AppEditForm({ appId, initial, categories, disabled }: { appId: s
     e.preventDefault();
     setBusy(true);
     setMessage(null);
-    const res = await fetch(`/api/developer/apps/${appId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
+    const res = await callApi(`/api/developer/apps/${appId}`, { method: "PATCH", json: values, fallbackError: "保存に失敗しました" });
     setBusy(false);
-    if (!res.ok) {
-      setMessage({ text: String((await res.json().catch(() => ({}))).error ?? "保存に失敗しました"), ok: false });
-      return;
-    }
+    if (!res.ok) return setMessage({ text: res.error, ok: false });
     setMessage({ text: "保存しました", ok: true });
     router.refresh();
   }

@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
+import { isUuid } from "@/lib/db";
 import { DownloadError, issueDownload } from "@/lib/download";
-import { internalError, jsonError, jsonOk } from "@/lib/http";
+import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 
 const Body = z.object({ deviceId: z.string().min(8).max(100) });
-const UuidParam = z.string().uuid();
 
 /**
  * 管理者専用アプリ(admin_only)だけは、管理者としてログインした呼び出し(Authorization: Bearer)でなければ発行しない。
@@ -13,9 +13,9 @@ const UuidParam = z.string().uuid();
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!UuidParam.safeParse(id).success) return jsonError("リリースが見つかりません", 404);
+  if (!isUuid(id)) return jsonError("リリースが見つかりません", 404);
 
-  const body = Body.safeParse(await request.json().catch(() => null));
+  const body = await parseJsonBody(request, Body);
   if (!body.success) return jsonError("リクエストが不正です", 400);
 
   try {

@@ -1,6 +1,8 @@
+import { isUniqueViolation } from "@/lib/db";
 import { firstIssue, nameProblem, RegisterBody, requireUser } from "@/lib/developer";
-import { internalError, jsonError, jsonOk } from "@/lib/http";
+import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 import { sendAdminMail } from "@/lib/mail";
+import { developerRegisteredMail } from "@/lib/notify";
 
 /**
  * 開発者としての会員登録。誰でも登録でき、承認を待たずにすぐ使える
@@ -14,12 +16,12 @@ export async function POST(request: Request) {
   if ("response" in auth) return auth.response;
   const { user, svc } = auth;
 
-  const body = RegisterBody.safeParse(await request.json().catch(() => null));
+  const body = await parseJsonBody(request, RegisterBody);
   if (!body.success) return jsonError(firstIssue(body.error), 400);
   if (!user.emailConfirmed) {
     return jsonError("メールアドレスの確認が済んでいません。届いた確認メールのリンクを開いてから、もう一度お試しください", 403, { code: "email_unconfirmed" });
   }
-  const problem = nameProblem("developer", body.data.name);
+  const problem = nameProblem(body.data.name);
   if (problem) return jsonError(problem, 400);
   const contactEmail = body.data.contactEmail ?? user.email;
   if (!contactEmail) return jsonError("連絡先のメールアドレスを入力してください", 400);
@@ -42,17 +44,14 @@ export async function POST(request: Request) {
       ? await svc.from("developers").update(row).eq("user_id", user.id)
       : await svc.from("developers").insert({ user_id: user.id, ...row });
     if (error) {
-      if ((error as { code?: string }).code === "23505" || /developers_name/i.test(error.message)) {
+      if (isUniqueViolation(error)) {
         return jsonError("その開発者名は、すでに使われています。別の名前にしてください", 409);
       }
       throw error;
     }
 
     // 運営への知らせ(参考)。送れなくても、登録は成功させる
-    await sendAdminMail({
-      subject: `[T-tech Store] 新しい開発者が登録しました(${body.data.name.slice(0, 40)})`,
-      text: `開発者として新しく登録がありました。承認は不要で、すぐに利用できます。\n\n開発者名: ${body.data.name}\n連絡先: ${contactEmail}\nウェブサイト: ${body.data.website ?? "(なし)"}\n\n問題があれば、管理コンソールから停止できます。\n\n(このメールは T-tech Store から自動で送られています)`,
-    }).catch((e) => console.warn("開発者の登録の通知を送れませんでした:", e instanceof Error ? e.message : e));
+    await sendAdminMail(developerRegisteredMail({ name: body.data.name, contactEmail, website: body.data.website ?? null })).catch((e) => console.warn("開発者の登録の通知を送れませんでした:", e instanceof Error ? e.message : e));
 
     return jsonOk({ ok: true });
   } catch (e) {

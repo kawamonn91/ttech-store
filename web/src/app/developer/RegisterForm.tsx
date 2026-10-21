@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-const INPUT = "w-full rounded-xl border border-border bg-surface px-4 py-2";
+import { callApi } from "@/lib/client-api";
+import { INPUT } from "./AppFields";
 
 /** 開発者としての会員登録。承認を待たず、登録するとすぐにアプリを登録できる */
 export function RegisterForm({ defaultEmail }: { defaultEmail: string }) {
@@ -20,16 +20,9 @@ export function RegisterForm({ defaultEmail }: { defaultEmail: string }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/developer/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, contactEmail, website, acceptTerms: accept }),
-    });
+    const res = await callApi("/api/developer/register", { json: { name, contactEmail, website, acceptTerms: accept }, fallbackError: "登録に失敗しました" });
     setBusy(false);
-    if (!res.ok) {
-      setError(String((await res.json().catch(() => ({}))).error ?? "登録に失敗しました"));
-      return;
-    }
+    if (!res.ok) return setError(res.error);
     router.refresh();
   }
 

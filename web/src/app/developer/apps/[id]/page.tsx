@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { isUuid } from "@/lib/db";
+import { getSessionUser } from "@/lib/developer";
 import { mediaUrl } from "@/lib/dto";
 import type { Finding } from "@/lib/policy";
 import { APP_STATUS_LABEL, releaseState, TONE_CLASS } from "@/lib/release-status";
-import { serviceClient, sessionClient } from "@/lib/supabase";
+import { serviceClient } from "@/lib/supabase";
 import { AutoRefresh } from "../../AutoRefresh";
 import { Findings } from "../../Findings";
 import { AppEditForm } from "./AppEditForm";
@@ -42,10 +44,9 @@ interface ReleaseRow {
 
 export default async function DeveloperAppPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await sessionClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect(`/login?next=/developer/apps/${id}`);
-  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const user = await getSessionUser();
+  if (!user) redirect(`/login?next=/developer/apps/${id}`);
+  if (!isUuid(id)) notFound();
 
   const svc = serviceClient();
   // 自分のアプリだけ(他人のアプリは、存在しないものと同じ扱い)
@@ -53,7 +54,7 @@ export default async function DeveloperAppPage({ params }: { params: Promise<{ i
     .from("apps")
     .select("id, slug, name, short_desc, description, category_id, icon_path, screenshots, status, package_name, download_count")
     .eq("id", id)
-    .eq("developer_id", auth.user.id)
+    .eq("developer_id", user.id)
     .maybeSingle();
   if (!app) notFound();
 

@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { serviceClient, sessionClient } from "@/lib/supabase";
+import { getSessionUser } from "@/lib/developer";
+import { serviceClient } from "@/lib/supabase";
 import { NewAppForm } from "./NewAppForm";
 
 export const metadata: Metadata = { title: "アプリを登録" };
 export const dynamic = "force-dynamic";
 
 export default async function NewAppPage() {
-  const supabase = await sessionClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) redirect("/login?next=/developer/apps/new");
+  const user = await getSessionUser();
+  if (!user) redirect("/login?next=/developer/apps/new");
 
   const svc = serviceClient();
   const [{ data: developer }, { data: categories }] = await Promise.all([
-    svc.from("developers").select("status").eq("user_id", data.user.id).maybeSingle(),
+    svc.from("developers").select("status").eq("user_id", user.id).maybeSingle(),
     svc.from("categories").select("id, name").order("sort_order"),
   ]);
   if (developer?.status !== "approved") redirect("/developer");

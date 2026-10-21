@@ -4,13 +4,15 @@ let cookieAdmin: { id: string; email?: string } | null;
 let bearerUser: { id: string; email?: string } | null;
 let profileRole: string | null;
 let factors: { factor_type: string; status: string }[];
+let authAdminUserMissing: boolean;
 
-vi.mock("./supabase", () => ({
+vi.mock("./supabase", async (orig) => ({
+  verifiedTotpFactor: (await orig<typeof import("./supabase")>()).verifiedTotpFactor,
   getAdminUser: async () => cookieAdmin,
   publicClient: () => ({ auth: { getUser: async (token: string) => ({ data: { user: token === "invalid-token" ? null : bearerUser } }) } }),
   serviceClient: () => ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: profileRole } }) }) }) }),
-    auth: { admin: { getUserById: async () => ({ data: { user: { factors } } }) } },
+    auth: { admin: { getUserById: async () => ({ data: { user: authAdminUserMissing ? null : { factors } } }) } },
   }),
 }));
 
@@ -21,6 +23,7 @@ beforeEach(() => {
   bearerUser = { id: "u1", email: "a@example.com" };
   profileRole = "admin";
   factors = [];
+  authAdminUserMissing = false;
 });
 
 const withAuth = (token?: string) => new Request("http://localhost/api", token ? { headers: { authorization: `Bearer ${token}` } } : {});
@@ -80,6 +83,13 @@ describe("requireAdmin", () => {
     factors = [{ factor_type: "totp", status: "unverified" }];
     const result = await requireAdmin(withAuth("valid-token"));
     expect("admin" in result && result.admin.id).toBe("u1");
+  });
+
+  it("2段階認証の設定を読めなかったときは、aal2のトークンでなければ通さない(totp_required)", async () => {
+    authAdminUserMissing = true;
+    const result = await requireAdmin(withAuth(fakeJwt("aal1")));
+    expect("response" in result && (await result.response.json()).code).toBe("totp_required");
+    expect("admin" in (await requireAdmin(withAuth(fakeJwt("aal2"))))).toBe(true);
   });
 
   it("requestを渡さなければCookieのみで判定する", async () => {

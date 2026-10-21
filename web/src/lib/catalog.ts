@@ -1,3 +1,4 @@
+import { clampPage } from "./db";
 import { publicClient } from "./supabase";
 import {
   mediaUrl,
@@ -58,8 +59,7 @@ export interface ListOptions {
 }
 
 export async function listApps(opts: ListOptions = {}): Promise<{ items: AppSummaryDto[]; total: number }> {
-  const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
-  const offset = Math.max(opts.offset ?? 0, 0);
+  const { limit, offset } = clampPage(opts);
   const supabase = publicClient();
 
   let categoryId: number | undefined;
@@ -100,13 +100,9 @@ export async function getHome() {
   return { featured: featured.items, newest: newest.items, popular: popular.items };
 }
 
-export async function getAppBySlug(slug: string): Promise<AppDetailDto | null> {
-  const { data, error } = await publicClient()
-    .from("apps")
-    .select(APP_COLUMNS)
-    .eq("status", "published")
-    .eq("slug", slug)
-    .maybeSingle();
+/** 公開中のアプリ1件を、URL用の名前(slug)かパッケージ名で引く */
+async function getPublishedApp(column: "slug" | "package_name", value: string): Promise<AppDetailDto | null> {
+  const { data, error } = await publicClient().from("apps").select(APP_COLUMNS).eq("status", "published").eq(column, value).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
   const row = data as unknown as AppRow;
@@ -114,18 +110,12 @@ export async function getAppBySlug(slug: string): Promise<AppDetailDto | null> {
   return toDetail(row, latest.get(row.id));
 }
 
-export async function getAppByPackage(packageName: string): Promise<AppDetailDto | null> {
-  const { data, error } = await publicClient()
-    .from("apps")
-    .select(APP_COLUMNS)
-    .eq("status", "published")
-    .eq("package_name", packageName)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) return null;
-  const row = data as unknown as AppRow;
-  const latest = await latestByApp([row.id]);
-  return toDetail(row, latest.get(row.id));
+export function getAppBySlug(slug: string): Promise<AppDetailDto | null> {
+  return getPublishedApp("slug", slug);
+}
+
+export function getAppByPackage(packageName: string): Promise<AppDetailDto | null> {
+  return getPublishedApp("package_name", packageName);
 }
 
 /** 更新チェック用: 公開中で最新リリースを持つ全アプリの軽量一覧 */

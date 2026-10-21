@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { APP_STATUS_LABEL } from "@/lib/release-status";
 import { setAppStatus, setFeatured } from "../../actions";
-
-const LABEL: Record<string, string> = { draft: "下書き", pending: "審査中", published: "公開中", suspended: "停止中" };
 
 export function AppStatusControls({ appId, status, featured }: { appId: string; status: string; featured: boolean }) {
   const router = useRouter();
@@ -21,7 +20,7 @@ export function AppStatusControls({ appId, status, featured }: { appId: string; 
   const btn = "rounded-full border border-border bg-surface px-4 py-1.5 text-sm font-semibold disabled:opacity-60";
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="rounded-full bg-border px-3 py-1 text-sm">{LABEL[status] ?? status}</span>
+      <span className="rounded-full bg-border px-3 py-1 text-sm">{APP_STATUS_LABEL[status]?.label ?? status}</span>
       {status !== "published" && (
         <button disabled={pending} className={btn} onClick={() => run(() => setAppStatus(appId, "published"))}>
           アプリを公開する

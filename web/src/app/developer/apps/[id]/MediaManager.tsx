@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DEVELOPER_LIMITS } from "@/lib/app-rules";
+import { callApi } from "@/lib/client-api";
+
+const MAX_IMAGE_MB = DEVELOPER_LIMITS.maxImageBytes / 1024 / 1024;
 
 interface MediaItem {
   path: string;
@@ -21,18 +25,18 @@ export function MediaManager({ appId, icon, screenshots, disabled }: { appId: st
     const form = new FormData();
     form.set("kind", kind);
     form.set("file", file);
-    const res = await fetch(`/api/developer/apps/${appId}/media`, { method: "POST", body: form });
+    const res = await callApi(`/api/developer/apps/${appId}/media`, { body: form, fallbackError: "アップロードに失敗しました" });
     setBusy(false);
-    if (!res.ok) setError(String((await res.json().catch(() => ({}))).error ?? "アップロードに失敗しました"));
+    if (!res.ok) setError(res.error);
     else router.refresh();
   }
 
   async function remove(path: string) {
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/developer/apps/${appId}/media`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path }) });
+    const res = await callApi(`/api/developer/apps/${appId}/media`, { method: "DELETE", json: { path }, fallbackError: "削除に失敗しました" });
     setBusy(false);
-    if (!res.ok) setError(String((await res.json().catch(() => ({}))).error ?? "削除に失敗しました"));
+    if (!res.ok) setError(res.error);
     else router.refresh();
   }
 
@@ -46,7 +50,7 @@ export function MediaManager({ appId, icon, screenshots, disabled }: { appId: st
           {icon ? "アイコンを変更" : "アイコンを選ぶ"}
           <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={busy || disabled} onChange={(e) => upload("icon", e.target.files?.[0])} />
         </label>
-        <p className="text-xs text-muted">正方形に近い画像(PNG・JPEG・WebP、3MBまで)</p>
+        <p className="text-xs text-muted">正方形に近い画像(PNG・JPEG・WebP、{MAX_IMAGE_MB}MBまで)</p>
       </div>
 
       <div>
@@ -62,8 +66,8 @@ export function MediaManager({ appId, icon, screenshots, disabled }: { appId: st
           ))}
         </div>
         <label className={`${pick} mt-3 inline-block`}>
-          スクリーンショットを追加({screenshots.length}/8)
-          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={busy || disabled || screenshots.length >= 8} onChange={(e) => upload("screenshot", e.target.files?.[0])} />
+          スクリーンショットを追加({screenshots.length}/{DEVELOPER_LIMITS.maxScreenshots})
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={busy || disabled || screenshots.length >= DEVELOPER_LIMITS.maxScreenshots} onChange={(e) => upload("screenshot", e.target.files?.[0])} />
         </label>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}

@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { displayNames, first } from "./db";
 import type { MailMessage } from "./mail";
+import { stripControlChars } from "./text";
 
 /** DB(pg_net)が通知してくる出来事の種類。DB側の private.trg_notify_* と揃えること */
-export type NotifyKind = "diary_report" | "review_report" | "developer_application";
-export const NOTIFY_KINDS: readonly NotifyKind[] = ["diary_report", "review_report", "developer_application"];
+export const NOTIFY_KINDS = ["diary_report", "review_report", "developer_application"] as const;
+export type NotifyKind = (typeof NOTIFY_KINDS)[number];
 
 const DIARY_REASON: Record<string, string> = {
   spam: "スパム・宣伝",
@@ -17,10 +19,12 @@ const MAX_TEXT = 500;
 
 /** 利用者が書いた文字列をメールに載せるための整形(長さを切り、制御文字を除く) */
 export function clip(value: unknown, max = MAX_TEXT): string {
-  const text = typeof value === "string" ? value : "";
-  const cleaned = text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+  const cleaned = stripControlChars(typeof value === "string" ? value : "");
   return cleaned.length > max ? `${cleaned.slice(0, max)}…` : cleaned;
 }
+
+/** 本文は1行ずつ並べて組み立てる("" は空行) */
+const lines = (...rows: string[]) => rows.join("\n");
 
 export interface DiaryReportInfo {
   id: string;
@@ -51,59 +55,93 @@ export interface DeveloperApplicationInfo {
   createdAt: string;
 }
 
-const FOOTER = "\n\n(このメールは T-tech Store から自動で送られています。対応は管理アプリで行えます)";
+/** 運営宛のメールの末尾 */
+const ADMIN_FOOTER = "(このメールは T-tech Store から自動で送られています。対応は管理アプリで行えます)";
+/** 開発者宛のメールの末尾 */
+const DEVELOPER_FOOTER = "(このメールは T-tech Store から自動で送られています)";
 
 export function diaryReportMail(r: DiaryReportInfo): MailMessage {
   const reason = DIARY_REASON[r.reason] ?? r.reason;
   return {
     subject: `[ひとこと日記] 投稿が報告されました(${reason})`,
-    text:
-      `ひとこと日記の投稿が報告されました。\n\n` +
-      `理由: ${reason}\n` +
-      `詳細: ${clip(r.detail) || "(なし)"}\n` +
-      `報告した人: ${clip(r.reporterName, 80)}\n` +
-      `報告された人: ${clip(r.reportedName, 80)}\n` +
-      `報告日時: ${r.createdAt}\n\n` +
-      `--- 報告された投稿(報告時点の控え) ---\n${clip(r.entryBody) || "(本文なし)"}\n` +
-      `---` +
-      FOOTER,
+    text: lines(
+      "ひとこと日記の投稿が報告されました。",
+      "",
+      `理由: ${reason}`,
+      `詳細: ${clip(r.detail) || "(なし)"}`,
+      `報告した人: ${clip(r.reporterName, 80)}`,
+      `報告された人: ${clip(r.reportedName, 80)}`,
+      `報告日時: ${r.createdAt}`,
+      "",
+      "--- 報告された投稿(報告時点の控え) ---",
+      clip(r.entryBody) || "(本文なし)",
+      "---",
+      "",
+      ADMIN_FOOTER,
+    ),
   };
 }
 
 export function reviewReportMail(r: ReviewReportInfo): MailMessage {
   return {
     subject: `[T-tech Store] レビューが通報されました(${clip(r.appName, 40)})`,
-    text:
-      `アプリのレビューが通報されました。\n\n` +
-      `アプリ: ${clip(r.appName, 80)}\n` +
-      `通報の理由: ${clip(r.reason)}\n` +
-      `通報した人: ${clip(r.reporterName, 80)}\n` +
-      `レビューの投稿者: ${clip(r.authorName, 80)}\n` +
-      `評価: ${r.rating ?? "-"}\n` +
-      `通報日時: ${r.createdAt}\n\n` +
-      `--- レビュー本文 ---\n${clip(r.reviewBody) || "(本文なし)"}\n---` +
-      FOOTER,
+    text: lines(
+      "アプリのレビューが通報されました。",
+      "",
+      `アプリ: ${clip(r.appName, 80)}`,
+      `通報の理由: ${clip(r.reason)}`,
+      `通報した人: ${clip(r.reporterName, 80)}`,
+      `レビューの投稿者: ${clip(r.authorName, 80)}`,
+      `評価: ${r.rating ?? "-"}`,
+      `通報日時: ${r.createdAt}`,
+      "",
+      "--- レビュー本文 ---",
+      clip(r.reviewBody) || "(本文なし)",
+      "---",
+      "",
+      ADMIN_FOOTER,
+    ),
   };
 }
 
 export function developerApplicationMail(d: DeveloperApplicationInfo): MailMessage {
   return {
     subject: `[T-tech Store] 開発者の申請が届きました(${clip(d.name, 40)})`,
-    text:
-      `開発者登録の申請が届きました。承認するかどうかを確認してください。\n\n` +
-      `名前: ${clip(d.name, 80)}\n` +
-      `連絡先メール: ${clip(d.contactEmail, 120)}\n` +
-      `Webサイト: ${clip(d.website, 200) || "(なし)"}\n` +
-      `申請日時: ${d.createdAt}` +
-      FOOTER,
+    text: lines(
+      "開発者登録の申請が届きました。承認するかどうかを確認してください。",
+      "",
+      `名前: ${clip(d.name, 80)}`,
+      `連絡先メール: ${clip(d.contactEmail, 120)}`,
+      `Webサイト: ${clip(d.website, 200) || "(なし)"}`,
+      `申請日時: ${d.createdAt}`,
+      "",
+      ADMIN_FOOTER,
+    ),
   };
 }
 
-async function displayNames(supabase: SupabaseClient, ids: (string | null | undefined)[]): Promise<Map<string, string>> {
-  const unique = [...new Set(ids.filter((v): v is string => Boolean(v)))];
-  if (unique.length === 0) return new Map();
-  const { data } = await supabase.from("profiles").select("id, display_name").in("id", unique);
-  return new Map((data ?? []).map((p) => [p.id as string, (p.display_name as string) || "(名前なし)"]));
+export interface DeveloperRegistrationInfo {
+  name: string;
+  contactEmail: string;
+  website: string | null;
+}
+
+/** 運営宛: 開発者が登録した(承認は不要で、すぐに使える。参考のお知らせ) */
+export function developerRegisteredMail(d: DeveloperRegistrationInfo): MailMessage {
+  return {
+    subject: `[T-tech Store] 新しい開発者が登録しました(${clip(d.name, 40)})`,
+    text: lines(
+      "開発者として新しく登録がありました。承認は不要で、すぐに利用できます。",
+      "",
+      `開発者名: ${clip(d.name, 80)}`,
+      `連絡先: ${clip(d.contactEmail, 200)}`,
+      `ウェブサイト: ${clip(d.website, 200) || "(なし)"}`,
+      "",
+      "問題があれば、管理コンソールから停止できます。",
+      "",
+      DEVELOPER_FOOTER,
+    ),
+  };
 }
 
 /** 通知された出来事の内容をDBから読み、メールの文面にする。対象が無ければ null */
@@ -134,8 +172,8 @@ export async function loadNotification(supabase: SupabaseClient, kind: NotifyKin
       .eq("id", id)
       .maybeSingle();
     if (!data) return null;
-    const review = Array.isArray(data.review) ? data.review[0] : data.review;
-    const app = review ? (Array.isArray(review.app) ? review.app[0] : review.app) : null;
+    const review = first(data.review);
+    const app = first(review?.app);
     const names = await displayNames(supabase, [data.reporter_id, review?.user_id]);
     return reviewReportMail({
       id: data.id,
@@ -181,30 +219,28 @@ export interface ReleaseReviewInfo {
 }
 
 const versionLabel = (r: ReleaseReviewInfo) => `${clip(r.versionName ?? "?", 40)} (versionCode ${r.versionCode ?? "?"})`;
+const reasonLines = (r: ReleaseReviewInfo) => r.reasons.map((x) => clip(x, 300)).join("\n");
 
 /** 運営宛: 自動審査で疑いが見つかったので、内容を確認して承認するかを決めてほしい */
 export function releaseNeedsReviewMail(r: ReleaseReviewInfo): MailMessage {
   return {
     subject: `[T-tech Store] 承認待ちのアプリがあります(${clip(r.appName, 40)})`,
-    text:
-      `開発者がアップロードしたアプリに、自動審査で確認が必要な点が見つかりました。公開はまだされていません。
-
-` +
-      `アプリ: ${clip(r.appName, 80)}(${clip(r.packageName, 120)})
-` +
-      `バージョン: ${versionLabel(r)}
-` +
-      `開発者: ${clip(r.developerName, 80)}
-
-` +
-      `--- 確認が必要な点 ---
-${r.reasons.map((x) => clip(x, 300)).join("\n") || "(理由なし)"}
----
-
-` +
-      `内容を見て、公開・却下を決めてください:
-${r.siteUrl}/admin/apps/${r.appId}` +
-      FOOTER,
+    text: lines(
+      "開発者がアップロードしたアプリに、自動審査で確認が必要な点が見つかりました。公開はまだされていません。",
+      "",
+      `アプリ: ${clip(r.appName, 80)}(${clip(r.packageName, 120)})`,
+      `バージョン: ${versionLabel(r)}`,
+      `開発者: ${clip(r.developerName, 80)}`,
+      "",
+      "--- 確認が必要な点 ---",
+      reasonLines(r) || "(理由なし)",
+      "---",
+      "",
+      "内容を見て、公開・却下を決めてください:",
+      `${r.siteUrl}/admin/apps/${r.appId}`,
+      "",
+      ADMIN_FOOTER,
+    ),
   };
 }
 
@@ -212,20 +248,18 @@ ${r.siteUrl}/admin/apps/${r.appId}` +
 export function releaseAutoPublishedMail(r: ReleaseReviewInfo): MailMessage {
   return {
     subject: `[T-tech Store] アプリが自動審査を通って公開されました(${clip(r.appName, 40)})`,
-    text:
-      `開発者のアプリが、自動審査(通信機能・端末データの破壊の可能性がないことの確認)を通り、自動で公開されました。
-
-` +
-      `アプリ: ${clip(r.appName, 80)}(${clip(r.packageName, 120)})
-` +
-      `バージョン: ${versionLabel(r)}
-` +
-      `開発者: ${clip(r.developerName, 80)}
-
-` +
-      `問題があれば、管理コンソールから公開を停止できます:
-${r.siteUrl}/admin/apps/${r.appId}` +
-      FOOTER,
+    text: lines(
+      "開発者のアプリが、自動審査(通信機能・端末データの破壊の可能性がないことの確認)を通り、自動で公開されました。",
+      "",
+      `アプリ: ${clip(r.appName, 80)}(${clip(r.packageName, 120)})`,
+      `バージョン: ${versionLabel(r)}`,
+      `開発者: ${clip(r.developerName, 80)}`,
+      "",
+      "問題があれば、管理コンソールから公開を停止できます:",
+      `${r.siteUrl}/admin/apps/${r.appId}`,
+      "",
+      ADMIN_FOOTER,
+    ),
   };
 }
 
@@ -236,42 +270,37 @@ export function developerReleaseMail(r: ReleaseReviewInfo): MailMessage {
   if (r.decision === "auto_approve") {
     return {
       subject: `[T-tech Store] ${label} を公開しました`,
-      text: `アップロードしていただいた ${label} が自動審査を通り、公開されました。
-
-${portal}
-
-(このメールは T-tech Store から自動で送られています)`,
+      text: lines(`アップロードしていただいた ${label} が自動審査を通り、公開されました。`, "", portal, "", DEVELOPER_FOOTER),
     };
   }
   if (r.decision === "needs_review") {
     return {
       subject: `[T-tech Store] ${label} は運営が確認します`,
-      text:
-        `アップロードしていただいた ${label} に、自動審査で確認が必要な点が見つかりました。運営が内容を確認するまで、公開されません。
-
-` +
-        `--- 確認が必要な点 ---
-${r.reasons.map((x) => clip(x, 300)).join("\n")}
----
-
-` +
-        `これらの要素が不要なら、外してビルドし直したAPKをアップロードすると、自動で公開されます。
-${portal}
-
-(このメールは T-tech Store から自動で送られています)`,
+      text: lines(
+        `アップロードしていただいた ${label} に、自動審査で確認が必要な点が見つかりました。運営が内容を確認するまで、公開されません。`,
+        "",
+        "--- 確認が必要な点 ---",
+        reasonLines(r),
+        "---",
+        "",
+        "これらの要素が不要なら、外してビルドし直したAPKをアップロードすると、自動で公開されます。",
+        portal,
+        "",
+        DEVELOPER_FOOTER,
+      ),
     };
   }
   return {
     subject: `[T-tech Store] ${label} を公開できませんでした`,
-    text:
-      `アップロードしていただいた ${label} は、次の理由で公開できませんでした。
-
-${r.reasons.map((x) => clip(x, 300)).join("\n")}
-
-` +
-      `直したAPKを、同じ versionCode でもう一度アップロードできます。
-${portal}
-
-(このメールは T-tech Store から自動で送られています)`,
+    text: lines(
+      `アップロードしていただいた ${label} は、次の理由で公開できませんでした。`,
+      "",
+      reasonLines(r),
+      "",
+      "直したAPKを、同じ versionCode でもう一度アップロードできます。",
+      portal,
+      "",
+      DEVELOPER_FOOTER,
+    ),
   };
 }

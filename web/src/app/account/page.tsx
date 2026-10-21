@@ -1,16 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAdminUser, sessionClient, serviceClient } from "@/lib/supabase";
-import { ProfileForm } from "./ProfileForm";
+import { listPendingReleases, listPrivateApps } from "@/lib/admin-queries";
+import { first } from "@/lib/db";
+import { APP_STATUS_LABEL } from "@/lib/release-status";
+import { adminStepUpDone, serviceClient, sessionClient, verifiedTotpFactor } from "@/lib/supabase";
 import { DeleteAccountButton } from "./DeleteAccountButton";
-import { TotpSetup } from "./TotpSetup";
 import { PendingReleases } from "./PendingReleases";
 import { PrivateApps } from "./PrivateApps";
-import { listPrivateApps } from "@/lib/admin-queries";
+import { ProfileForm } from "./ProfileForm";
+import { TotpSetup } from "./TotpSetup";
 
 export const dynamic = "force-dynamic";
 
-const APP_STATUS_LABEL: Record<string, string> = { draft: "下書き", pending: "審査中", published: "公開中", suspended: "停止中" };
+/** 管理者向けの欄は、読み込めなくてもマイページ全体は表示する(例: DBの更新が未適用のとき) */
+function orEmpty<T>(promise: Promise<T[]>): Promise<T[]> {
+  return promise.catch((e) => {
+    console.error(e);
+    return [];
+  });
+}
 
 export default async function AccountPage() {
   const supabase = await sessionClient();
@@ -23,19 +31,15 @@ export default async function AccountPage() {
     supabase.from("developers").select("status, name, created_at").eq("user_id", user.id).maybeSingle(),
   ]);
 
-  const admin = await getAdminUser();
-  // role は admin だが、2段階認証(aal2)未達成でここでは null になっているケース。
+  const isAdminRole = profile?.role === "admin";
+  const admin = isAdminRole && (await adminStepUpDone(supabase, user));
+  // role は admin だが、2段階認証(aal2)が済んでいないので管理者の操作ができない状態。
   // 管理メニューを黙って消すのではなく、認証すれば出ることを案内する
-  const needsStepUp = profile?.role === "admin" && !admin;
+  const needsStepUp = isAdminRole && !admin;
+  const totpFactor = isAdminRole ? verifiedTotpFactor(user) : null;
   const svc = serviceClient();
 
-  let totpFactor: { id: string; status: string } | null = null;
-  if (profile?.role === "admin") {
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    totpFactor = factors?.totp?.find((f) => f.status === "verified") ?? null;
-  }
-
-  const [myApps, downloads, pendingReleases] = await Promise.all([
+  const [myApps, downloads, pendingReleases, privateApps] = await Promise.all([
     developer
       ? svc.from("apps").select("id, slug, name, status, download_count").eq("developer_id", user.id).order("created_at", { ascending: false })
       : Promise.resolve({ data: null }),
@@ -45,17 +49,9 @@ export default async function AccountPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
-    admin
-      ? svc
-          .from("app_releases")
-          .select("id, version_name, status, policy_verdict, policy_findings, app:apps(id, slug, name)")
-          .in("status", ["scanned", "approved"])
-          .order("created_at", { ascending: false })
-      : Promise.resolve({ data: null }),
+    admin ? orEmpty(listPendingReleases(svc)) : [],
+    admin ? orEmpty(listPrivateApps(svc)) : [],
   ]);
-
-  // 管理者専用アプリ。取得に失敗しても(例: DBの更新が未適用でも)マイページ全体は表示する
-  const privateApps = admin ? await listPrivateApps(svc).catch(() => []) : [];
 
   const provider = user.app_metadata?.provider === "google" ? "Google" : "メールアドレス";
 
@@ -73,7 +69,7 @@ export default async function AccountPage() {
           <dt className="text-muted">メール確認</dt>
           <dd>{user.email_confirmed_at ? "確認済み" : "未確認"}</dd>
           <dt className="text-muted">権限</dt>
-          <dd>{profile?.role === "admin" ? "管理者" : developer?.status === "approved" ? "開発者" : "利用者"}</dd>
+          <dd>{isAdminRole ? "管理者" : developer?.status === "approved" ? "開発者" : "利用者"}</dd>
         </dl>
       </Section>
 
@@ -81,9 +77,9 @@ export default async function AccountPage() {
         <ProfileForm initialName={profile?.display_name ?? ""} />
       </Section>
 
-      {profile?.role === "admin" && (
+      {isAdminRole && (
         <Section title="2段階認証(管理者)">
-          <TotpSetup initialFactor={totpFactor} />
+          <TotpSetup initialFactor={totpFactor && { id: totpFactor.id, status: totpFactor.status }} />
         </Section>
       )}
 
@@ -121,7 +117,7 @@ export default async function AccountPage() {
                 <li key={a.id} className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-2.5 text-sm">
                   <span>{a.name}</span>
                   <span className="text-muted">
-                    {APP_STATUS_LABEL[a.status] ?? a.status} ・ {a.download_count} DL
+                    {APP_STATUS_LABEL[a.status]?.label ?? a.status} ・ {a.download_count} DL
                   </span>
                 </li>
               ))}
@@ -132,16 +128,7 @@ export default async function AccountPage() {
 
       {admin && (
         <Section title="承認待ちのリリース(管理者)">
-          <PendingReleases
-            items={(pendingReleases.data ?? []).map((r) => ({
-              id: r.id,
-              version_name: r.version_name,
-              status: r.status,
-              policy_verdict: r.policy_verdict ?? null,
-              policy_findings: r.policy_findings ?? [],
-              app: Array.isArray(r.app) ? r.app[0] : r.app,
-            }))}
-          />
+          <PendingReleases items={pendingReleases} />
         </Section>
       )}
 
@@ -172,8 +159,7 @@ export default async function AccountPage() {
         ) : (
           <ul className="space-y-1 text-sm">
             {downloads.data.map((d, i) => {
-              const release = Array.isArray(d.release) ? d.release[0] : d.release;
-              const app = release ? (Array.isArray(release.app) ? release.app[0] : release.app) : null;
+              const app = first(first(d.release)?.app);
               return (
                 <li key={i} className="flex justify-between text-muted">
                   <span className="text-foreground">{app?.name ?? "(削除済み)"}</span>

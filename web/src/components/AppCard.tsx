@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { AppSummaryDto } from "@/lib/dto";
+import { formatCount } from "@/lib/format";
 
 export function AppIcon({ url, size = 64 }: { url: string | null; size?: number }) {
   const style = { width: size, height: size, borderRadius: size / 4.5 };
@@ -14,19 +15,6 @@ export function AppIcon({ url, size = 64 }: { url: string | null; size?: number 
   }
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt="" style={style} className="shrink-0 object-cover" width={size} height={size} />;
-}
-
-export function formatCount(n: number): string {
-  if (n < 1000) return String(n);
-  if (n < 10000) return n.toLocaleString("ja-JP");
-  return `${(n / 10000).toFixed(1).replace(/\.0$/, "")}万`;
-}
-
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 }
 
 export function AppCard({ app }: { app: AppSummaryDto }) {

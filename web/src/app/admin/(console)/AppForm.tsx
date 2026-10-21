@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { PACKAGE_RE, SLUG_RE, slugFromPackage } from "@/lib/app-rules";
 import type { ActionState } from "./actions";
 
 export interface AppFormValues {
@@ -13,22 +14,6 @@ export interface AppFormValues {
 }
 
 const input = "w-full rounded-xl border border-border bg-surface px-4 py-2";
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,62}$/;
-const PACKAGE_RE = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
-
-/** よくある語だけのセグメントは避け、パッケージ名から「そのアプリらしい」部分をスラッグ案として拾う */
-function suggestSlug(packageName: string): string {
-  const generic = new Set(["app", "android", "mobile", "client", "www", "com", "co", "jp", "org", "net", "io"]);
-  const parts = packageName.split(".").filter(Boolean);
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const seg = parts[i]
-      .toLowerCase()
-      .replace(/[_\s]+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
-    if (seg && !generic.has(seg)) return seg;
-  }
-  return "";
-}
 
 function Hint({ ok, text }: { ok: boolean; text: string }) {
   return <p className={"mt-1 text-xs " + (ok ? "text-muted" : "text-danger")}>{text}</p>;
@@ -67,7 +52,7 @@ export function AppForm({
   // パッケージ名から、まだ自分でスラッグを編集していなければ提案を自動入力する
   function fillSlugFromPackage() {
     if (slugEdited || !PACKAGE_RE.test(packageName)) return;
-    const suggestion = suggestSlug(packageName);
+    const suggestion = slugFromPackage(packageName);
     if (suggestion) setSlug(suggestion);
   }
 

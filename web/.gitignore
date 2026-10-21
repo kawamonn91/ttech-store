@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files(項目の一覧の .env.example だけはコミットする)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -44,5 +45,3 @@ next-env.d.ts
 /AGENTS.md
 /CLAUDE.md
 
-.vercel
-.env*

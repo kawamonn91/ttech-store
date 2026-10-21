@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
-import { internalError, jsonError, jsonOk } from "@/lib/http";
+import { first } from "@/lib/db";
+import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 import { serviceClient } from "@/lib/supabase";
 
 const Body = z.object({ action: z.enum(["publish", "reject", "unpublish"]) });
@@ -14,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if ("response" in auth) return auth.response;
 
   const { id } = await params;
-  const body = Body.safeParse(await request.json().catch(() => null));
+  const body = await parseJsonBody(request, Body);
   if (!body.success) return jsonError("リクエストが不正です", 400);
 
   try {
@@ -45,7 +46,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // リリースを公開したら、アプリ自体もまだ非公開なら合わせて公開する(マイページ・管理コンソールどちらの
     // 承認操作も、これ1回で完結させるため)
-    const app = Array.isArray(release.apps) ? release.apps[0] : release.apps;
+    const app = first(release.apps);
     if (action === "publish" && app && app.status !== "published") {
       const { error: appError } = await supabase.from("apps").update({ status: "published" }).eq("id", release.app_id);
       if (appError) return jsonError(appError.message, 422);

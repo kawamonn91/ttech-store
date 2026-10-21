@@ -1,9 +1,12 @@
 import sharp, { type Metadata } from "sharp";
-import { DEVELOPER_LIMITS } from "./developer";
+import { DEVELOPER_LIMITS } from "./app-rules";
 
 export type ImageKind = "icon" | "screenshot";
 
 export class ImageError extends Error {}
+
+/** 巨大な画像(展開すると大量のメモリを使うもの)と、壊れた画像は読まない */
+const SHARP_INPUT = { limitInputPixels: 40_000_000, failOn: "error" } as const;
 
 /**
  * 開発者がアップロードした画像を検査し、安全な形式(PNG)に作り直す。
@@ -20,7 +23,7 @@ export async function processImage(input: Buffer, kind: ImageKind): Promise<Buff
 
   let meta: Metadata;
   try {
-    meta = await sharp(input, { limitInputPixels: 40_000_000, failOn: "error" }).metadata();
+    meta = await sharp(input, SHARP_INPUT).metadata();
   } catch {
     throw new ImageError("画像として読み取れません。PNG・JPEG・WebP の画像を選んでください");
   }
@@ -30,7 +33,7 @@ export async function processImage(input: Buffer, kind: ImageKind): Promise<Buff
   const { width = 0, height = 0 } = meta;
   if (Math.min(width, height) < 96) throw new ImageError("画像が小さすぎます(短い辺が96px以上必要です)");
 
-  const image = sharp(input, { limitInputPixels: 40_000_000, failOn: "error" }).rotate(); // 向きの情報を反映し、メタデータは出力しない
+  const image = sharp(input, SHARP_INPUT).rotate(); // 向きの情報を反映し、メタデータは出力しない
   if (kind === "icon") {
     const ratio = Math.max(width, height) / Math.min(width, height);
     if (ratio > 1.15) throw new ImageError("アイコンは、正方形に近い画像にしてください");

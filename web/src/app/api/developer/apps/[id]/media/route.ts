@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { DEVELOPER_LIMITS, loadOwnApp, requireDeveloper } from "@/lib/developer";
-import { internalError, jsonError, jsonOk } from "@/lib/http";
+import { DEVELOPER_LIMITS } from "@/lib/app-rules";
+import { appSuspendedResponse, loadOwnApp, requireDeveloper } from "@/lib/developer";
+import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 import { ImageError, processImage } from "@/lib/images";
 
 const BUCKET = "app-media";
@@ -24,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const app = await loadOwnApp(svc, id, user.id, "id, status, developer_id, icon_path, screenshots");
     if (!app) return jsonError("アプリが見つかりません", 404);
-    if (app.status === "suspended") return jsonError("このアプリは停止されています。運営にお問い合わせください", 403);
+    if (app.status === "suspended") return appSuspendedResponse();
     const screenshots = (app.screenshots as string[] | null) ?? [];
     if (kind === "screenshot" && screenshots.length >= DEVELOPER_LIMITS.maxScreenshots) {
       return jsonError(`スクリーンショットは最大${DEVELOPER_LIMITS.maxScreenshots}枚までです`, 409);
@@ -67,7 +68,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { user, svc } = auth;
   const { id } = await params;
 
-  const body = DeleteBody.safeParse(await request.json().catch(() => null));
+  const body = await parseJsonBody(request, DeleteBody);
   if (!body.success) return jsonError("リクエストが不正です", 400);
 
   try {

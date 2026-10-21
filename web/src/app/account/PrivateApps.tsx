@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import type { PrivateAppDto } from "@/lib/admin-queries";
-
-function formatSize(bytes: number | null): string {
-  if (!bytes) return "";
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
+import { callApi } from "@/lib/client-api";
+import type { DownloadInfoDto } from "@/lib/dto";
+import { formatBytes } from "@/lib/format";
 
 /**
  * 管理者専用アプリ(公開カタログには出ない)のダウンロード欄。管理者だけに表示される。
@@ -20,15 +18,11 @@ export function PrivateApps({ items }: { items: PrivateAppDto[] }) {
   async function download(item: PrivateAppDto) {
     setBusyId(item.releaseId);
     setError(null);
-    const res = await fetch(`/api/admin/private-apps/${item.releaseId}/download`, { method: "POST" });
+    const res = await callApi<DownloadInfoDto>(`/api/admin/private-apps/${item.releaseId}/download`, { fallbackError: "ダウンロードを開始できませんでした" });
     setBusyId(null);
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(String(body.error ?? "ダウンロードを開始できませんでした"));
-      return;
-    }
-    setSha((prev) => ({ ...prev, [item.releaseId]: String(body.sha256 ?? "") }));
-    window.location.assign(String(body.url));
+    if (!res.ok) return setError(res.error);
+    setSha((prev) => ({ ...prev, [item.releaseId]: res.data.sha256 }));
+    window.location.assign(res.data.url);
   }
 
   if (items.length === 0) return <p className="text-sm text-muted">管理者用のアプリはまだ公開されていません。</p>;
@@ -42,7 +36,7 @@ export function PrivateApps({ items }: { items: PrivateAppDto[] }) {
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 flex-1 truncate">
                 {a.name} <span className="text-muted">v{a.versionName ?? a.versionCode}</span>
-                {a.apkSize ? <span className="ml-2 text-xs text-muted">{formatSize(a.apkSize)}</span> : null}
+                {a.apkSize ? <span className="ml-2 text-xs text-muted">{formatBytes(a.apkSize)}</span> : null}
               </span>
               <button
                 onClick={() => download(a)}

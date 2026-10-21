@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AppIcon, formatBytes, formatCount } from "@/components/AppCard";
+import { cache } from "react";
+import { AppIcon } from "@/components/AppCard";
 import { getAppBySlug } from "@/lib/catalog";
+import { formatBytes, formatCount, shortPermission } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
+// メタデータ(タイトル)と本文で同じアプリを読むので、1回の表示につき問い合わせは1回にする
+const getApp = cache(getAppBySlug);
+
 export async function generateMetadata({ params }: PageProps<"/apps/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const app = await getAppBySlug(slug);
+  const app = await getApp(slug);
   return app ? { title: app.name, description: app.shortDesc } : { title: "アプリが見つかりません" };
 }
 
@@ -18,7 +23,7 @@ const SDK_TO_ANDROID: Record<number, string> = {
 
 export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
   const { slug } = await params;
-  const app = await getAppBySlug(slug);
+  const app = await getApp(slug);
   if (!app) notFound();
   const latest = app.latest;
 
@@ -87,7 +92,7 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
             {latest.permissions.length > 0 && (
               <>
                 <dt className="text-muted">必要な権限</dt>
-                <dd className="break-words">{latest.permissions.map((p) => p.replace("android.permission.", "")).join(", ")}</dd>
+                <dd className="break-words">{latest.permissions.map(shortPermission).join(", ")}</dd>
               </>
             )}
           </dl>

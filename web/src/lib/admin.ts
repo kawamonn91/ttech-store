@@ -1,5 +1,5 @@
 import { jsonError } from "./http";
-import { getAdminUser, publicClient, serviceClient, type AdminUser } from "./supabase";
+import { getAdminUser, publicClient, serviceClient, verifiedTotpFactor, type AdminUser } from "./supabase";
 
 /**
  * 管理用 Route Handler の入口。管理者でなければエラーレスポンスを返す。
@@ -39,8 +39,7 @@ async function adminFromBearerToken(accessToken: string): Promise<BearerAdminRes
   if (profile?.role !== "admin") return { ok: false, totpRequired: false };
 
   const { data: full } = await svc.auth.admin.getUserById(user.id);
-  const hasVerifiedTotp = (full?.user?.factors ?? []).some((f) => f.factor_type === "totp" && f.status === "verified");
-  if (hasVerifiedTotp && decodeAal(accessToken) !== "aal2") {
+  if ((!full?.user || verifiedTotpFactor(full.user)) && decodeAal(accessToken) !== "aal2") {
     return { ok: false, totpRequired: true };
   }
 

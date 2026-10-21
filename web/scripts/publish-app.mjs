@@ -21,53 +21,16 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { AwsClient } from "aws4fetch";
-import { Agent, fetch as ufetch } from "undici";
+import { pathToFileURL } from "node:url";
 import { inspect } from "../../workers/scan/inspect.mjs";
+import { loadEnvLocal, need, parseArgs } from "./lib/cli-env.mjs";
+import { R2 } from "./lib/r2.mjs";
+import { SupabaseAdmin } from "./lib/supabase-admin.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const webRoot = path.resolve(here, "..");
-
-/** .env.local を読み込む(dotenv を増やさず、これまでの調査と同じ簡易パーサーを使う) */
-function loadEnvLocal() {
-  const file = path.join(webRoot, ".env.local");
-  if (!existsSync(file)) return;
-  for (const line of readFileSync(file, "utf8").split("\n")) {
-    if (!line.includes("=") || line.startsWith("#")) continue;
-    const i = line.indexOf("=");
-    const key = line.slice(0, i).trim();
-    const value = line.slice(i + 1).trim();
-    if (key && process.env[key] === undefined) process.env[key] = value;
-  }
-}
-
-function parseArgs(argv) {
-  const out = { publish: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--publish") {
-      out.publish = true;
-      continue;
-    }
-    if (a === "--admin-only") {
-      out["admin-only"] = true;
-      continue;
-    }
-    if (a.startsWith("--")) {
-      out[a.slice(2)] = argv[++i];
-    }
-  }
-  return out;
-}
-
-function need(env, name) {
-  const v = env[name];
-  if (!v) throw new Error(`環境変数 ${name} が未設定です(.env.local を確認してください)`);
-  return v;
-}
-
-/** よくある語だけのセグメントは避け、パッケージ名から「そのアプリらしい」部分をスラッグ案として拾う */
+/**
+ * よくある語だけのセグメントは避け、パッケージ名から「そのアプリらしい」部分をスラッグ案として拾う
+ * (Web 側は web/src/lib/app-rules.ts の slugFromPackage。TypeScript を直接 import できないための重複)
+ */
 function suggestSlug(packageName) {
   const generic = new Set(["app", "android", "mobile", "client", "www", "com", "co", "jp", "org", "net", "io"]);
   const parts = packageName.split(".").filter(Boolean);
@@ -116,69 +79,18 @@ export function decideScan(result, app) {
   };
 }
 
-class SupabaseAdmin {
-  constructor(url, serviceRoleKey) {
-    this.base = `${url}/rest/v1`;
-    this.headers = { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" };
-  }
-
-  async request(path, init = {}) {
-    const res = await ufetch(`${this.base}${path}`, { ...init, headers: { ...this.headers, ...(init.headers ?? {}) } });
-    if (!res.ok) throw new Error(`Supabase ${init.method ?? "GET"} ${path} -> ${res.status}: ${await res.text()}`);
-    const text = await res.text();
-    return text ? JSON.parse(text) : null;
-  }
-
-  select(table, query) {
-    return this.request(`/${table}?${query}`);
-  }
-
-  insert(table, row) {
-    return this.request(`/${table}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
-  }
-
-  update(table, query, patch) {
-    return this.request(`/${table}?${query}`, { method: "PATCH", body: JSON.stringify(patch) });
-  }
-}
-
-/** R2への直接アップロード。管理コンソールと違い、このスクリプトはR2の秘密鍵を直接持っているので
- *  署名付きURLを経由せず、その場で署名して PUT する。 */
-class R2 {
-  constructor(env) {
-    this.client = new AwsClient({
-      accessKeyId: need(env, "R2_ACCESS_KEY_ID"),
-      secretAccessKey: need(env, "R2_SECRET_ACCESS_KEY"),
-      service: "s3",
-      region: "auto",
-    });
-    this.base = `https://${need(env, "R2_ACCOUNT_ID")}.r2.cloudflarestorage.com/${need(env, "R2_BUCKET")}`;
-    // このPCではVPN/ゼロトラストクライアントの影響でIPv6経路がタイムアウトすることがあるため、
-    // R2向けの通信だけIPv4接続に固定する(詳細: web/src/lib/r2.ts の同様のコメント)。
-    this.agent = new Agent({ connect: { family: 4 } });
-  }
-
-  async put(key, bytes) {
-    const url = new URL(`${this.base}/${key.split("/").map(encodeURIComponent).join("/")}`);
-    url.searchParams.set("X-Amz-Expires", "300");
-    const signed = await this.client.sign(url.toString(), { method: "PUT", aws: { signQuery: true } });
-    const res = await ufetch(signed.url, { method: "PUT", body: bytes, dispatcher: this.agent });
-    if (!res.ok) throw new Error(`R2 PUT failed: ${res.status} ${await res.text()}`);
-  }
-}
-
 async function main() {
   loadEnvLocal();
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseArgs(process.argv.slice(2), { booleanFlags: ["publish", "admin-only"] });
   if (!args.apk) throw new Error("--apk <APKファイルのパス> を指定してください");
   const apkPath = path.resolve(args.apk);
   if (!existsSync(apkPath)) throw new Error(`APKが見つかりません: ${apkPath}`);
   if (!apkPath.toLowerCase().endsWith(".apk")) throw new Error("APKファイル(.apk)を指定してください(AABは配布できません)");
 
-  const supabaseUrl = need(process.env, "NEXT_PUBLIC_SUPABASE_URL");
-  const db = new SupabaseAdmin(supabaseUrl, need(process.env, "SUPABASE_SERVICE_ROLE_KEY"));
+  const db = SupabaseAdmin.fromEnv();
   const r2 = new R2(process.env);
   const adminUserId = need(process.env, "ADMIN_USER_ID");
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://store.kawamonn.com";
 
   console.log(`APKを検査しています: ${apkPath}`);
   const result = await inspect(apkPath);
@@ -232,21 +144,20 @@ async function main() {
     process.exit(1);
   }
   console.log(`検査に合格しました(承認待ち)。ウイルススキャン: ${result.virusTotal?.status ?? "skipped"}`);
-  console.log(`  管理コンソール: https://store.kawamonn.com/admin/apps/${app.id}`);
+  console.log(`  管理コンソール: ${siteUrl}/admin/apps/${app.id}`);
 
   if (!args.publish) {
     console.log("公開するには --publish を付けて実行してください(このリリースだけ再実行することもできます)。");
     return;
   }
 
-  const pub = await db.update("app_releases", `id=eq.${releaseId}`, { status: "published", reviewed_by: adminUserId }).catch((e) => {
+  await db.update("app_releases", `id=eq.${releaseId}`, { status: "published", reviewed_by: adminUserId }).catch((e) => {
     throw new Error(`公開に失敗しました(署名鍵の不一致など): ${e.message}`);
   });
-  void pub;
   if (app.status !== "published") {
     await db.update("apps", `id=eq.${app.id}`, { status: "published" });
   }
-  console.log(`公開しました: https://store.kawamonn.com/apps/${app.slug}`);
+  console.log(`公開しました: ${siteUrl}/apps/${app.slug}`);
 }
 
 async function ensureDeveloper(db, userId) {

@@ -26,8 +26,8 @@ describe("normalizeForCompare / findReservedWord: なりすましになる名前
   });
 
   it("理由を、利用者に見せる文章で返す", () => {
-    expect(nameProblem("app", "Google Maps")).toContain("紛らわしい");
-    expect(nameProblem("developer", "ケイ")).toBeNull();
+    expect(nameProblem("Google Maps")).toContain("紛らわしい");
+    expect(nameProblem("ケイ")).toBeNull();
   });
 });
 

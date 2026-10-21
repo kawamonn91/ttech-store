@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { describeFindings, evaluatePolicy, FactsSchema, SignatureFactsSchema, type Finding, type PolicyVerdict } from "./policy";
+import { evaluatePolicy, FactsSchema, SignatureFactsSchema, type Finding, type PolicyVerdict } from "./policy";
 
 /** APK検査ワークフロー(workers/scan/inspect.mjs)が送ってくる結果 */
 export const ScanResultSchema = z.object({
@@ -42,6 +42,11 @@ export function verifySignature(secret: string, rawBody: string, signature: stri
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
+/** 却下したときに app_releases に書く列。理由は管理画面に出せるよう scan_result.error に残す */
+export function rejectedColumns(result: ScanResult, reason: string): Record<string, unknown> {
+  return { scan_result: { ...result, error: reason } };
+}
+
 export interface ScanDecision {
   status: "scanned" | "rejected";
   reason?: string;
@@ -57,12 +62,7 @@ export function decideScan(
   result: ScanResult,
   app: { package_name: string; signing_cert_sha256: string | null },
 ): ScanDecision {
-  // 却下理由は管理画面に出せるよう scan_result.error に残す
-  const reject = (reason: string): ScanDecision => ({
-    status: "rejected",
-    reason,
-    columns: { scan_result: { ...result, error: reason } },
-  });
+  const reject = (reason: string): ScanDecision => ({ status: "rejected", reason, columns: rejectedColumns(result, reason) });
 
   if (result.error) return reject(result.error);
   if (!result.sha256 || !result.signingCertSha256 || !result.versionCode || !result.packageName) {
@@ -166,7 +166,7 @@ export function decideRelease(
     return {
       status: "rejected",
       reason,
-      columns: { scan_result: { ...result, error: reason }, ...policyColumns(verdict), auto_approved: false },
+      columns: { ...rejectedColumns(result, reason), ...policyColumns(verdict), auto_approved: false },
       verdict,
       autoApproved: false,
     };
@@ -177,4 +177,3 @@ export function decideRelease(
   return { status: "published", columns: { ...columns, auto_approved: true }, verdict, autoApproved: true };
 }
 
-export { describeFindings };

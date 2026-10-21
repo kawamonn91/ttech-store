@@ -1,12 +1,6 @@
 import Link from "next/link";
+import { APP_STATUS_LABEL } from "@/lib/release-status";
 import { serviceClient } from "@/lib/supabase";
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "下書き",
-  pending: "審査中",
-  published: "公開中",
-  suspended: "停止中",
-};
 
 export default async function AdminHome() {
   const supabase = serviceClient();
@@ -43,7 +37,7 @@ export default async function AdminHome() {
                 <div className="flex shrink-0 items-center gap-3 text-sm">
                   {a.waiting > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-brand-foreground">承認待ち {a.waiting}</span>}
                   <span className="text-muted">{a.download_count} DL</span>
-                  <span>{STATUS_LABEL[a.status] ?? a.status}</span>
+                  <span>{APP_STATUS_LABEL[a.status]?.label ?? a.status}</span>
                 </div>
               </Link>
             </li>

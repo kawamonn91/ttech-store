@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sanitizeQuery } from "./catalog";
+import { clampPage, displayNames, first } from "./db";
 import { ModerationError } from "./moderation";
 import type { Finding } from "./policy";
 
@@ -150,7 +151,7 @@ export async function getUserDetail(svc: SupabaseClient, id: string) {
       createdAt: e.created_at as string,
     })),
     recentReviews: (reviews.data ?? []).map((r) => {
-      const app = Array.isArray(r.app) ? r.app[0] : r.app;
+      const app = first(r.app);
       return {
         id: r.id as string,
         rating: r.rating as number,
@@ -172,13 +173,6 @@ export async function getUserDetail(svc: SupabaseClient, id: string) {
 }
 
 // ---------------------------------------------------------------- 報告
-
-async function displayNames(svc: SupabaseClient, ids: (string | null | undefined)[]): Promise<Map<string, string>> {
-  const unique = [...new Set(ids.filter((v): v is string => Boolean(v)))];
-  if (unique.length === 0) return new Map();
-  const { data } = await svc.from("profiles").select("id, display_name").in("id", unique);
-  return new Map((data ?? []).map((p) => [p.id as string, (p.display_name as string) || "(名前なし)"]));
-}
 
 export interface ReportDto {
   kind: "diary" | "review";
@@ -224,8 +218,8 @@ export async function listReports(svc: SupabaseClient, opts: { openOnly: boolean
   const live = new Set((liveEntries ?? []).map((e) => e.id as string));
 
   const reviews = (review ?? []).map((r) => {
-    const rv = Array.isArray(r.review) ? r.review[0] : r.review;
-    const app = rv ? (Array.isArray(rv.app) ? rv.app[0] : rv.app) : null;
+    const rv = first(r.review);
+    const app = first(rv?.app);
     return { r, rv, app };
   });
   const names = await displayNames(svc, [
@@ -290,8 +284,7 @@ export async function listDiaryEntries(
   svc: SupabaseClient,
   opts: { q?: string; userId?: string; limit?: number; offset?: number },
 ): Promise<DiaryEntryDto[]> {
-  const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
-  const offset = Math.max(opts.offset ?? 0, 0);
+  const { limit, offset } = clampPage(opts);
   let query = svc
     .from("diary_entries")
     .select("id, user_id, body, visibility, photo_path, created_at")
@@ -406,7 +399,7 @@ export async function listAudit(svc: SupabaseClient, limit = 50): Promise<AuditR
     .from("admin_audit_log")
     .select("id, admin_id, action, target_type, target_id, detail, created_at")
     .order("created_at", { ascending: false })
-    .limit(Math.min(Math.max(limit, 1), 200));
+    .limit(clampPage({ limit }, { max: 200 }).limit);
   if (error) throw new Error(error.message);
   const rows = data ?? [];
   const names = await displayNames(svc, rows.map((r) => r.admin_id as string | null));
@@ -446,7 +439,7 @@ export async function listPendingReleases(svc: SupabaseClient): Promise<PendingR
     status: r.status as string,
     policyVerdict: (r.policy_verdict as string | null) ?? null,
     policyFindings: (r.policy_findings as Finding[] | null) ?? [],
-    app: Array.isArray(r.app) ? (r.app[0] ?? null) : (r.app ?? null),
+    app: first(r.app),
   }));
 }
 
