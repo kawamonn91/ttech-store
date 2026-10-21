@@ -10,6 +10,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -25,6 +26,23 @@ const MAX_NATIVE_BYTES = 64 * 1024 * 1024;
 const MAX_DEX_BYTES = 128 * 1024 * 1024;
 const MAX_ENTRIES = 50_000;
 const MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024;
+
+/** 例外を、事実の incomplete に残す短い文にする */
+const errorText = (e) => (e instanceof Error ? e.message.slice(0, 200) : String(e));
+
+/** 何も調べられなかったときの事実。Web 側は incomplete があるので自動承認しない */
+export function emptyFacts(reason) {
+  return {
+    version: FACTS_VERSION,
+    manifest: null,
+    zip: { entryCount: 0, totalSize: 0, anomalies: [] },
+    dexFiles: [],
+    nativeLibs: [],
+    embedded: [],
+    dex: null,
+    incomplete: [reason],
+  };
+}
 
 /** 先頭のバイト列から、実行可能・入れ子のファイルの種類を判定する(それ以外は null) */
 export function classifyMagic(head) {
@@ -111,7 +129,7 @@ export async function collectFacts(apkPath, tools) {
   try {
     zipFacts = inspectZip(apkPath);
   } catch (e) {
-    incomplete.push(`APKの中身を読み取れませんでした: ${e instanceof Error ? e.message : e}`);
+    incomplete.push(`APKの中身を読み取れませんでした: ${errorText(e)}`);
   }
 
   let manifest = null;
@@ -120,7 +138,7 @@ export async function collectFacts(apkPath, tools) {
     manifest = extractManifestFacts(parseXmlTree(stdout));
     if (!manifest) incomplete.push("AndroidManifest を解釈できませんでした");
   } catch (e) {
-    incomplete.push(`AndroidManifest を読み取れませんでした: ${e instanceof Error ? e.message.slice(0, 200) : e}`);
+    incomplete.push(`AndroidManifest を読み取れませんでした: ${errorText(e)}`);
   }
 
   let dex = null;
@@ -137,12 +155,9 @@ export async function collectFacts(apkPath, tools) {
       for (const file of extracted.files) results.push(await runDexdump(tools.dexdump, file));
       dex = mergeDexFacts(results);
     } catch (e) {
-      incomplete.push(`コードの解析に失敗しました: ${e instanceof Error ? e.message.slice(0, 200) : e}`);
+      incomplete.push(`コードの解析に失敗しました: ${errorText(e)}`);
     } finally {
-      if (extracted) {
-        const { rm } = await import("node:fs/promises");
-        await rm(extracted.dir, { recursive: true, force: true });
-      }
+      if (extracted) await rm(extracted.dir, { recursive: true, force: true });
     }
   }
 

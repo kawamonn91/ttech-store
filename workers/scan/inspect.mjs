@@ -14,15 +14,15 @@
 
 import { createHash, createHmac } from "node:crypto";
 import { execFile } from "node:child_process";
-import { createWriteStream, existsSync, readdirSync, statSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { createReadStream, createWriteStream, existsSync, readdirSync, statSync } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { collectFacts } from "./facts.mjs";
+import { collectFacts, emptyFacts } from "./facts.mjs";
 
 const run = promisify(execFile);
 const isWin = process.platform === "win32";
@@ -59,7 +59,6 @@ async function download(url, dest) {
 }
 
 async function sha256(file) {
-  const { createReadStream } = await import("node:fs");
   const hash = createHash("sha256");
   for await (const chunk of createReadStream(file)) hash.update(chunk);
   return hash.digest("hex");
@@ -123,7 +122,6 @@ async function virusTotal(hash, file, size, apiKey) {
 
   // 未知のファイル: アップロードして解析を待つ(無料枠は 32MB まで。超える場合はスキップ)
   if (size > 32 * 1024 * 1024) return { status: "skipped" };
-  const { readFile } = await import("node:fs/promises");
   const form = new FormData();
   form.append("file", new Blob([await readFile(file)]), "app.apk");
   res = await fetch(`${VT}/files`, { method: "POST", headers, body: form });
@@ -155,7 +153,8 @@ export async function inspect(file) {
     return { error: `APK の署名を検証できませんでした: ${(signer.stderr || signer.stdout).trim().slice(0, 300)}` };
   }
 
-  const badging = await run(findBuildTool("aapt2"), ["dump", "badging", file], { maxBuffer: 20 * 1024 * 1024 }).catch(() => null);
+  const aapt2 = findBuildTool("aapt2");
+  const badging = await run(aapt2, ["dump", "badging", file], { maxBuffer: 20 * 1024 * 1024 }).catch(() => null);
   const info = badging && parseBadging(badging.stdout);
   if (!info) return { error: "AndroidManifest を読み取れませんでした" };
 
@@ -168,10 +167,9 @@ export async function inspect(file) {
   } catch {
     // 無ければ null のまま(facts.incomplete に理由が残り、自動承認されない)
   }
-  const facts = await collectFacts(file, { aapt2: findBuildTool("aapt2"), dexdump }).catch((e) => ({
-    version: 1, manifest: null, zip: { entryCount: 0, totalSize: 0, anomalies: [] }, dexFiles: [], nativeLibs: [], embedded: [], dex: null,
-    incomplete: [`事実の収集に失敗しました: ${e instanceof Error ? e.message.slice(0, 200) : e}`],
-  }));
+  const facts = await collectFacts(file, { aapt2, dexdump }).catch((e) =>
+    emptyFacts(`事実の収集に失敗しました: ${e instanceof Error ? e.message.slice(0, 200) : e}`),
+  );
 
   return {
     ...info,
