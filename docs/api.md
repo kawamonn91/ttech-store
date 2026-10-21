@@ -18,9 +18,9 @@
 
 | パス | 認証 | 内容 |
 |---|---|---|
-| `POST /api/admin/apps/{id}/releases` | 管理者セッション | リリース作成 + R2 アップロード用署名URL |
-| `POST /api/admin/releases/{id}/uploaded` | 管理者セッション | アップロード確認 + APK検査(GitHub Actions)起動 |
-| `POST /api/admin/releases/{id}/decision` | 管理者セッション | `{ action: publish\|reject\|unpublish }` |
+| `POST /api/admin/apps/{id}/releases` | 管理者(Cookie または Bearer) | リリース作成 + R2 アップロード用署名URL |
+| `POST /api/admin/releases/{id}/uploaded` | 管理者(Cookie または Bearer) | アップロード確認 + APK検査(GitHub Actions)起動 |
+| `POST /api/admin/releases/{id}/decision` | 管理者(Cookie または Bearer) | `{ action: publish\|reject\|unpublish }` |
 | `POST /api/internal/releases/{id}/scan` | HMAC(`x-signature`) | 検査結果の受け取り。承認待ち/却下を決める |
 
 ## 検証の流れ(ストアアプリ)

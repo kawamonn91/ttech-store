@@ -6,9 +6,9 @@
 ## 1. Supabase ★
 
 1. https://supabase.com で新規プロジェクトを作成(リージョン: Tokyo)。
-2. SQL Editor に `supabase/migrations/20260920000000_init.sql` を貼って実行 → 続けて `supabase/seed.sql` を実行。
+2. SQL Editor で `supabase/migrations/` の SQL を、ファイル名の順(日付の古い順)にすべて実行 → 続けて `supabase/seed.sql` を実行。
 3. Project Settings > API から `URL` / `anon key` / `service_role key` を控える。
-4. Authentication > Providers で Email を有効化(管理コンソールのログインに使う)。Google ログインは Phase 2。
+4. Authentication > Providers で Email を有効化(管理コンソールのログインに使う)。Google ログインを使うなら Google も有効化する。
 5. 自分のアカウントを管理者にする: Authentication > Users でユーザーを作成し、SQL Editor で
    ```sql
    update public.profiles set role = 'admin' where id = '<そのユーザーのUUID>';
@@ -35,7 +35,7 @@ APK は常に期限付き署名URLで配信するため、R2 の公開ドメイ�
 
 ## 3. GitHub(APK検査) ★
 
-1. `appstore` リポジトリを GitHub に作成して push(プライベート推奨)。
+1. このリポジトリを GitHub に置く(検査は、このリポジトリの GitHub Actions で動く)。
 2. リポジトリの Settings > Secrets and variables > Actions に登録:
    - `SCAN_WEBHOOK_SECRET` … ランダムな長い文字列(Web の環境変数と同じ値)
    - `VT_API_KEY` … (任意)VirusTotal の API キー。無ければウイルススキャンは skipped 扱い
