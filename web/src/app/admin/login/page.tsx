@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { safeNextPath } from "@/lib/redirect";
 import { browserClient } from "@/lib/supabase-browser";
 
 type Step = "loading" | "password" | "totp";
@@ -22,7 +23,7 @@ async function needsStepUp(): Promise<boolean> {
 
 function AdminLoginForm() {
   const router = useRouter();
-  const next = useSearchParams().get("next") || "/admin";
+  const next = safeNextPath(useSearchParams().get("next"), "/admin");
   const [step, setStep] = useState<Step>("loading");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { safeNextPath } from "@/lib/redirect";
 import { browserClient } from "@/lib/supabase-browser";
 
 type Mode = "signin" | "signup";
@@ -10,7 +11,7 @@ type Mode = "signin" | "signup";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") ?? "/account";
+  const next = safeNextPath(params.get("next"), "/account");
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
