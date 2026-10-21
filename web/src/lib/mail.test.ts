@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MailNotConfiguredError, sendAdminMail } from "./mail";
+import { MailNotConfiguredError, sendAdminMail, sendMailTo } from "./mail";
 
 const message = { subject: "件名", text: "本文" };
 
@@ -51,5 +51,28 @@ describe("sendAdminMail", () => {
   it("Resend がエラーを返したら例外にする(ステータスを含める)", async () => {
     const fetchMock = vi.fn(async () => new Response("bad", { status: 422 }));
     await expect(sendAdminMail(message, fetchMock as unknown as typeof fetch)).rejects.toThrow("422");
+  });
+});
+
+describe("sendMailTo", () => {
+  it("指定した宛先に送る(英字の s を含むアドレスも送れる)", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    await sendMailTo("suzuki.s@sample.example.com", message, fetchMock as unknown as typeof fetch);
+    expect(bodyOf(fetchMock, 0).to).toEqual(["suzuki.s@sample.example.com"]);
+  });
+
+  it("メールアドレスの形でない宛先には送らない", async () => {
+    const fetchMock = vi.fn();
+    for (const to of ["", "no-at-mark", "a b@example.com", "a@nodot", "@example.com"]) {
+      await expect(sendMailTo(to, message, fetchMock as unknown as typeof fetch), to).rejects.toThrow("不正");
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("APIキーが未設定なら送らずに MailNotConfiguredError", async () => {
+    const fetchMock = vi.fn();
+    vi.stubEnv("RESEND_API_KEY", "");
+    await expect(sendMailTo("kei@example.com", message, fetchMock as unknown as typeof fetch)).rejects.toBeInstanceOf(MailNotConfiguredError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

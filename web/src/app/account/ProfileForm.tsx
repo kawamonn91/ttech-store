@@ -20,7 +20,11 @@ export function ProfileForm({ initialName }: { initialName: string }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setBusy(false);
+      setError("ログインし直してください");
+      return;
+    }
     const { error } = await supabase.from("profiles").update({ display_name: name }).eq("id", user.id);
     setBusy(false);
     if (error) {
