@@ -9,6 +9,8 @@ export const DEVELOPER_LIMITS = {
   maxReleasesPerDay: 10,
   /** APK1つの最大サイズ */
   maxApkBytes: 200 * 1024 * 1024,
+  /** ひとこと説明の最大文字数 */
+  maxShortDesc: 200,
   maxScreenshots: 8,
   /** 画像1枚の最大サイズ(アップロード時) */
   maxImageBytes: 3 * 1024 * 1024,

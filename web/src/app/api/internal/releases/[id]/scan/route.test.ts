@@ -10,18 +10,19 @@ import { POST } from "./route";
 const SECRET = "test-secret";
 const SHA = "a".repeat(64);
 const CERT = "b".repeat(64);
+const REL_ID = "11111111-1111-4111-8111-111111111111";
 
 const result = (over: Record<string, unknown> = {}) => ({
   packageName: "jp.yomumemo.app", versionName: "1.0.0", versionCode: 1, minSdk: 26, targetSdk: 36, permissions: ["android.permission.INTERNET"],
   apkSize: 100, sha256: SHA, signingCertSha256: CERT, signerCount: 1, ...over,
 });
 
-function call(body: unknown, opts: { signature?: string | null; secret?: string } = {}) {
+function call(body: unknown, opts: { signature?: string | null; secret?: string; id?: string } = {}) {
   const raw = typeof body === "string" ? body : JSON.stringify(body);
   const headers: Record<string, string> = {};
   const sig = opts.signature === undefined ? signBody(opts.secret ?? SECRET, raw) : opts.signature;
   if (sig !== null) headers["x-signature"] = sig;
-  return POST(new Request("http://localhost/api", { method: "POST", body: raw, headers }), { params: Promise.resolve({ id: "rel-1" }) });
+  return POST(new Request("http://localhost/api", { method: "POST", body: raw, headers }), { params: Promise.resolve({ id: opts.id ?? REL_ID }) });
 }
 
 beforeEach(() => {
@@ -40,7 +41,7 @@ describe("POST /api/internal/releases/:id/scan", () => {
     const res = await call(result());
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: "scanned", reason: null, autoApproved: false, decision: "needs_review" });
-    expect(review).toHaveBeenCalledWith(expect.anything(), "rel-1", expect.objectContaining({ packageName: "jp.yomumemo.app", versionCode: 1 }));
+    expect(review).toHaveBeenCalledWith(expect.anything(), REL_ID, expect.objectContaining({ packageName: "jp.yomumemo.app", versionCode: 1 }));
   });
 
   it("自動公開・却下の結果もそのまま返す", async () => {
@@ -57,7 +58,8 @@ describe("POST /api/internal/releases/:id/scan", () => {
     expect((await call(result())).status).toBe(409);
   });
 
-  it("署名は正しくても形式が不正な結果は 400。審査処理は呼ばない", async () => {
+  it("署名は正しくてもIDや形式が不正な結果は 400。審査処理は呼ばない", async () => {
+    expect((await call(result(), { id: "not-a-uuid" })).status).toBe(400);
     expect((await call(result({ sha256: "abc" }))).status).toBe(400);
     expect((await call("{not json")).status).toBe(400);
     expect(review).not.toHaveBeenCalled();
@@ -65,7 +67,7 @@ describe("POST /api/internal/releases/:id/scan", () => {
 
   it("検査側の error は、そのまま審査処理に渡る(却下として記録される)", async () => {
     await call({ error: "APK の署名を検証できませんでした" });
-    expect(review).toHaveBeenCalledWith(expect.anything(), "rel-1", expect.objectContaining({ error: "APK の署名を検証できませんでした" }));
+    expect(review).toHaveBeenCalledWith(expect.anything(), REL_ID, expect.objectContaining({ error: "APK の署名を検証できませんでした" }));
   });
 
   it("審査処理が失敗したら 500(検査ワークフローは再送できる)", async () => {

@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { Findings } from "@/app/developer/Findings";
 import { callApi, putWithProgress } from "@/lib/client-api";
 import { formatBytes, shortPermission } from "@/lib/format";
+import type { Finding } from "@/lib/policy";
 import { ADMIN_RELEASE_STATUS_LABEL } from "@/lib/release-status";
 
 export interface ReleaseView {
@@ -17,6 +19,8 @@ export interface ReleaseView {
   permissions: string[];
   release_notes: string;
   scan_result: { error?: string; virusTotal?: { status: string; permalink?: string } } | null;
+  policy_verdict?: string | null;
+  policy_findings?: Finding[] | null;
   created_at: string;
 }
 
@@ -173,6 +177,12 @@ export function ReleaseManager({
                 )}
               </dl>
               {r.scan_result?.error && <p className="mt-2 text-sm text-danger">却下理由: {r.scan_result.error}</p>}
+              {r.policy_verdict === "needs_review" && (
+                <p className="mt-2 text-xs font-semibold text-amber-800">
+                  自動審査で確認が必要な点が見つかりました。内容を見て、公開・却下を決めてください
+                </p>
+              )}
+              <Findings findings={r.policy_findings ?? []} />
             </li>
           ))}
         </ul>

@@ -79,9 +79,11 @@ select throws_ok(
   null,
   '開発者は status / featured を変更できない(列権限)'
 );
-select lives_ok(
+select throws_ok(
   $$ update public.apps set short_desc = '説明' where id = '10000000-0000-0000-0000-000000000002' $$,
-  '開発者は自分のアプリの説明は変更できる'
+  '42501',
+  null,
+  '開発者は自分のアプリの説明も直接は変更できない(API経由のみ)'
 );
 
 -- ---------------------------------------------------------------- 署名鍵の固定トリガー(postgres 権限)

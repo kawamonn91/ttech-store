@@ -5,7 +5,7 @@
 --   * 掲載内容の長さの上限、review_mode が公開されないこと
 -- 実行: supabase test db
 begin;
-select plan(11);
+select plan(13);
 
 -- ---------------------------------------------------------------- フィクスチャ
 insert into auth.users (id, aud, role, email) values
@@ -47,13 +47,13 @@ select throws_ok(
   $$ update public.apps set icon_path = 'someone-else/icon.png' where id = 'dd100000-0000-0000-0000-000000000001' $$,
   '42501', null, '開発者は、アイコンのパスを直接書き換えられない'
 );
-select lives_ok(
-  $$ update public.apps set description = 'よい説明' where id = 'dd100000-0000-0000-0000-000000000001' $$,
-  '開発者は、自分のアプリの説明は更新できる'
+select throws_ok(
+  $$ insert into public.developers (user_id, name, contact_email) values ('d2000000-0000-0000-0000-00000000000d', 'Direct Dev', 'dev-dave@example.com') $$,
+  '42501', null, '開発者登録は API 経由のみで、直接 INSERT できない'
 );
 select throws_ok(
-  $$ update public.apps set description = repeat('あ', 5000) where id = 'dd100000-0000-0000-0000-000000000001' $$,
-  '23514', null, '説明が長すぎる更新は、DBが拒否する'
+  $$ update public.apps set description = 'よい説明' where id = 'dd100000-0000-0000-0000-000000000001' $$,
+  '42501', null, '開発者は、アプリの説明も直接は書き換えられない(API経由のみ)'
 );
 select throws_ok(
   $$ select review_mode from public.developers $$,
@@ -62,6 +62,28 @@ select throws_ok(
 select throws_ok(
   $$ insert into storage.objects (bucket_id, name, owner) values ('app-media', 'dd100000-0000-0000-0000-000000000001/icon.png', 'd1000000-0000-0000-0000-00000000000d') $$,
   '42501', null, '開発者は、画像を Storage へ直接アップロードできない'
+);
+
+-- ---------------------------------------------------------------- 4. DB制約・友達申請の自己承認防止
+reset role;
+select set_config('request.jwt.claims', null, true);
+
+select throws_ok(
+  $$ update public.apps set description = repeat('あ', 5000) where id = 'dd100000-0000-0000-0000-000000000001' $$,
+  '23514', null, '説明が長すぎる更新は、DBが拒否する'
+);
+
+insert into public.diary_friendships (id, requester_id, addressee_id, status) values
+  ('dd300000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-00000000000d', 'd2000000-0000-0000-0000-00000000000d', 'pending');
+
+select set_config('request.jwt.claims', '{"sub":"d1000000-0000-0000-0000-00000000000d","role":"authenticated"}', true);
+set local role authenticated;
+update public.diary_friendships set status = 'accepted' where id = 'dd300000-0000-0000-0000-000000000001';
+reset role;
+select is(
+  (select status::text from public.diary_friendships where id = 'dd300000-0000-0000-0000-000000000001'),
+  'pending',
+  '友達申請を送った本人(requester_id)は自分で承認(accepted)に書き換えられない'
 );
 
 select * from finish();

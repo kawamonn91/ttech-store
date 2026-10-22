@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { PACKAGE_RE, SLUG_RE, slugFromPackage } from "@/lib/app-rules";
+import { DEVELOPER_LIMITS, PACKAGE_RE, SLUG_RE, slugFromPackage } from "@/lib/app-rules";
 import type { ActionState } from "./actions";
 
 export interface AppFormValues {
@@ -105,8 +105,8 @@ export function AppForm({
         </>
       )}
       <label className="block">
-        <span className="text-sm text-muted">ひとこと説明(80文字まで)</span>
-        <input name="shortDesc" maxLength={80} value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} className={input} />
+        <span className="text-sm text-muted">ひとこと説明({DEVELOPER_LIMITS.maxShortDesc}文字まで)</span>
+        <input name="shortDesc" maxLength={DEVELOPER_LIMITS.maxShortDesc} value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} className={input} />
       </label>
       <label className="block">
         <span className="text-sm text-muted">詳しい説明</span>

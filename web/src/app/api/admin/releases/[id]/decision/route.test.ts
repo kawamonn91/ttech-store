@@ -33,16 +33,18 @@ vi.mock("@/lib/supabase", () => ({
 
 import { POST } from "./route";
 
-const call = (body: unknown) =>
+const REL_ID = "11111111-1111-4111-8111-111111111111";
+
+const call = (body: unknown, id = REL_ID) =>
   POST(new Request("http://localhost/api", { method: "POST", body: JSON.stringify(body) }), {
-    params: Promise.resolve({ id: "rel-1" }),
+    params: Promise.resolve({ id }),
   });
 
 beforeEach(() => {
   releaseUpdate.mockReset();
   appUpdate.mockReset();
   auth = { admin: { id: "admin-1", email: "a@example.com" } };
-  release = { id: "rel-1", status: "scanned", app_id: "app-1", apps: { status: "draft" } };
+  release = { id: REL_ID, status: "scanned", app_id: "app-1", apps: { status: "draft" } };
   releaseUpdateResult = { error: null };
   appUpdateResult = { error: null };
 });
@@ -54,7 +56,8 @@ describe("POST /api/admin/releases/:id/decision", () => {
     expect(releaseUpdate).not.toHaveBeenCalled();
   });
 
-  it("不正な action は 400", async () => {
+  it("不正な ID や action は 400", async () => {
+    expect((await call({ action: "publish" }, "not-a-uuid")).status).toBe(400);
     expect((await call({ action: "delete-everything" })).status).toBe(400);
     expect(releaseUpdate).not.toHaveBeenCalled();
   });

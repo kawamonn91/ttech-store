@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isUuid } from "@/lib/db";
 import { mediaUrl } from "@/lib/dto";
 import { serviceClient } from "@/lib/supabase";
 import { AppForm } from "../../AppForm";
@@ -9,6 +10,7 @@ import { ReleaseManager, type ReleaseView } from "./ReleaseManager";
 
 export default async function AdminAppPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const supabase = serviceClient();
 
   const [{ data: app }, { data: categories }, { data: releases }] = await Promise.all([
@@ -16,7 +18,7 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
     supabase.from("categories").select("id, name").order("sort_order"),
     supabase
       .from("app_releases")
-      .select("id, version_name, version_code, status, apk_size, sha256, signing_cert_sha256, permissions, release_notes, scan_result, created_at")
+      .select("id, version_name, version_code, status, apk_size, sha256, signing_cert_sha256, permissions, release_notes, scan_result, policy_verdict, policy_findings, created_at")
       .eq("app_id", id)
       .order("created_at", { ascending: false }),
   ]);

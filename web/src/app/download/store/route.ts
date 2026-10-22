@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
   if (!app?.latest) return new NextResponse("ストアアプリは現在準備中です", { status: 404 });
 
   // Web には端末IDが無いので、IP+UA から作った疑似IDで24時間の重複を除く
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip =
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
   const ua = request.headers.get("user-agent") ?? "";
   const pseudoId = "web-" + createHash("sha256").update(`${ip}|${ua}`).digest("hex").slice(0, 32);
 

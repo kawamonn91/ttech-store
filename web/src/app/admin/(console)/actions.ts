@@ -19,7 +19,7 @@ const AppFields = z.object({
   slug: z.string().regex(SLUG_RE, "スラッグは半角英小文字・数字・ハイフンで2〜63文字"),
   packageName: z.string().regex(PACKAGE_RE, "パッケージ名の形式が正しくありません (例: com.example.app)"),
   name: z.string().min(1, "名前を入力してください").max(60),
-  shortDesc: z.string().max(80).default(""),
+  shortDesc: z.string().max(DEVELOPER_LIMITS.maxShortDesc).default(""),
   description: z.string().max(4000).default(""),
   categoryId: z.coerce.number().int().positive().optional(),
 });

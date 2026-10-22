@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { shortPermission } from "./format";
 import { KNOWN_NATIVE_LIBS } from "./known-native-libs";
 
 /**
@@ -279,10 +280,6 @@ function short(names: string[], max = 8): string[] {
   return names.length > max ? [...names.slice(0, max), `ほか${names.length - max}件`] : names;
 }
 
-function shortName(permission: string): string {
-  return permission.replace(/^android\.permission\./, "");
-}
-
 const SMS_PHONE_PERMISSIONS = [
   "SEND_SMS", "RECEIVE_SMS", "READ_SMS", "WRITE_SMS", "RECEIVE_MMS", "RECEIVE_WAP_PUSH", "SEND_RESPOND_VIA_MESSAGE",
   "READ_PHONE_STATE", "READ_PHONE_NUMBERS", "READ_PRIVILEGED_PHONE_STATE", "MODIFY_PHONE_STATE", "CALL_PHONE", "ANSWER_PHONE_CALLS",
@@ -421,7 +418,7 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
     const sensitive: string[] = [];
     for (const p of m.usesPermissions) {
       const name = p.name;
-      const short_ = shortName(name);
+      const short_ = shortPermission(name);
       if (name.startsWith("android.permission.") || !name.includes(".")) {
         if (NETWORK_PERMISSIONS.has(short_)) net.push(name);
         else if (DESTRUCTIVE_PERMISSIONS.has(short_)) destructive.push(name);
@@ -445,7 +442,7 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
         title: "通信につながる権限を要求しています",
         detail:
           "インターネット・Wi-Fi・Bluetooth・NFC などの権限は、端末の外へ情報を送る手段になります。通信が不要なアプリなら、これらの権限と、それを使うライブラリ(OkHttp・広告・解析など)を外してください。通信が必要なアプリは、運営が内容を確認したうえで公開します。",
-        evidence: short(net.map(shortName)),
+        evidence: short(net.map(shortPermission)),
       });
     }
     if (destructive.length > 0) {
@@ -456,7 +453,7 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
         title: "端末のデータや設定を変更できる権限を要求しています",
         detail:
           "共有ストレージへの書き込み・連絡先やカレンダーの変更・アプリの削除やインストール・SMSや電話・他のアプリの画面の操作など、端末のデータを壊したり書き換えたりできる権限です。本当に必要な場合は、運営が内容を確認したうえで公開します。",
-        evidence: short(destructive.map(shortName)),
+        evidence: short(destructive.map(shortPermission)),
       });
     }
     if (unknown.length > 0) {
@@ -476,7 +473,7 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
         category: "privacy",
         title: "利用者のデータ・センサーを読む権限を使います",
         detail: "位置情報・カメラ・マイク・写真・連絡先などを読む権限です。通信機能がないため端末の外には出せませんが、アプリの詳細ページで利用者に知らせます。",
-        evidence: short(sensitive.map(shortName)),
+        evidence: short(sensitive.map(shortPermission)),
       });
     }
 
@@ -551,7 +548,7 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
     const byPrefix = (prefix: string) => hitIds.filter((id) => id.startsWith(prefix));
     const evidenceOf = (ids: string[]) => short(ids.flatMap((id) => dex.apiHits[id].examples.slice(0, 1).map((e) => `${dex.apiHits[id].note ?? id}: ${e}`)));
 
-    const granted = new Set((facts.manifest?.usesPermissions ?? []).map((p) => shortName(p.name)));
+    const granted = new Set((facts.manifest?.usesPermissions ?? []).map((p) => shortPermission(p.name)));
     const inert = (id: string) => {
       const needs = PERMISSION_GATED_APIS[id];
       return needs !== undefined && !needs.some((p) => granted.has(p));

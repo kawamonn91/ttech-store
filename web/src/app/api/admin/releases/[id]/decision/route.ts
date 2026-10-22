@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
-import { first } from "@/lib/db";
+import { first, isUuid } from "@/lib/db";
 import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
 import { serviceClient } from "@/lib/supabase";
 
@@ -15,6 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if ("response" in auth) return auth.response;
 
   const { id } = await params;
+  if (!isUuid(id)) return jsonError("リクエストが不正です", 400);
   const body = await parseJsonBody(request, Body);
   if (!body.success) return jsonError("リクエストが不正です", 400);
 

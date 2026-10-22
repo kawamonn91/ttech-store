@@ -1,18 +1,22 @@
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
+import { DEVELOPER_LIMITS } from "@/lib/app-rules";
+import { isUuid } from "@/lib/db";
 import { internalError, jsonError, jsonOk, parseJsonBody } from "@/lib/http";
-import { apkKey, presignUpload, UPLOAD_URL_TTL_SECONDS } from "@/lib/r2";
+import { apkKey, presignUpload, UPLOAD_URL_TTL_SECONDS, uploadKey } from "@/lib/r2";
 import { serviceClient } from "@/lib/supabase";
 
 const Body = z.object({ releaseNotes: z.string().max(4000).default("") });
-const MAX_APK_BYTES = 500 * 1024 * 1024;
+const MAX_APK_BYTES = DEVELOPER_LIMITS.maxApkBytes;
 
-/** 新しいリリースを作り、APK を R2 へ直接アップロードするための署名付きURLを返す */
+/** 新しいリリースを作り、APK を R2 のアップロード用キー(uploadKey)へ直接アップロードするための署名付きURLを返す */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(request);
   if ("response" in auth) return auth.response;
 
   const { id: appId } = await params;
+  if (!isUuid(appId)) return jsonError("リクエストが不正です", 400);
+
   const body = await parseJsonBody(request, Body);
   if (!body.success) return jsonError("リクエストが不正です", 400);
 
@@ -34,7 +38,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     return jsonOk({
       releaseId,
-      uploadUrl: await presignUpload(key),
+      uploadUrl: await presignUpload(uploadKey(appId, releaseId)),
       maxBytes: MAX_APK_BYTES,
       expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
     });

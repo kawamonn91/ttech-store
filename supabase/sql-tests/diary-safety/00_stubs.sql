@@ -14,11 +14,34 @@ create table auth.users (
   last_sign_in_at timestamptz
 );
 
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  status text not null default 'unverified'
+);
+
 create function auth.uid() returns uuid language sql stable as
-$$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+$$ select coalesce(
+  nullif(current_setting('request.jwt.claim.sub', true), ''),
+  nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'
+)::uuid $$;
 
 create function auth.role() returns text language sql stable as
-$$ select coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), 'anon') $$;
+$$ select coalesce(
+  nullif(current_setting('request.jwt.claim.role', true), ''),
+  nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role',
+  'anon'
+) $$;
+
+create function auth.jwt() returns jsonb language sql stable as
+$$ select coalesce(
+  nullif(current_setting('request.jwt.claims', true), '')::jsonb,
+  jsonb_build_object(
+    'sub', nullif(current_setting('request.jwt.claim.sub', true), ''),
+    'role', coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), 'anon'),
+    'aal', coalesce(nullif(current_setting('request.jwt.claim.aal', true), ''), 'aal1')
+  )
+) $$;
 
 create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
 create table storage.objects (
@@ -33,7 +56,7 @@ create function storage.foldername(name text) returns text[] language sql immuta
 $$ select string_to_array(regexp_replace(name, '/[^/]*$', ''), '/') $$;
 
 grant usage on schema auth, storage to anon, authenticated, service_role;
-grant execute on function auth.uid(), auth.role() to anon, authenticated, service_role;
+grant execute on function auth.uid(), auth.role(), auth.jwt() to anon, authenticated, service_role;
 grant execute on function storage.foldername(text) to anon, authenticated, service_role;
 grant select, insert, update, delete on storage.objects to authenticated;
 grant select on storage.buckets to authenticated;

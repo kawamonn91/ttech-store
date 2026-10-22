@@ -1,3 +1,4 @@
+import { isUuid } from "@/lib/db";
 import { env } from "@/lib/env";
 import { internalError, jsonError, jsonOk } from "@/lib/http";
 import { reviewScannedRelease } from "@/lib/release-review";
@@ -13,6 +14,7 @@ import { serviceClient } from "@/lib/supabase";
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return jsonError("リクエストが不正です", 400);
   const raw = await request.text();
   if (!verifySignature(env.scanWebhookSecret(), raw, request.headers.get("x-signature"))) {
     return jsonError("unauthorized", 401);

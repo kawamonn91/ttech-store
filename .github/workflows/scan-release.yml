@@ -27,8 +27,10 @@ jobs:
         with:
           node-version: 22
       - name: 署名付きURLをログに出さない
+        env:
+          MASK_URL: ${{ github.event.client_payload.downloadUrl || inputs.download_url }}
         run: |
-          echo "::add-mask::${{ github.event.client_payload.downloadUrl || inputs.download_url }}"
+          echo "::add-mask::$MASK_URL"
       # dexdump(APKのコードの解析)が無い環境では、コードを解析できず、自動承認されなくなる(すべて運営の確認になる)。
       # 検査そのものは止めないよう、無いときは警告だけを出す
       - name: 検査に使うツールを確認
