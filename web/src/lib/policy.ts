@@ -302,23 +302,18 @@ const PERMISSION_GATED_APIS: Record<string, readonly string[]> = {
   "net.sms-telephony": SMS_PHONE_PERMISSIONS,
 };
 
-export function evaluatePolicy(input: { facts: Facts | null; signature?: SignatureFacts | null; packageName?: string | null }): PolicyVerdict {
-  const findings: Finding[] = [];
-  const add = (f: Finding) => findings.push(f);
-  const { facts, signature } = input;
+// ---------------------------------------------------------------- ルール判定テーブル
 
-  // ---- 事実が得られていない・解析が不完全 → 自動では承認できない
-  if (!facts) {
-    add({
-      code: "analysis.missing",
-      severity: "review",
-      category: "analysis",
-      title: "APKの自動解析の結果がありません",
-      detail: "検査の仕組みが解析結果を返しませんでした。運営が内容を確認します。",
-      evidence: [],
-    });
-    return finish(findings, false);
-  }
+interface RuleContext {
+  facts: Facts;
+  signature?: SignatureFacts | null;
+  packageName?: string | null;
+  add: (f: Finding) => void;
+}
+
+type PolicyRule = (ctx: RuleContext) => void;
+
+function checkIncompleteAnalysis({ facts, add }: RuleContext) {
   if (facts.incomplete.length > 0) {
     add({
       code: "analysis.incomplete",
@@ -329,10 +324,9 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
       evidence: short(facts.incomplete),
     });
   }
-  const m = facts.manifest;
-  const complete = facts.incomplete.length === 0 && m !== null && (facts.dex !== null || (facts.dexFiles.length === 0 && !m.hasCode));
+}
 
-  // ---- APKの構造の異常(偽装の疑い)→ 却下
+function checkZipAnomalies({ facts, add }: RuleContext) {
   if (facts.zip.anomalies.length > 0) {
     add({
       code: "zip.anomaly",
@@ -343,180 +337,192 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
       evidence: short(facts.zip.anomalies),
     });
   }
+}
 
-  // ---- 署名
-  if (signature) {
-    if (/CN=Android Debug/i.test(signature.subject ?? "")) {
-      add({
-        code: "sign.debug-cert",
-        severity: "block",
-        category: "integrity",
-        title: "デバッグ用の署名です",
-        detail: "Android Studio が自動で使うデバッグ鍵で署名されたAPKは公開できません。自分専用のリリース用の鍵(keystore)で署名してください。",
-        evidence: [signature.subject ?? ""],
-      });
-    }
-    if (!signature.v2 && !signature.v3) {
-      add({
-        code: "sign.v1-only",
-        severity: "review",
-        category: "integrity",
-        title: "古い形式(v1)の署名だけです",
-        detail: "v2 以降の署名がないAPKは、署名を壊さずに中身を書き換えられる既知の弱点があります。v2 / v3 署名を付けてビルドしてください。",
-        evidence: [],
-      });
+function checkSignatureValidity({ signature, add }: RuleContext) {
+  if (!signature) return;
+  if (/CN=Android Debug/i.test(signature.subject ?? "")) {
+    add({
+      code: "sign.debug-cert",
+      severity: "block",
+      category: "integrity",
+      title: "デバッグ用の署名です",
+      detail: "Android Studio が自動で使うデバッグ鍵で署名されたAPKは公開できません。自分専用のリリース用の鍵(keystore)で署名してください。",
+      evidence: [signature.subject ?? ""],
+    });
+  }
+  if (!signature.v2 && !signature.v3) {
+    add({
+      code: "sign.v1-only",
+      severity: "review",
+      category: "integrity",
+      title: "古い形式(v1)の署名だけです",
+      detail: "v2 以降の署名がないAPKは、署名を壊さずに中身を書き換えられる既知の弱点があります。v2 / v3 署名を付けてビルドしてください。",
+      evidence: [],
+    });
+  }
+}
+
+function checkManifestFlags({ facts, add }: RuleContext) {
+  const m = facts.manifest;
+  if (!m) return;
+  if (m.testOnly) {
+    add({
+      code: "manifest.test-only",
+      severity: "block",
+      category: "integrity",
+      title: "テスト用のビルド(testOnly)です",
+      detail: "android:testOnly が有効なAPKは、通常の端末にインストールできません。リリースビルドをアップロードしてください。",
+      evidence: [],
+    });
+  }
+  if (m.debuggable) {
+    add({
+      code: "manifest.debuggable",
+      severity: "review",
+      category: "integrity",
+      title: "デバッグ可能なビルドです",
+      detail: "android:debuggable が有効だと、端末に接続した機器からアプリの内部を操作できます。リリースビルドをアップロードしてください。",
+      evidence: [],
+    });
+  }
+  if (m.targetSdk !== null && m.targetSdk < 28) {
+    add({
+      code: "manifest.old-target-sdk",
+      severity: "review",
+      category: "integrity",
+      title: `古い targetSdkVersion(${m.targetSdk})です`,
+      detail: "古い targetSdk のアプリは、共有ストレージへの自由な読み書きなど、近年のAndroidが制限している動作をそのまま使えます。targetSdk を 28 以上(できれば最新)にしてください。",
+      evidence: [`targetSdkVersion=${m.targetSdk}`],
+    });
+  }
+  if (m.sharedUserId) {
+    add({
+      code: "net.shared-user-id",
+      severity: "review",
+      category: "network",
+      title: "共有ユーザーIDを使っています",
+      detail: "同じ共有ユーザーIDの別のアプリと権限(通信の権限を含む)を共有できます。通信のできないアプリでも、別のアプリ経由で外へ出せる可能性があります。",
+      evidence: [m.sharedUserId],
+    });
+  }
+}
+
+function checkPermissions({ facts, packageName, add }: RuleContext) {
+  const m = facts.manifest;
+  if (!m) return;
+  const own = (name: string) => (m.package && name.startsWith(`${m.package}.`)) || (packageName ? name.startsWith(`${packageName}.`) : false);
+  const net: string[] = [];
+  const destructive: string[] = [];
+  const unknown: string[] = [];
+  const sensitive: string[] = [];
+
+  for (const p of m.usesPermissions) {
+    const name = p.name;
+    const short_ = shortPermission(name);
+    if (name.startsWith("android.permission.") || !name.includes(".")) {
+      if (NETWORK_PERMISSIONS.has(short_)) net.push(name);
+      else if (DESTRUCTIVE_PERMISSIONS.has(short_)) destructive.push(name);
+      else if (SENSITIVE_ALLOWED_PERMISSIONS.has(short_)) sensitive.push(name);
+      else if (SAFE_PERMISSIONS.has(short_) || FOREGROUND_SERVICE.test(short_)) continue;
+      else unknown.push(name);
+    } else if (own(name)) {
+      // 自分のアプリ専用の権限(AndroidX が自動で足す DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION など)
+      const declared = m.declaredPermissions.find((d) => d.name === name);
+      if (declared && declared.protectionLevel !== 2) unknown.push(name);
+    } else {
+      // 他社・他アプリ・Google の独自権限(プッシュ通知・課金・広告など。通信を伴うものが多い)
+      unknown.push(name);
     }
   }
 
-  if (m) {
-    if (m.testOnly) {
-      add({
-        code: "manifest.test-only",
-        severity: "block",
-        category: "integrity",
-        title: "テスト用のビルド(testOnly)です",
-        detail: "android:testOnly が有効なAPKは、通常の端末にインストールできません。リリースビルドをアップロードしてください。",
-        evidence: [],
-      });
-    }
-    if (m.debuggable) {
-      add({
-        code: "manifest.debuggable",
-        severity: "review",
-        category: "integrity",
-        title: "デバッグ可能なビルドです",
-        detail: "android:debuggable が有効だと、端末に接続した機器からアプリの内部を操作できます。リリースビルドをアップロードしてください。",
-        evidence: [],
-      });
-    }
-    if (m.targetSdk !== null && m.targetSdk < 28) {
-      add({
-        code: "manifest.old-target-sdk",
-        severity: "review",
-        category: "integrity",
-        title: `古い targetSdkVersion(${m.targetSdk})です`,
-        detail: "古い targetSdk のアプリは、共有ストレージへの自由な読み書きなど、近年のAndroidが制限している動作をそのまま使えます。targetSdk を 28 以上(できれば最新)にしてください。",
-        evidence: [`targetSdkVersion=${m.targetSdk}`],
-      });
-    }
-    if (m.sharedUserId) {
-      add({
-        code: "net.shared-user-id",
-        severity: "review",
-        category: "network",
-        title: "共有ユーザーIDを使っています",
-        detail: "同じ共有ユーザーIDの別のアプリと権限(通信の権限を含む)を共有できます。通信のできないアプリでも、別のアプリ経由で外へ出せる可能性があります。",
-        evidence: [m.sharedUserId],
-      });
-    }
+  if (net.length > 0) {
+    add({
+      code: "net.permission",
+      severity: "review",
+      category: "network",
+      title: "通信につながる権限を要求しています",
+      detail:
+        "インターネット・Wi-Fi・Bluetooth・NFC などの権限は、端末の外へ情報を送る手段になります。通信が不要なアプリなら、これらの権限と、それを使うライブラリ(OkHttp・広告・解析など)を外してください。通信が必要なアプリは、運営が内容を確認したうえで公開します。",
+      evidence: short(net.map(shortPermission)),
+    });
+  }
+  if (destructive.length > 0) {
+    add({
+      code: "destroy.permission",
+      severity: "review",
+      category: "destruction",
+      title: "端末のデータや設定を変更できる権限を要求しています",
+      detail:
+        "共有ストレージへの書き込み・連絡先やカレンダーの変更・アプリの削除やインストール・SMSや電話・他のアプリの画面の操作など、端末のデータを壊したり書き換えたりできる権限です。本当に必要な場合は、運営が内容を確認したうえで公開します。",
+      evidence: short(destructive.map(shortPermission)),
+    });
+  }
+  if (unknown.length > 0) {
+    add({
+      code: "perm.unknown",
+      severity: "review",
+      category: "privacy",
+      title: "審査の対象外の権限を要求しています",
+      detail: "自動審査が把握していない権限(独自の権限や、他社のサービス向けの権限)です。何のための権限かを運営が確認します。",
+      evidence: short(unknown),
+    });
+  }
+  if (sensitive.length > 0) {
+    add({
+      code: "perm.sensitive",
+      severity: "info",
+      category: "privacy",
+      title: "利用者のデータ・センサーを読む権限を使います",
+      detail: "位置情報・カメラ・マイク・写真・連絡先などを読む権限です。通信機能がないため端末の外には出せませんが、アプリの詳細ページで利用者に知らせます。",
+      evidence: short(sensitive.map(shortPermission)),
+    });
+  }
+}
 
-    // ---- 権限
-    const own = (name: string) => (m.package && name.startsWith(`${m.package}.`)) || (input.packageName ? name.startsWith(`${input.packageName}.`) : false);
-    const net: string[] = [];
-    const destructive: string[] = [];
-    const unknown: string[] = [];
-    const sensitive: string[] = [];
-    for (const p of m.usesPermissions) {
-      const name = p.name;
-      const short_ = shortPermission(name);
-      if (name.startsWith("android.permission.") || !name.includes(".")) {
-        if (NETWORK_PERMISSIONS.has(short_)) net.push(name);
-        else if (DESTRUCTIVE_PERMISSIONS.has(short_)) destructive.push(name);
-        else if (SENSITIVE_ALLOWED_PERMISSIONS.has(short_)) sensitive.push(name);
-        else if (SAFE_PERMISSIONS.has(short_) || FOREGROUND_SERVICE.test(short_)) continue;
-        else unknown.push(name);
-      } else if (own(name)) {
-        // 自分のアプリ専用の権限(AndroidX が自動で足す DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION など)
-        const declared = m.declaredPermissions.find((d) => d.name === name);
-        if (declared && declared.protectionLevel !== 2) unknown.push(name);
-      } else {
-        // 他社・他アプリ・Google の独自権限(プッシュ通知・課金・広告など。通信を伴うものが多い)
-        unknown.push(name);
-      }
-    }
-    if (net.length > 0) {
-      add({
-        code: "net.permission",
-        severity: "review",
-        category: "network",
-        title: "通信につながる権限を要求しています",
-        detail:
-          "インターネット・Wi-Fi・Bluetooth・NFC などの権限は、端末の外へ情報を送る手段になります。通信が不要なアプリなら、これらの権限と、それを使うライブラリ(OkHttp・広告・解析など)を外してください。通信が必要なアプリは、運営が内容を確認したうえで公開します。",
-        evidence: short(net.map(shortPermission)),
-      });
-    }
-    if (destructive.length > 0) {
-      add({
-        code: "destroy.permission",
-        severity: "review",
-        category: "destruction",
-        title: "端末のデータや設定を変更できる権限を要求しています",
-        detail:
-          "共有ストレージへの書き込み・連絡先やカレンダーの変更・アプリの削除やインストール・SMSや電話・他のアプリの画面の操作など、端末のデータを壊したり書き換えたりできる権限です。本当に必要な場合は、運営が内容を確認したうえで公開します。",
-        evidence: short(destructive.map(shortPermission)),
-      });
-    }
-    if (unknown.length > 0) {
-      add({
-        code: "perm.unknown",
-        severity: "review",
-        category: "privacy",
-        title: "審査の対象外の権限を要求しています",
-        detail: "自動審査が把握していない権限(独自の権限や、他社のサービス向けの権限)です。何のための権限かを運営が確認します。",
-        evidence: short(unknown),
-      });
-    }
-    if (sensitive.length > 0) {
-      add({
-        code: "perm.sensitive",
-        severity: "info",
-        category: "privacy",
-        title: "利用者のデータ・センサーを読む権限を使います",
-        detail: "位置情報・カメラ・マイク・写真・連絡先などを読む権限です。通信機能がないため端末の外には出せませんが、アプリの詳細ページで利用者に知らせます。",
-        evidence: short(sensitive.map(shortPermission)),
-      });
-    }
+function checkComponents({ facts, add }: RuleContext) {
+  const m = facts.manifest;
+  if (!m) return;
+  const exposed: string[] = [];
+  const special: string[] = [];
 
-    // ---- コンポーネント(他のアプリに公開されているもの・特別な権限で動くもの)
-    const exposed: string[] = [];
-    const special: string[] = [];
-    for (const c of m.components) {
-      const guard = c.permission ?? "";
-      if (SENSITIVE_SERVICE_PERMISSIONS[guard]) {
-        special.push(`${SENSITIVE_SERVICE_PERMISSIONS[guard]}: ${c.name}`);
-        continue;
-      }
-      if (!c.exported) continue;
-      if (c.kind === "provider") {
-        // 公開されたContentProviderは、他のアプリがデータを読み書きできる。権限で守られていなければ要確認
-        if (!c.permission && !(c.readPermission && c.writePermission)) exposed.push(`provider: ${c.name}`);
-      } else if (c.kind === "service") {
-        if (!c.permission) exposed.push(`service: ${c.name}`);
-      }
+  for (const c of m.components) {
+    const guard = c.permission ?? "";
+    if (SENSITIVE_SERVICE_PERMISSIONS[guard]) {
+      special.push(`${SENSITIVE_SERVICE_PERMISSIONS[guard]}: ${c.name}`);
+      continue;
     }
-    if (special.length > 0) {
-      add({
-        code: "destroy.special-service",
-        severity: "review",
-        category: "destruction",
-        title: "他のアプリや端末全体に触れる特別なサービスを含みます",
-        detail: "ユーザー補助・通知の読み取り・VPN・キーボード・端末管理者などは、悪用されると端末のデータや他のアプリに大きな影響を与えます。運営が用途を確認します。",
-        evidence: short(special),
-      });
-    }
-    if (exposed.length > 0) {
-      add({
-        code: "net.exposed-component",
-        severity: "review",
-        category: "network",
-        title: "他のアプリから自由に呼び出せるコンポーネントがあります",
-        detail: "権限で守られていない公開のサービス・ContentProvider は、別のアプリとの間でデータのやり取りに使えます(通信できるアプリへ情報を渡す経路になりえます)。公開する必要がなければ android:exported=\"false\" にしてください。",
-        evidence: short(exposed),
-      });
+    if (!c.exported) continue;
+    if (c.kind === "provider") {
+      if (!c.permission && !(c.readPermission && c.writePermission)) exposed.push(`provider: ${c.name}`);
+    } else if (c.kind === "service") {
+      if (!c.permission) exposed.push(`service: ${c.name}`);
     }
   }
 
-  // ---- 同梱ファイル
+  if (special.length > 0) {
+    add({
+      code: "destroy.special-service",
+      severity: "review",
+      category: "destruction",
+      title: "他のアプリや端末全体に触れる特別なサービスを含みます",
+      detail: "ユーザー補助・通知の読み取り・VPN・キーボード・端末管理者などは、悪用されると端末のデータや他のアプリに大きな影響を与えます。運営が用途を確認します。",
+      evidence: short(special),
+    });
+  }
+  if (exposed.length > 0) {
+    add({
+      code: "net.exposed-component",
+      severity: "review",
+      category: "network",
+      title: "他のアプリから自由に呼び出せるコンポーネントがあります",
+      detail: "権限で守られていない公開のサービス・ContentProvider は、別のアプリとの間でデータのやり取りに使えます(通信できるアプリへ情報を渡す経路になりえます)。公開する必要がなければ android:exported=\"false\" にしてください。",
+      evidence: short(exposed),
+    });
+  }
+}
+
+function checkEmbeddedArtifacts({ facts, add }: RuleContext) {
   const unknownLibs = facts.nativeLibs.filter((l) => !l.sha256 || !(l.sha256 in KNOWN_NATIVE_LIBS));
   if (unknownLibs.length > 0) {
     add({
@@ -540,99 +546,139 @@ export function evaluatePolicy(input: { facts: Facts | null; signature?: Signatu
       evidence: short(badEmbedded.map((e) => `${e.path} (${e.kind})`)),
     });
   }
+}
 
-  // ---- コード
+function checkDexCodeReferences({ facts, add }: RuleContext) {
   const dex = facts.dex;
-  if (dex) {
-    const hitIds = Object.keys(dex.apiHits);
-    const byPrefix = (prefix: string) => hitIds.filter((id) => id.startsWith(prefix));
-    const evidenceOf = (ids: string[]) => short(ids.flatMap((id) => dex.apiHits[id].examples.slice(0, 1).map((e) => `${dex.apiHits[id].note ?? id}: ${e}`)));
+  if (!dex) return;
 
-    const granted = new Set((facts.manifest?.usesPermissions ?? []).map((p) => shortPermission(p.name)));
-    const inert = (id: string) => {
-      const needs = PERMISSION_GATED_APIS[id];
-      return needs !== undefined && !needs.some((p) => granted.has(p));
-    };
-    const netIds = byPrefix("net.").filter((id) => !inert(id));
-    const inertNetIds = byPrefix("net.").filter(inert);
-    if (inertNetIds.length > 0) {
-      add({
-        code: "net.api-inert",
-        severity: "info",
-        category: "network",
-        title: "通信のAPIへの参照がありますが、必要な権限がないため実行できません",
-        detail:
-          "使われないライブラリのコード(縮小していないビルドに含まれる Kotlin 標準ライブラリ・AndroidX など)に、通信のAPIへの参照があります。INTERNET などの権限がないアプリは、OS がこれらの動作を拒否するため、外部と通信できません。",
-        evidence: evidenceOf(inertNetIds),
-      });
-    }
-    if (netIds.length > 0) {
-      add({
-        code: "net.api",
-        severity: "review",
-        category: "network",
-        title: "通信につながるAPIを呼び出すコードがあります",
-        detail:
-          "ソケット・HTTP・WebView・ダウンロード・Bluetooth など、外部と通信するAPIが使われています(組み込んだライブラリの中にあるものも含みます)。通信が不要なら、そのライブラリを外してください。",
-        evidence: evidenceOf(netIds),
-      });
-    }
-    if (dex.urlHosts.length > 0) {
-      add({
-        code: "net.url-string",
-        severity: "review",
-        category: "network",
-        title: "外部のURLがコードに含まれています",
-        detail:
-          "ウェブサイトへのリンクなどのURLは、ブラウザ経由で情報を外へ出すのに使えます(URLに利用者のデータを付ける、など)。リンクが必要なときは、運営が用途を確認します。",
-        evidence: short(dex.urlHosts.map((h) => h.host)),
-      });
-    }
-    const loaders = hitIds.filter((id) => id === "code.dex-loader" || id === "code.exec");
-    if (loaders.length > 0) {
-      add({
-        code: "code.dynamic",
-        severity: "review",
-        category: "integrity",
-        title: "後から別のコードを読み込む・外部プログラムを起動する処理があります",
-        detail: "DEXの動的読み込みや外部プロセスの起動は、審査の後に動作を変えられる手段になります。運営が用途を確認します。",
-        evidence: evidenceOf(loaders),
-      });
-    }
-    if ((dex.apiHits["code.native-load"]?.count ?? 0) > 0 && facts.nativeLibs.length === 0) {
-      add({
-        code: "code.native-load-external",
-        severity: "review",
-        category: "integrity",
-        title: "APKに含まれないネイティブライブラリを読み込む処理があります",
-        detail: "System.load / loadLibrary が呼ばれているのに、対応する .so がAPKの中にありません。外部から取得した(または隠した)コードを読み込む可能性があります。",
-        evidence: evidenceOf(["code.native-load"]),
-      });
-    }
-    const destroyIds = byPrefix("destroy.");
-    if (destroyIds.length > 0) {
-      add({
-        code: "destroy.api",
-        severity: "review",
-        category: "destruction",
-        title: "端末のデータ・設定・他のアプリを操作できるAPIを呼び出すコードがあります",
-        detail: "端末管理者・アプリの削除やインストール・設定の書き換え・フォルダ内のファイルの削除・他のアプリの画面の操作などのAPIです。運営が用途を確認します。",
-        evidence: evidenceOf(destroyIds),
-      });
-    }
-    const stringIds = Object.keys(dex.stringHits).filter((id) => !INFO_STRING_IDS.has(id));
-    if (stringIds.length > 0) {
-      add({
-        code: "destroy.string",
-        severity: "review",
-        category: "destruction",
-        title: "端末のファイルやアプリへの強い操作を求める処理があります",
-        detail: "フォルダ全体・すべてのファイルへのアクセスや、APKのインストールを求める処理です。運営が用途を確認します。",
-        evidence: short(stringIds.map((id) => `${dex.stringHits[id].note ?? id}: ${dex.stringHits[id].examples[0] ?? ""}`)),
-      });
-    }
+  const hitIds = Object.keys(dex.apiHits);
+  const byPrefix = (prefix: string) => hitIds.filter((id) => id.startsWith(prefix));
+  const evidenceOf = (ids: string[]) => short(ids.flatMap((id) => dex.apiHits[id].examples.slice(0, 1).map((e) => `${dex.apiHits[id].note ?? id}: ${e}`)));
+
+  const granted = new Set((facts.manifest?.usesPermissions ?? []).map((p) => shortPermission(p.name)));
+  const inert = (id: string) => {
+    const needs = PERMISSION_GATED_APIS[id];
+    return needs !== undefined && !needs.some((p) => granted.has(p));
+  };
+  const netIds = byPrefix("net.").filter((id) => !inert(id));
+  const inertNetIds = byPrefix("net.").filter(inert);
+
+  if (inertNetIds.length > 0) {
+    add({
+      code: "net.api-inert",
+      severity: "info",
+      category: "network",
+      title: "通信のAPIへの参照がありますが、必要な権限がないため実行できません",
+      detail:
+        "使われないライブラリのコード(縮小していないビルドに含まれる Kotlin 標準ライブラリ・AndroidX など)に、通信のAPIへの参照があります。INTERNET などの権限がないアプリは、OS がこれらの動作を拒否するため、外部と通信できません。",
+      evidence: evidenceOf(inertNetIds),
+    });
+  }
+  if (netIds.length > 0) {
+    add({
+      code: "net.api",
+      severity: "review",
+      category: "network",
+      title: "通信につながるAPIを呼び出すコードがあります",
+      detail:
+        "ソケット・HTTP・WebView・ダウンロード・Bluetooth など、外部と通信するAPIが使われています(組み込んだライブラリの中にあるものも含みます)。通信が不要なら、そのライブラリを外してください。",
+      evidence: evidenceOf(netIds),
+    });
+  }
+  if (dex.urlHosts.length > 0) {
+    add({
+      code: "net.url-string",
+      severity: "review",
+      category: "network",
+      title: "外部のURLがコードに含まれています",
+      detail:
+        "ウェブサイトへのリンクなどのURLは、ブラウザ経由で情報を外へ出すのに使えます(URLに利用者のデータを付ける、など)。リンクが必要なときは、運営が用途を確認します。",
+      evidence: short(dex.urlHosts.map((h) => h.host)),
+    });
+  }
+  const loaders = hitIds.filter((id) => id === "code.dex-loader" || id === "code.exec");
+  if (loaders.length > 0) {
+    add({
+      code: "code.dynamic",
+      severity: "review",
+      category: "integrity",
+      title: "後から別のコードを読み込む・外部プログラムを起動する処理があります",
+      detail: "DEXの動的読み込みや外部プロセスの起動は、審査の後に動作を変えられる手段になります。運営が用途を確認します。",
+      evidence: evidenceOf(loaders),
+    });
+  }
+  if ((dex.apiHits["code.native-load"]?.count ?? 0) > 0 && facts.nativeLibs.length === 0) {
+    add({
+      code: "code.native-load-external",
+      severity: "review",
+      category: "integrity",
+      title: "APKに含まれないネイティブライブラリを読み込む処理があります",
+      detail: "System.load / loadLibrary が呼ばれているのに、対応する .so がAPKの中にありません。外部から取得した(または隠した)コードを読み込む可能性があります。",
+      evidence: evidenceOf(["code.native-load"]),
+    });
+  }
+  const destroyIds = byPrefix("destroy.");
+  if (destroyIds.length > 0) {
+    add({
+      code: "destroy.api",
+      severity: "review",
+      category: "destruction",
+      title: "端末のデータ・設定・他のアプリを操作できるAPIを呼び出すコードがあります",
+      detail: "端末管理者・アプリの削除やインストール・設定の書き換え・フォルダ内のファイルの削除・他のアプリの画面の操作などのAPIです。運営が用途を確認します。",
+      evidence: evidenceOf(destroyIds),
+    });
+  }
+  const stringIds = Object.keys(dex.stringHits).filter((id) => !INFO_STRING_IDS.has(id));
+  if (stringIds.length > 0) {
+    add({
+      code: "destroy.string",
+      severity: "review",
+      category: "destruction",
+      title: "端末のファイルやアプリへの強い操作を求める処理があります",
+      detail: "フォルダ全体・すべてのファイルへのアクセスや、APKのインストールを求める処理です。運営が用途を確認します。",
+      evidence: short(stringIds.map((id) => `${dex.stringHits[id].note ?? id}: ${dex.stringHits[id].examples[0] ?? ""}`)),
+    });
+  }
+}
+
+/** 審査ルールの判定テーブル */
+export const POLICY_RULES: readonly PolicyRule[] = [
+  checkIncompleteAnalysis,
+  checkZipAnomalies,
+  checkSignatureValidity,
+  checkManifestFlags,
+  checkPermissions,
+  checkComponents,
+  checkEmbeddedArtifacts,
+  checkDexCodeReferences,
+];
+
+export function evaluatePolicy(input: { facts: Facts | null; signature?: SignatureFacts | null; packageName?: string | null }): PolicyVerdict {
+  const findings: Finding[] = [];
+  const add = (f: Finding) => findings.push(f);
+  const { facts, signature, packageName } = input;
+
+  // ---- 事実が得られていない → 自動では承認できない
+  if (!facts) {
+    add({
+      code: "analysis.missing",
+      severity: "review",
+      category: "analysis",
+      title: "APKの自動解析の結果がありません",
+      detail: "検査の仕組みが解析結果を返しませんでした。運営が内容を確認します。",
+      evidence: [],
+    });
+    return finish(findings, false);
   }
 
+  const ctx: RuleContext = { facts, signature, packageName, add };
+  for (const rule of POLICY_RULES) {
+    rule(ctx);
+  }
+
+  const m = facts.manifest;
+  const complete = facts.incomplete.length === 0 && m !== null && (facts.dex !== null || (facts.dexFiles.length === 0 && !m.hasCode));
   return finish(findings, complete);
 }
 
