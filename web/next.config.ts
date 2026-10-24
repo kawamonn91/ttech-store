@@ -2,6 +2,22 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    return [
+      {
+        source: "/auth/v1/:path*",
+        destination: "http://127.0.0.1:8000/auth/v1/:path*",
+      },
+      {
+        source: "/rest/v1/:path*",
+        destination: "http://127.0.0.1:8000/rest/v1/:path*",
+      },
+      {
+        source: "/storage/v1/:path*",
+        destination: "http://127.0.0.1:8000/storage/v1/:path*",
+      },
+    ];
+  },
   async headers() {
     return [
       {

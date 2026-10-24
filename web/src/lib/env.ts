@@ -9,7 +9,7 @@ function required(name: string): string {
 }
 
 export const env = {
-  supabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL"),
+  supabaseUrl: () => process.env.INTERNAL_SUPABASE_URL || required("NEXT_PUBLIC_SUPABASE_URL"),
   supabaseAnonKey: () => required("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   supabaseServiceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
 

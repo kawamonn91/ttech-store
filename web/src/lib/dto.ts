@@ -90,7 +90,8 @@ export interface ReleaseRow {
 
 export function mediaUrl(path: string | null): string | null {
   if (!path) return null;
-  return `${env.supabaseUrl()}/storage/v1/object/public/app-media/${path}`;
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || env.supabaseUrl();
+  return `${baseUrl}/storage/v1/object/public/app-media/${path}`;
 }
 
 export function toLatest(row: ReleaseRow | undefined): LatestReleaseDto | null {
