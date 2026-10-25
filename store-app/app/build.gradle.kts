@@ -24,10 +24,12 @@ val googleWebClientId: String = localProperties.getProperty("googleWebClientId")
 /**
  * Supabase の URL と anon キー。anon キーは「公開してよい」設計の値(RLSで保護される)で、
  * Web版でもブラウザに配信している値と同じもの。local.properties で上書きもできる。
+ * 2026-10 に Supabase をストアのサーバーへ移し、Web と同じ store.kawamonn.com で公開している
+ * (以前のクラウドの Supabase の URL・キーでは、Web の API がトークンを受け付けない)。
  */
-val supabaseUrl: String = localProperties.getProperty("supabaseUrl") ?: "https://bniehgjuylkgxbstmjdh.supabase.co"
+val supabaseUrl: String = localProperties.getProperty("supabaseUrl") ?: "https://store.kawamonn.com"
 val supabaseAnonKey: String = localProperties.getProperty("supabaseAnonKey")
-    ?: "sb_publishable_JmdR3qk3rytSemnuaeOI_g_Z9SLuiaQ"
+    ?: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkyODE2MzQzLCJleHAiOjIxMDgxNzYzNDN9.TQnbjof6KJ_5GcdguES_GHSELU4GF4700NSUsziiS5c"
 
 /**
  * リリース署名の情報。keystore.properties は .gitignore 済みで鍵はリポジトリに入らない。
