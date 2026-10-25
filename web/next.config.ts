@@ -1,22 +1,20 @@
 import type { NextConfig } from "next";
 
+/**
+ * Supabase を Web と同じオリジンで公開する構成(サーバーの中で Supabase を動かす)のときだけ、
+ * /auth/v1・/rest/v1・/storage/v1 をその Supabase へ転送する。転送先は INTERNAL_SUPABASE_URL。
+ * 未設定(クラウドの Supabase を直接使う構成)なら転送しない。転送先はビルド時に決まる。
+ */
+const supabaseProxyTarget = process.env.INTERNAL_SUPABASE_URL?.replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async rewrites() {
-    return [
-      {
-        source: "/auth/v1/:path*",
-        destination: "http://127.0.0.1:8000/auth/v1/:path*",
-      },
-      {
-        source: "/rest/v1/:path*",
-        destination: "http://127.0.0.1:8000/rest/v1/:path*",
-      },
-      {
-        source: "/storage/v1/:path*",
-        destination: "http://127.0.0.1:8000/storage/v1/:path*",
-      },
-    ];
+    if (!supabaseProxyTarget) return [];
+    return ["auth", "rest", "storage"].map((service) => ({
+      source: `/${service}/v1/:path*`,
+      destination: `${supabaseProxyTarget}/${service}/v1/:path*`,
+    }));
   },
   async headers() {
     return [
