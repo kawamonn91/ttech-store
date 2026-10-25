@@ -9,7 +9,10 @@ function required(name: string): string {
 }
 
 export const env = {
+  /** サーバーから Supabase への接続先。INTERNAL_SUPABASE_URL があれば(同じサーバーの中の Supabase)そちらへ直接つなぐ */
   supabaseUrl: () => process.env.INTERNAL_SUPABASE_URL || required("NEXT_PUBLIC_SUPABASE_URL"),
+  /** ブラウザが使う公開の Supabase の URL。ログインの Cookie の名前もここから作る */
+  publicSupabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL"),
   supabaseAnonKey: () => required("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   supabaseServiceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
 

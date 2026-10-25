@@ -6,20 +6,25 @@ let currentAal: string;
 
 const totp = (status: string) => [{ id: "f1", factor_type: "totp", status }];
 
+let serverClientArgs: { url: string; options: { cookieOptions?: { name?: string } } } | null = null;
+
 vi.mock("@supabase/ssr", () => ({
-  createServerClient: () => ({
-    auth: {
-      getUser: async () => ({ data: { user: authUser } }),
-      mfa: {
-        getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: currentAal } }),
+  createServerClient: (url: string, _key: string, options: { cookieOptions?: { name?: string } }) => {
+    serverClientArgs = { url, options };
+    return {
+      auth: {
+        getUser: async () => ({ data: { user: authUser } }),
+        mfa: {
+          getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: currentAal } }),
+        },
       },
-    },
-    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: profileRole } }) }) }) }),
-  }),
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: profileRole } }) }) }) }),
+    };
+  },
 }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 
-import { getAdminUser, verifiedTotpFactor } from "./supabase";
+import { getAdminUser, sessionClient, verifiedTotpFactor } from "./supabase";
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://proj.supabase.co");
@@ -72,5 +77,22 @@ describe("verifiedTotpFactor", () => {
     expect(verifiedTotpFactor(user(totp("unverified")))).toBeNull();
     expect(verifiedTotpFactor(user([{ id: "p1", factor_type: "phone", status: "verified" }]))).toBeNull();
     expect(verifiedTotpFactor(user([]))).toBeNull();
+  });
+});
+
+describe("sessionClient", () => {
+  it("サーバーが内部の URL に直接つなぐときも、Cookie の名前はブラウザと同じ(公開の URL から作る)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://store.example.com");
+    vi.stubEnv("INTERNAL_SUPABASE_URL", "http://127.0.0.1:8000");
+    await sessionClient();
+    expect(serverClientArgs?.url).toBe("http://127.0.0.1:8000");
+    expect(serverClientArgs?.options.cookieOptions?.name).toBe("sb-store-auth-token");
+  });
+
+  it("内部の URL が無ければ公開の URL につなぎ、名前も同じ", async () => {
+    vi.stubEnv("INTERNAL_SUPABASE_URL", "");
+    await sessionClient();
+    expect(serverClientArgs?.url).toBe("https://proj.supabase.co");
+    expect(serverClientArgs?.options.cookieOptions?.name).toBe("sb-proj-auth-token");
   });
 });

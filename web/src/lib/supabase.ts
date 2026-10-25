@@ -1,6 +1,7 @@
 import { createClient, type Factor, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { authCookieName } from "./auth-cookie";
 import { env } from "./env";
 
 /** 公開データの読み取り用(anon 権限)。RLS により published のものだけ読める */
@@ -24,6 +25,7 @@ export function serviceClient(): SupabaseClient {
 export async function sessionClient(): Promise<SupabaseClient> {
   const store = await cookies();
   return createServerClient(env.supabaseUrl(), env.supabaseAnonKey(), {
+    cookieOptions: { name: authCookieName(env.publicSupabaseUrl()) },
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
