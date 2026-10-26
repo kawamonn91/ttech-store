@@ -10,4 +10,5 @@
 ## Supabase 依存をなくす計画
 
 - 計画は [docs/supabase-removal-plan.md](docs/supabase-removal-plan.md) にある。
+- 実行の手順書は [docs/supabase-removal/README.md](docs/supabase-removal/README.md) から始まる。実行する前に README の「作業のルール」を読むこと。
 - 実行を頼まれたときの扱いは、上のリファクタリング計画と同じ(「決定」が空欄の項目を先に確認し、日付つきで書き込んでから始める)。
