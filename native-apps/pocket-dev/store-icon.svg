@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108">
+  <!-- 意匠: ターミナルのプロンプト(> とブロックカーソル) -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A1F2B"/>
+      <stop offset="1" stop-color="#0C0F15"/>
+    </linearGradient>
+    <linearGradient id="prompt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7BEFA8"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="108" height="108" rx="24" fill="url(#bg)"/>
+
+  <rect x="15" y="21" width="78" height="66" rx="9" fill="#090C12" stroke="#2A3142" stroke-width="1.8"/>
+  <line x1="15" y1="32" x2="93" y2="32" stroke="#2A3142" stroke-width="1.8"/>
+  <circle cx="23.5" cy="26.5" r="2" fill="#394154"/>
+  <circle cx="31" cy="26.5" r="2" fill="#394154"/>
+  <circle cx="38.5" cy="26.5" r="2" fill="#394154"/>
+
+  <path d="M29 48 L40 58.5 L29 69" fill="none" stroke="url(#prompt)" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="49" y="50.5" width="12.5" height="17" rx="2.5" fill="#7BEFA8" opacity="0.92"/>
+</svg>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PocketDev"
+        android:usesCleartextTraffic="true">
+        <!--
+          usesCleartextTraffic: 接続先は利用者が自分で立てたLAN内のサーバー(http://192.168.x.x:8765)で、
+          IPアドレス範囲を networkSecurityConfig のドメイン指定で表現できないため許可している。
+          外部のサイトは開かない(入力されたサーバー以外へのページ遷移はブラウザに渡す)。
+        -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.PocketDev"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode">
+            <!-- configChanges: 画面回転でActivityが作り直されると、ターミナルの接続が切れてしまうため -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

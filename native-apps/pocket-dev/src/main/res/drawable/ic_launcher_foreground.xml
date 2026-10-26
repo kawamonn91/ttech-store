@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 意匠: ターミナルのプロンプト(> とブロックカーソル)。
+     アダプティブアイコンはマスクで外周が削られるため、ウィンドウ枠は入れず中央に大きく置く -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#4ADE80"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M38,42 L52,54 L38,66" />
+    <path
+        android:fillColor="#7BEFA8"
+        android:pathData="M63,45 L70,45 A3,3 0 0 1 73,48 L73,60 A3,3 0 0 1 70,63 L63,63 A3,3 0 0 1 60,60 L60,48 A3,3 0 0 1 63,45 Z" />
+</vector>
