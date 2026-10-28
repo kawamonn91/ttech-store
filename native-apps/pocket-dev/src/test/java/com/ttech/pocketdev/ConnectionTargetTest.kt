@@ -104,24 +104,46 @@ class ConnectionTargetTest {
     }
 
     @Test
-    fun `JSONシリアライズとデシリアライズで正しく復元できる`() {
-        val target = ConnectionTarget(
-            baseUrl = "http://192.168.1.50:8765",
-            token = "my-token-123",
-            name = "自宅サーバー",
-            type = TargetType.CUSTOM_SERVER,
+    fun `sshヘルパーでSSH接続ターゲットが正しく生成される`() {
+        val target = ConnectionTarget.ssh(
+            host = "raspi1.local",
+            port = 2222,
+            user = "pi",
+            authMethod = ConnectionTarget.SshAuthMethod.PASSWORD,
+            password = "pass",
+            remoteRoot = "/home/pi/workspace",
+            name = "Raspberry Pi",
+        )
+        assertEquals(TargetType.SSH, target.type)
+        assertEquals("raspi1.local", target.sshHost)
+        assertEquals(2222, target.sshPort)
+        assertEquals("pi", target.sshUser)
+        assertEquals("Raspberry Pi", target.displayName)
+        assertEquals(ConnectionTarget.SshAuthMethod.PASSWORD, target.sshAuthMethod)
+        assertEquals("/home/pi/workspace", target.sshRemoteRoot)
+    }
+
+    @Test
+    fun `JSONシリアライズとデシリアライズでSSH設定も含めて正しく復元できる`() {
+        val target = ConnectionTarget.ssh(
+            host = "ssh.kawamonn.com",
+            port = 22,
+            user = "ubuntu",
+            authMethod = ConnectionTarget.SshAuthMethod.KEY,
+            privateKey = "-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----",
+            remoteRoot = "~/src",
         )
 
         val json = target.toJson()
         val restored = ConnectionTarget.fromJson(json)
 
         assertNotNull(restored)
-        assertEquals(target.baseUrl, restored?.baseUrl)
-        assertEquals(target.token, restored?.token)
-        assertEquals(target.name, restored?.name)
-        assertEquals(target.type, restored?.type)
-        assertEquals(target.id, restored?.id)
-        assertEquals("自宅サーバー", restored?.displayName)
+        assertEquals(TargetType.SSH, restored?.type)
+        assertEquals("ssh.kawamonn.com", restored?.sshHost)
+        assertEquals("ubuntu", restored?.sshUser)
+        assertEquals(ConnectionTarget.SshAuthMethod.KEY, restored?.sshAuthMethod)
+        assertEquals(target.sshPrivateKey, restored?.sshPrivateKey)
+        assertEquals("~/src", restored?.sshRemoteRoot)
     }
 
     @Test
@@ -129,16 +151,16 @@ class ConnectionTargetTest {
         val list = listOf(
             ConnectionTarget.pocketLinux("token-a"),
             ConnectionTarget("http://server.local:8765", "token-b", name = "PC"),
+            ConnectionTarget.ssh("raspi1", user = "pi"),
         )
 
         val json = ConnectionTarget.listToJson(list)
         val restored = ConnectionTarget.listFromJson(json)
 
-        assertEquals(2, restored.size)
-        assertEquals("http://127.0.0.1:8765", restored[0].baseUrl)
+        assertEquals(3, restored.size)
         assertEquals(TargetType.POCKET_LINUX, restored[0].type)
-        assertEquals("http://server.local:8765", restored[1].baseUrl)
         assertEquals(TargetType.CUSTOM_SERVER, restored[1].type)
+        assertEquals(TargetType.SSH, restored[2].type)
     }
 
     @Test

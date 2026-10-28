@@ -28,12 +28,27 @@ enum class TargetType {
  */
 @Serializable
 data class ConnectionTarget(
-    val baseUrl: String,
-    val token: String,
+    val baseUrl: String = "",
+    val token: String = "",
     val name: String = "",
     val type: TargetType = TargetType.CUSTOM_SERVER,
     val id: String = UUID.randomUUID().toString(),
+
+    // SSH 接続用パラメータ
+    val sshHost: String = "",
+    val sshPort: Int = 22,
+    val sshUser: String = "root",
+    val sshAuthMethod: SshAuthMethod = SshAuthMethod.PASSWORD,
+    val sshPassword: String = "",
+    val sshPrivateKey: String = "",
+    val sshPassphrase: String = "",
+    val sshRemoteRoot: String = "",
 ) {
+    @Serializable
+    enum class SshAuthMethod {
+        PASSWORD,
+        KEY,
+    }
 
     /** ターミナル画面。サーバーが Cookie を発行するので、以降の通信はトークン無しで通る */
     val terminalUrl: String get() = "$baseUrl/?token=${encodedToken()}"
@@ -45,11 +60,14 @@ data class ConnectionTarget(
     val displayName: String get() = when {
         name.isNotBlank() -> name
         type == TargetType.POCKET_LINUX -> "Pocket Linux ($baseUrl)"
+        type == TargetType.SSH -> "SSH ($sshUser@$sshHost:$sshPort)"
+        type == TargetType.GOOGLE_DRIVE -> "Google Drive"
         else -> baseUrl
     }
 
     /** このURLを本アプリ内で開いてよいか(別サイトへの遷移は外部ブラウザに渡す) */
     fun isOwnHost(url: String): Boolean {
+        if (baseUrl.isBlank()) return false
         val target = runCatching { URI(url) }.getOrNull() ?: return false
         val mine = runCatching { URI(baseUrl) }.getOrNull() ?: return false
         return target.scheme == mine.scheme &&
@@ -82,6 +100,37 @@ data class ConnectionTarget(
             )
         }
 
+        /** SSH ターゲットを作る */
+        fun ssh(
+            host: String,
+            port: Int = 22,
+            user: String = "root",
+            authMethod: SshAuthMethod = SshAuthMethod.PASSWORD,
+            password: String = "",
+            privateKey: String = "",
+            passphrase: String = "",
+            remoteRoot: String = "",
+            name: String = "",
+        ): ConnectionTarget {
+            val validPort = if (port in 1..65535) port else 22
+            val cleanHost = host.trim()
+            val cleanUser = user.trim().ifBlank { "root" }
+            return ConnectionTarget(
+                baseUrl = "", // ローカルブリッジサーバー起動時に設定される
+                token = UUID.randomUUID().toString(),
+                name = name.trim().ifBlank { "SSH: $cleanUser@$cleanHost" },
+                type = TargetType.SSH,
+                sshHost = cleanHost,
+                sshPort = validPort,
+                sshUser = cleanUser,
+                sshAuthMethod = authMethod,
+                sshPassword = password,
+                sshPrivateKey = privateKey.trim(),
+                sshPassphrase = passphrase,
+                sshRemoteRoot = remoteRoot.trim(),
+            )
+        }
+
         fun fromJson(json: String): ConnectionTarget? = runCatching {
             jsonFormat.decodeFromString<ConnectionTarget>(json)
         }.getOrNull()
@@ -96,27 +145,17 @@ data class ConnectionTarget(
         /**
          * 入力されたサーバーの場所を `http://host:port` の形に揃える。
          * 形式が不正なら null。
-         *
-         * 受け付ける例:
-         *   192.168.1.10         → http://192.168.1.10:8765
-         *   192.168.1.10:9000    → http://192.168.1.10:9000
-         *   http://pc.local:8765/ → http://pc.local:8765
-         *   https://example.com  → https://example.com:443
          */
         fun normalizeBaseUrl(input: String): String? {
             val trimmed = input.trim()
             if (trimmed.isEmpty()) return null
 
-            // 末尾のスラッシュは落とさない。"http://" が "http:" に化けて
-            // "http://http:" として解釈されてしまうため。
-            // パスやクエリは下で scheme/host/port から組み直すので、そのままでよい。
             val withScheme = if (trimmed.contains("://")) trimmed else "http://$trimmed"
             val uri = runCatching { URI(withScheme) }.getOrNull() ?: return null
 
             val scheme = uri.scheme?.lowercase()
             if (scheme != "http" && scheme != "https") return null
 
-            // ホスト名の大小文字は区別しない(保存した値と遷移先URLの比較を一致させる)
             val host = uri.host?.lowercase()
             if (host.isNullOrBlank()) return null
 

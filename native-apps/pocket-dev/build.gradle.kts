@@ -73,6 +73,11 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.serialization.json)
+
+    // SSH & ローカルHTTP/WebSocketブリッジ
+    implementation("com.github.mwiede:jsch:0.2.23")
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+    implementation("org.nanohttpd:nanohttpd-websocket:2.3.1")
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
