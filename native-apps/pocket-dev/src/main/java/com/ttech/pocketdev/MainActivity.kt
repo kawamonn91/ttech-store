@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,14 +50,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,9 +69,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ttech.common.theme.TtechTheme
+import com.ttech.pocketdev.ssh.LocalBridgeServer
+import com.ttech.pocketdev.ssh.SshClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** pocket-dev のブランド色(ターミナルの緑) */
 private val BrandSeed = Color(0xFF22C55E)
@@ -148,7 +159,14 @@ private fun SetupScreen(
 ) {
     val context = LocalContext.current
     var selectedTab by remember {
-        mutableIntStateOf(if (initial?.type == TargetType.POCKET_LINUX) 0 else 1)
+        mutableIntStateOf(
+            when (initial?.type) {
+                TargetType.POCKET_LINUX -> 0
+                TargetType.CUSTOM_SERVER -> 1
+                TargetType.SSH -> 2
+                else -> 0
+            }
+        )
     }
 
     // Pocket Linux タブ用
@@ -163,7 +181,7 @@ private fun SetupScreen(
         mutableStateOf(if (initial?.type == TargetType.POCKET_LINUX) initial.token else "")
     }
 
-    // 外部サーバータブ用
+    // リモートサーバータブ用
     var host by remember {
         mutableStateOf(if (initial?.type == TargetType.CUSTOM_SERVER) initial.baseUrl else "")
     }
@@ -173,6 +191,18 @@ private fun SetupScreen(
     var serverName by remember {
         mutableStateOf(if (initial?.type == TargetType.CUSTOM_SERVER) initial.name else "")
     }
+
+    // SSH タブ用
+    var sshHost by remember { mutableStateOf(if (initial?.type == TargetType.SSH) initial.sshHost else "") }
+    var sshPort by remember { mutableStateOf(if (initial?.type == TargetType.SSH) initial.sshPort.toString() else "22") }
+    var sshUser by remember { mutableStateOf(if (initial?.type == TargetType.SSH) initial.sshUser else "root") }
+    var sshAuthMethod by remember {
+        mutableStateOf(if (initial?.type == TargetType.SSH) initial.sshAuthMethod else ConnectionTarget.SshAuthMethod.PASSWORD)
+    }
+    var sshPassword by remember { mutableStateOf(if (initial?.type == TargetType.SSH) initial.sshPassword else "") }
+    var sshKey by remember { mutableStateOf(if (initial?.type == TargetType.SSH) initial.sshPrivateKey else "") }
+    var sshRoot by remember { mutableStateOf(if (initial?.type == TargetType.SSH) initial.sshRemoteRoot else "") }
+    var sshName by remember { mutableStateOf(if (initial?.type == TargetType.SSH) initial.name else "") }
 
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -201,7 +231,7 @@ private fun SetupScreen(
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2; error = null },
-                text = { Text("SSH / 他") },
+                text = { Text("SSH") },
                 icon = { Icon(Icons.Default.Computer, contentDescription = null) },
             )
         }
@@ -326,19 +356,114 @@ private fun SetupScreen(
             }
 
             2 -> {
-                // SSH / Google Drive (近日対応案内)
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("SSH 接続 / Google Drive 直結", fontWeight = FontWeight.Bold)
-                        Text(
-                            "・SSH: SFTP によるファイルツリー・コード編集と、リモート PTY ターミナルに対応予定です。\n" +
-                                "・Google Drive: Pocket Linux が無い環境でも、rclone 連携による Drive ファイル直接編集に対応予定です。",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
+                // SSH 接続
+                Text(
+                    "リモートの Linux サーバーに SSH (SFTP + ターミナル) で直接接続します。",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = sshHost,
+                        onValueChange = { sshHost = it; error = null },
+                        label = { Text("ホスト (例: raspi1)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(2f),
+                    )
+                    OutlinedTextField(
+                        value = sshPort,
+                        onValueChange = { sshPort = it; error = null },
+                        label = { Text("ポート") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                OutlinedTextField(
+                    value = sshUser,
+                    onValueChange = { sshUser = it; error = null },
+                    label = { Text("ユーザー名 (例: pi, root)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = sshAuthMethod == ConnectionTarget.SshAuthMethod.PASSWORD,
+                        onClick = { sshAuthMethod = ConnectionTarget.SshAuthMethod.PASSWORD },
+                    )
+                    Text("パスワード認証")
+                    Spacer(Modifier.width(16.dp))
+                    RadioButton(
+                        selected = sshAuthMethod == ConnectionTarget.SshAuthMethod.KEY,
+                        onClick = { sshAuthMethod = ConnectionTarget.SshAuthMethod.KEY },
+                    )
+                    Text("秘密鍵認証")
+                }
+
+                if (sshAuthMethod == ConnectionTarget.SshAuthMethod.PASSWORD) {
+                    OutlinedTextField(
+                        value = sshPassword,
+                        onValueChange = { sshPassword = it; error = null },
+                        label = { Text("パスワード") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = sshKey,
+                        onValueChange = { sshKey = it; error = null },
+                        label = { Text("秘密鍵 (PEM / OpenSSH 形式)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                    )
+                }
+
+                OutlinedTextField(
+                    value = sshRoot,
+                    onValueChange = { sshRoot = it },
+                    label = { Text("基準ディレクトリ (任意 例: /home/pi/code)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                OutlinedTextField(
+                    value = sshName,
+                    onValueChange = { sshName = it },
+                    label = { Text("表示名 (任意 例: Raspberry Pi)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Button(
+                    onClick = {
+                        val port = sshPort.toIntOrNull() ?: 22
+                        if (sshHost.isBlank()) {
+                            error = "ホスト名を入力してください"
+                        } else if (sshAuthMethod == ConnectionTarget.SshAuthMethod.PASSWORD && sshPassword.isBlank()) {
+                            error = "パスワードを入力してください"
+                        } else if (sshAuthMethod == ConnectionTarget.SshAuthMethod.KEY && sshKey.isBlank()) {
+                            error = "秘密鍵を入力してください"
+                        } else {
+                            onSave(
+                                ConnectionTarget.ssh(
+                                    host = sshHost,
+                                    port = port,
+                                    user = sshUser,
+                                    authMethod = sshAuthMethod,
+                                    password = sshPassword,
+                                    privateKey = sshKey,
+                                    remoteRoot = sshRoot,
+                                    name = sshName,
+                                )
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("SSH で接続する")
                 }
             }
         }
@@ -394,8 +519,15 @@ private fun SavedTargetItem(
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                val typeName = when (target.type) {
+                    TargetType.POCKET_LINUX -> "Pocket Linux"
+                    TargetType.SSH -> "SSH"
+                    TargetType.CUSTOM_SERVER -> "リモート"
+                    TargetType.GOOGLE_DRIVE -> "Google Drive"
+                }
                 Text(
-                    text = "${target.baseUrl} (${if (target.type == TargetType.POCKET_LINUX) "Pocket Linux" else "リモート"})",
+                    text = if (target.type == TargetType.SSH) "${target.sshUser}@${target.sshHost}:${target.sshPort} ($typeName)"
+                           else "${target.baseUrl} ($typeName)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -412,7 +544,6 @@ private fun SavedTargetItem(
     }
 }
 
-/** Pocket Linux アプリを起動する。未インストールの場合は案内 */
 private fun launchOrOpenPocketLinux(context: Context) {
     val pm = context.packageManager
     val intent = pm.getLaunchIntentForPackage(ConnectionTarget.POCKET_LINUX_PACKAGE)
@@ -437,24 +568,93 @@ private fun ServerScreen(
     var loadError by remember { mutableStateOf<String?>(null) }
     var askLeave by remember { mutableStateOf(false) }
 
-    // 戻るキー: ページを戻れるなら戻り、戻れないなら終了か設定を選ばせる
+    // SSH 接続の場合のローカルブリッジサーバー
+    var activeBridge by remember { mutableStateOf<Pair<LocalBridgeServer, SshClient>?>(null) }
+    var effectiveTarget by remember { mutableStateOf(target) }
+    var isStartingSsh by remember { mutableStateOf(target.type == TargetType.SSH) }
+
+    val scope = rememberCoroutineScope()
+
+    // SSH の場合、ローカルブリッジサーバーと SSH セッションを非同期起動
+    LaunchedEffect(target) {
+        if (target.type == TargetType.SSH) {
+            isStartingSsh = true
+            loadError = null
+            withContext(Dispatchers.IO) {
+                try {
+                    val client = SshClient(target)
+                    client.connect()
+
+                    val server = LocalBridgeServer(
+                        port = 0, // OS に空きポートを割り当てさせる
+                        assets = context.assets,
+                        sshClient = client,
+                        token = target.token,
+                    )
+                    server.start()
+
+                    val localUrl = "http://127.0.0.1:${server.listeningPort}"
+                    activeBridge = Pair(server, client)
+                    effectiveTarget = target.copy(baseUrl = localUrl)
+                    isStartingSsh = false
+                } catch (e: Exception) {
+                    loadError = "SSH 接続に失敗しました: ${e.message}"
+                    isStartingSsh = false
+                }
+            }
+        } else {
+            effectiveTarget = target
+            isStartingSsh = false
+        }
+    }
+
+    DisposableEffect(target) {
+        onDispose {
+            webView?.let { view ->
+                (view.parent as? ViewGroup)?.removeView(view)
+                view.destroy()
+            }
+            webView = null
+
+            activeBridge?.let { (server, client) ->
+                runCatching { server.stop() }
+                runCatching { client.close() }
+            }
+            activeBridge = null
+        }
+    }
+
     BackHandler {
         val view = webView
         if (view != null && view.canGoBack()) view.goBack() else askLeave = true
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { factoryContext ->
-                CookieManager.getInstance().setAcceptCookie(true)
-                createWebView(factoryContext, target) { message -> loadError = message }
-                    .also {
-                        webView = it
-                        it.loadUrl(target.terminalUrl)
+        if (isStartingSsh) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Text("SSH セッションを開始しています...", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        } else if (loadError == null) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { factoryContext ->
+                    CookieManager.getInstance().setAcceptCookie(true)
+                    createWebView(factoryContext, effectiveTarget) { message -> loadError = message }
+                        .also {
+                            webView = it
+                            it.loadUrl(effectiveTarget.terminalUrl)
+                        }
+                },
+                update = { view ->
+                    if (view.url == null || !effectiveTarget.isOwnHost(view.url.orEmpty())) {
+                        view.loadUrl(effectiveTarget.terminalUrl)
                     }
-            },
-        )
+                }
+            )
+        }
 
         loadError?.let { message ->
             ErrorOverlay(
@@ -462,7 +662,29 @@ private fun ServerScreen(
                 message = message,
                 onRetry = {
                     loadError = null
-                    webView?.loadUrl(target.terminalUrl)
+                    if (target.type == TargetType.SSH) {
+                        isStartingSsh = true
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                activeBridge?.let { (s, c) ->
+                                    runCatching { s.stop() }
+                                    runCatching { c.close() }
+                                }
+                                val client = SshClient(target)
+                                client.connect()
+                                val server = LocalBridgeServer(0, context.assets, client, target.token)
+                                server.start()
+                                activeBridge = Pair(server, client)
+                                effectiveTarget = target.copy(baseUrl = "http://127.0.0.1:${server.listeningPort}")
+                                isStartingSsh = false
+                            } catch (e: Exception) {
+                                loadError = "SSH 接続に失敗しました: ${e.message}"
+                                isStartingSsh = false
+                            }
+                        }
+                    } else {
+                        webView?.loadUrl(effectiveTarget.terminalUrl)
+                    }
                 },
                 onOpenSettings = onOpenSettings,
             )
@@ -481,17 +703,6 @@ private fun ServerScreen(
                 TextButton(onClick = { askLeave = false; onExit() }) { Text("終了") }
             },
         )
-    }
-
-    // 画面を離れるときに WebView を破棄して、PTY の接続を残さない
-    androidx.compose.runtime.DisposableEffect(target) {
-        onDispose {
-            webView?.let { view ->
-                (view.parent as? ViewGroup)?.removeView(view)
-                view.destroy()
-            }
-            webView = null
-        }
     }
 }
 
@@ -513,7 +724,6 @@ private fun createWebView(
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             val url = request.url.toString()
             if (target.isOwnHost(url)) return false
-            // 自分のサーバー以外へのリンクは外部ブラウザに渡す
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
             return true
         }
@@ -546,10 +756,10 @@ private fun ErrorOverlay(
                 Text("接続できません", style = MaterialTheme.typography.titleMedium)
                 Text(message, style = MaterialTheme.typography.bodySmall)
 
-                val hint = if (target.type == TargetType.POCKET_LINUX) {
-                    "Pocket Linux アプリで「IDE のサーバーを動かす」がオンになっているか確認してください。"
-                } else {
-                    "サーバーが起動しているか、同じネットワークにいるかを確認してください。"
+                val hint = when (target.type) {
+                    TargetType.POCKET_LINUX -> "Pocket Linux アプリで「IDE のサーバーを動かす」がオンになっているか確認してください。"
+                    TargetType.SSH -> "SSH ホスト、ポート、ユーザー名、認証情報、およびネットワーク接続を確認してください。"
+                    else -> "サーバーが起動しているか、同じネットワークにいるかを確認してください。"
                 }
                 Text(hint, style = MaterialTheme.typography.bodySmall)
 
