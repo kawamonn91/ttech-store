@@ -6,7 +6,22 @@ import { need } from "./cli-env.mjs";
 export class SupabaseAdmin {
   /** NEXT_PUBLIC_SUPABASE_URL・SUPABASE_SERVICE_ROLE_KEY から作る */
   static fromEnv(env = process.env) {
-    return new SupabaseAdmin(need(env, "NEXT_PUBLIC_SUPABASE_URL"), need(env, "SUPABASE_SERVICE_ROLE_KEY"));
+    const url = need(env, "NEXT_PUBLIC_SUPABASE_URL");
+    const key = need(env, "SUPABASE_SERVICE_ROLE_KEY");
+    try {
+      const parsed = new URL(url);
+      console.log(`📡 Supabase: ${parsed.origin}`);
+      if (parsed.hostname.includes("bniehgjuylkgxbstmjdh.supabase.co") && !env.ALLOW_LEGACY_SUPABASE) {
+        throw new Error(
+          `[誤登録防止ガード] 旧クラウド Supabase (${parsed.hostname}) に接続しようとしています。\n` +
+          `本番は https://store.kawamonn.com です。\n` +
+          `意図して旧環境に接続する場合は ALLOW_LEGACY_SUPABASE=1 を指定してください。`
+        );
+      }
+    } catch (e) {
+      if (e.message && e.message.includes("[誤登録防止ガード]")) throw e;
+    }
+    return new SupabaseAdmin(url, key);
   }
 
   constructor(url, serviceRoleKey) {
