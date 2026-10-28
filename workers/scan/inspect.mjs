@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // APK 検査ワーカー(GitHub Actions / ローカルの両方で動く。外部依存なし)
 //
 // 入力(環境変数):
