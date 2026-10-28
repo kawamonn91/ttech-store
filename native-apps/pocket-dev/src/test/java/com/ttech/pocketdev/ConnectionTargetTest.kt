@@ -2,6 +2,7 @@ package com.ttech.pocketdev
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -85,5 +86,64 @@ class ConnectionTargetTest {
     fun `既定ポートが省略されたURLも自分のホストとみなす`() {
         val target = ConnectionTarget("https://example.com:443", "t")
         assertTrue(target.isOwnHost("https://example.com/ide.html"))
+    }
+
+    @Test
+    fun `pocketLinuxヘルパーでローカルURLと既定値が生成される`() {
+        val target = ConnectionTarget.pocketLinux("secret-token")
+        assertEquals("http://127.0.0.1:8765", target.baseUrl)
+        assertEquals("secret-token", target.token)
+        assertEquals(TargetType.POCKET_LINUX, target.type)
+        assertEquals("Pocket Linux", target.displayName)
+    }
+
+    @Test
+    fun `pocketLinuxヘルパーでポート指定が反映される`() {
+        val target = ConnectionTarget.pocketLinux("secret-token", port = 9000)
+        assertEquals("http://127.0.0.1:9000", target.baseUrl)
+    }
+
+    @Test
+    fun `JSONシリアライズとデシリアライズで正しく復元できる`() {
+        val target = ConnectionTarget(
+            baseUrl = "http://192.168.1.50:8765",
+            token = "my-token-123",
+            name = "自宅サーバー",
+            type = TargetType.CUSTOM_SERVER,
+        )
+
+        val json = target.toJson()
+        val restored = ConnectionTarget.fromJson(json)
+
+        assertNotNull(restored)
+        assertEquals(target.baseUrl, restored?.baseUrl)
+        assertEquals(target.token, restored?.token)
+        assertEquals(target.name, restored?.name)
+        assertEquals(target.type, restored?.type)
+        assertEquals(target.id, restored?.id)
+        assertEquals("自宅サーバー", restored?.displayName)
+    }
+
+    @Test
+    fun `複数ターゲットのリストをJSONに保存復元できる`() {
+        val list = listOf(
+            ConnectionTarget.pocketLinux("token-a"),
+            ConnectionTarget("http://server.local:8765", "token-b", name = "PC"),
+        )
+
+        val json = ConnectionTarget.listToJson(list)
+        val restored = ConnectionTarget.listFromJson(json)
+
+        assertEquals(2, restored.size)
+        assertEquals("http://127.0.0.1:8765", restored[0].baseUrl)
+        assertEquals(TargetType.POCKET_LINUX, restored[0].type)
+        assertEquals("http://server.local:8765", restored[1].baseUrl)
+        assertEquals(TargetType.CUSTOM_SERVER, restored[1].type)
+    }
+
+    @Test
+    fun `不正なJSONのfromJsonはnullを返す`() {
+        assertNull(ConnectionTarget.fromJson("{invalid-json"))
+        assertEquals(emptyList<ConnectionTarget>(), ConnectionTarget.listFromJson("{invalid"))
     }
 }
