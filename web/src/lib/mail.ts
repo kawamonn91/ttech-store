@@ -23,10 +23,9 @@ async function sendWithResend(apiKey: string, to: string, message: MailMessage, 
 
 /** 運営(管理者)宛のメールを送る */
 export async function sendAdminMail(message: MailMessage, fetchImpl: typeof fetch = fetch): Promise<void> {
-  const apiKey = env.resendApiKey();
   const to = env.adminNotifyEmail();
-  if (!apiKey || !to) throw new MailNotConfiguredError("RESEND_API_KEY / ADMIN_NOTIFY_EMAIL が未設定です");
-  await sendWithResend(apiKey, to, message, fetchImpl);
+  if (!to) throw new MailNotConfiguredError("RESEND_API_KEY / ADMIN_NOTIFY_EMAIL が未設定です");
+  await sendMailTo(to, message, fetchImpl);
 }
 
 /**

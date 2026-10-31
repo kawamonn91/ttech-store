@@ -97,7 +97,7 @@ export async function getHome() {
     listApps({ sort: "new", limit: 10 }),
     listApps({ sort: "popular", limit: 10 }),
   ]);
-  return { featured: featured.items, newest: newest.items, popular: popular.items };
+  return { featured: featured.items, newest: newest.items, popular: popular.items, total: newest.total };
 }
 
 /** 公開中のアプリ1件を、URL用の名前(slug)かパッケージ名で引く */
