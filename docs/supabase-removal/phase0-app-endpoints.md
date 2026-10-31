@@ -316,14 +316,14 @@ $rows[0].app_releases | Where-Object { $_.version_name -eq "1.0.3" } | Select-Ob
 
 | ステップ | 日付 | 結果・メモ |
 |---|---|---|
-| 0-1 | | マージ前の main: appstore=`` / diary-app=`` |
-| 0-2 | | |
-| 0-3 | | |
-| 0-4 | | google= / email= / disable_signup= / autoconfirm= |
-| 0-5 | | |
-| 0-6 | | |
-| 0-7 | | |
-| 0-8 | | |
-| 0-9 | | |
-| 0-10 | | |
-| 0-11 | | |
+| 0-1 | 2026-10-31 | マージ前の main: appstore=`ba9cbff` / diary-app=`d6773de` |
+| 0-2 | 2026-10-31 | `TTECH_ENV_FILE` 対応・単体テスト3件合格 |
+| 0-3 | 2026-10-31 | `.env.production.local` → `.env.prod.local` に変更、`VT_API_KEY` 追記済み |
+| 0-4 | 2026-10-31 | google=False / email=True / disable_signup=False / autoconfirm=False (※サーバー側 `.env` で `GOOGLE_ENABLED=false`) |
+| 0-5 | 2026-10-31 | 管理アプリ 1.0.3 (`versionCode = 4`) ビルド・接続先確認(`https://store.kawamonn.com` のみ) |
+| 0-6 | 2026-10-31 | 日記アプリ 1.1.4 (`versionCode = 6`) ビルド・接続先確認(`https://store.kawamonn.com` のみ) |
+| 0-7 | 2026-10-31 | パスワード認証エンドポイント応答 `400` 確認 |
+| 0-8 | 2026-10-31 | GitHub へ push 済み |
+| 0-9 | 2026-10-31 | 管理アプリ 1.0.3・日記アプリ 1.1.4 をストアへ公開 |
+| 0-10 | 2026-10-31 | 公開カタログ・DB で公開状態 (`published`) を確認 |
+| 0-11 | 2026-10-31 | 記録完了 |

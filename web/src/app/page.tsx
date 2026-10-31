@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { AppGrid } from "@/components/AppCard";
-import { getHome, listApps } from "@/lib/catalog";
+import { getHome } from "@/lib/catalog";
 
 // レイアウトがログイン状態を読むのでページは毎回組み立てる(ビルド時に DB へ繋がないためにも必要)
 export const dynamic = "force-dynamic";
@@ -12,8 +12,7 @@ export const dynamic = "force-dynamic";
 // そのため新しく公開したアプリがトップに出るまで、最大 60 秒ほど遅れる(運営者の了承済み)。
 const loadHome = unstable_cache(
   async () => {
-    const [home, { total }] = await Promise.all([getHome(), listApps({ limit: 1 })]);
-    return { ...home, total };
+    return getHome();
   },
   ["home-page"],
   { revalidate: 60 },

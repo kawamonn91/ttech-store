@@ -20,9 +20,9 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # 本番(Raspberry Pi)は NodeSource の node_24.x を毎晩の apt で更新しているので、24 系の最新で確認する
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
           cache: npm
@@ -40,8 +40,8 @@ jobs:
     name: APK scan worker (parser tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 22
       - run: node --test "workers/scan/*.test.mjs"
@@ -53,12 +53,12 @@ jobs:
       run:
         working-directory: store-app
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       # android-actions/setup-android@v3 は、新しく追加されたSDKライセンス(android-googlexr-license 等)を
       # 固定回数の自動同意でしか処理できず失敗することがあるため使わない。ランナーに元から入っている
       # sdkmanager を直接使い、yes で全ライセンスに同意してから必要なパッケージだけ入れる。
@@ -76,10 +76,10 @@ jobs:
           sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
           cp -r "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
       - run: chmod +x gradlew
-      - run: ./gradlew testDebugUnitTest assembleDebug --console=plain
+      - run: ./gradlew testDebugUnitTest assembleDebug --max-workers=2 --console=plain
       - name: Upload test reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-test-reports
           path: store-app/app/build/reports/tests/
@@ -91,12 +91,12 @@ jobs:
       run:
         working-directory: native-apps
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       # store-app と同じ理由(上のコメント参照)で、素の sdkmanager を直接使う
       - name: Add Android cmdline-tools to PATH
         run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
@@ -109,10 +109,10 @@ jobs:
       - run: chmod +x gradlew
       # アプリを増やしても settings.gradle.kts に include するだけでよいよう、
       # 個別モジュール名を書かず全モジュール一括でテスト・ビルドする
-      - run: ./gradlew testDebugUnitTest assembleDebug --console=plain
+      - run: ./gradlew testDebugUnitTest assembleDebug --max-workers=2 --console=plain
       - name: Upload test reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-apps-test-reports
           path: native-apps/*/build/reports/tests/
@@ -121,8 +121,8 @@ jobs:
     name: Database (migrations + pgTAP)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: latest
       # マイグレーションが素のDBに適用できること(=スキーマの構文・依存関係が正しいこと)もここで確かめられる
@@ -133,3 +133,10 @@ jobs:
       - name: Stop
         if: always()
         run: supabase stop --no-backup
+
+  build:
+    name: build
+    runs-on: ubuntu-24.04
+    needs: [web, worker, android, native-apps, database]
+    steps:
+      - run: echo "All CI checks passed"

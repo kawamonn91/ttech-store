@@ -19,11 +19,15 @@ val localProperties = Properties().apply {
 fun localOrProject(name: String): String? = (findProperty(name) as String?) ?: localProperties.getProperty(name)
 
 val adminWebBase: String = localOrProject("adminWebBase") ?: "https://store.kawamonn.com"
-val supabaseUrl: String = localOrProject("supabaseUrl") ?: "https://bniehgjuylkgxbstmjdh.supabase.co"
+val supabaseUrl: String = localOrProject("supabaseUrl") ?: "https://store.kawamonn.com"
 
-/** anon キーは「公開してよい」設計の値(ストアアプリ・Web版と同じ。データはRLSで保護される) */
+/**
+ * anon キーは「公開してよい」設計の値(ストアアプリ・Web版と同じ。データはRLSで保護される)。
+ * 2026-10 に Supabase をストアのサーバーへ移したため、接続先とキーもそれに合わせる
+ * (以前のクラウドの Supabase でログインしたトークンは、Web の管理 API が受け付けない)。
+ */
 val supabaseAnonKey: String = localOrProject("supabaseAnonKey")
-    ?: "sb_publishable_JmdR3qk3rytSemnuaeOI_g_Z9SLuiaQ"
+    ?: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkyODE2MzQzLCJleHAiOjIxMDgxNzYzNDN9.TQnbjof6KJ_5GcdguES_GHSELU4GF4700NSUsziiS5c"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -39,8 +43,8 @@ android {
         applicationId = "com.ttech.admin"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         buildConfigField("String", "ADMIN_WEB_BASE", "\"$adminWebBase\"")
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")

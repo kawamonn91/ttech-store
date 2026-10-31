@@ -79,7 +79,8 @@ export function decideScan(result, app) {
 }
 
 async function main() {
-  loadEnvLocal();
+  const envFile = loadEnvLocal();
+  console.log(`設定ファイル: ${envFile ?? "(なし)"} / 接続先: ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://unset").host}`);
   const args = parseArgs(process.argv.slice(2), { booleanFlags: ["publish", "admin-only"] });
   if (!args.apk) throw new Error("--apk <APKファイルのパス> を指定してください");
   const apkPath = path.resolve(args.apk);

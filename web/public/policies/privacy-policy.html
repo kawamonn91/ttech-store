@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ヨムメモ プライバシーポリシー</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem;
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    line-height: 1.9; color: #2f2a25; background: #faf7f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e8e1d8; background: #17140f; }
+    td, th { border-color: #4a423a !important; }
+  }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2.5rem; border-bottom: 1px solid rgba(128,110,90,.35); padding-bottom: .3rem; }
+  .updated { color: #7a6f63; font-size: .9rem; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .95rem; }
+  th, td { border: 1px solid #d9cfc0; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+  th { background: rgba(139,94,60,.12); }
+  code { background: rgba(128,110,90,.15); padding: .1rem .35rem; border-radius: .2rem; }
+  .lead { background: rgba(139,94,60,.1); padding: 1rem 1.2rem; border-radius: .5rem; }
+</style>
+</head>
+<body>
+
+<h1>ヨムメモ プライバシーポリシー</h1>
+<p class="updated">最終更新日: 2026年9月24日</p>
+
+<p class="lead">
+ヨムメモ（以下「本アプリ」）は、利用者の読書メモを端末内に保存するアプリです。
+<strong>本アプリの開発者は、利用者の個人情報を収集しません。</strong>
+アカウント登録は不要で、メモや本の情報が開発者のサーバーに送られることはありません。
+</p>
+
+<h2>1. 端末内に保存する情報</h2>
+<p>次の情報は、利用者の端末内にのみ保存されます。開発者はこれらを参照できません。</p>
+<ul>
+  <li>登録した本の情報（書名、著者、出版社、ISBN、読書状態、進捗、評価）</li>
+  <li>作成したメモ（引用、自分の言葉、ページ番号、種別、作成日時）</li>
+  <li>アプリの設定と、購入状態の控え</li>
+</ul>
+
+<h2>2. 外部に送信される情報</h2>
+<p>本アプリが外部と通信するのは、次の場合に限られます。</p>
+
+<table>
+  <tr><th>送信先</th><th>送信する情報</th><th>目的</th></tr>
+  <tr>
+    <td>openBD（<a href="https://openbd.jp/">openbd.jp</a>）</td>
+    <td>ISBN のみ</td>
+    <td>書名・著者・出版社などの書誌情報の取得</td>
+  </tr>
+  <tr>
+    <td>Google Books API</td>
+    <td>ISBN のみ</td>
+    <td>表紙画像・ページ数・内容紹介の補完</td>
+  </tr>
+  <tr>
+    <td>Google Play</td>
+    <td>購入処理に必要な情報（Google が取り扱います）</td>
+    <td>アプリ内購入の決済と購入状態の確認</td>
+  </tr>
+  <tr>
+    <td>Google ドライブ（利用者自身のアカウント）</td>
+    <td>バックアップファイル（登録した本の情報とメモ）。利用者がバックアップ・復元を操作したときのみ</td>
+    <td>利用者自身の Google ドライブへの保存と、そこからの復元</td>
+  </tr>
+</table>
+
+<p>
+いずれの場合も、<strong>利用者が作成したメモの内容が送信されることはありません。</strong>
+送信されるのは本を特定するための ISBN だけです。
+</p>
+
+<h2>3. カメラの利用</h2>
+<p>本アプリは次の2つの場面でカメラを使います。</p>
+<ul>
+  <li>
+    <strong>バーコードの読み取り</strong>：Google Play 開発者サービスが提供する読み取り画面を利用します。
+    本アプリ自身はカメラ権限を必要とせず、読み取った番号だけを受け取ります。
+  </li>
+  <li>
+    <strong>引用の取り込み（プレミアム機能）</strong>：本のページを撮影し、端末内で文字認識を行います。
+    カメラ権限はこの機能を使うときにのみ求めます。
+    <strong>撮影した画像は保存も送信もされません。</strong>認識された文字だけがメモに残ります。
+  </li>
+</ul>
+
+<h2>4. 広告と解析</h2>
+<p>
+本アプリは<strong>広告を表示しません</strong>。また、<strong>利用状況の解析（アナリティクス）や
+クラッシュ情報の収集も行いません</strong>。第三者の解析 SDK を組み込んでいません。
+</p>
+
+<h2>5. バックアップ</h2>
+<ul>
+  <li>
+    <strong>手動バックアップ</strong>：利用者が操作したときにのみ、選んだ保存先へファイルを書き出します。
+    保存先は利用者が選びます。
+  </li>
+  <li>
+    <strong>Android の自動バックアップ</strong>：Android の標準機能により、端末の設定に応じて
+    アプリのデータが利用者自身の Google アカウントへバックアップされることがあります。
+    これは Android の仕組みによるもので、開発者はその内容を参照できません。
+    端末の設定から無効にできます。
+  </li>
+  <li>
+    <strong>Google ドライブへのバックアップ（任意）</strong>：利用者が設定画面で Google アカウントを選び、
+    バックアップ・復元を操作したときにのみ、利用者自身の Google ドライブに
+    バックアップファイル（<code>yomumemo-backup.json</code>）を保存・読み込みします。
+    本アプリが求める Google の権限は <code>drive.file</code>（本アプリが作成したファイルにのみアクセスできる権限）だけで、
+    ドライブ内のほかのファイルを読み取ったり変更したりすることはありません。
+    バックアップファイルは利用者のドライブにのみ保存され、開発者のサーバーへ送信されることも、
+    開発者が参照することもありません。権限は、Google アカウントの「サードパーティのアプリとサービス」から
+    いつでも取り消せます。
+  </li>
+</ul>
+
+<p>
+本アプリによる Google のユーザーデータの利用は、上記のバックアップ・復元の目的に限られ、
+広告や解析、第三者への提供・販売には使用しません。
+これは、Google API サービスのユーザーデータに関するポリシー（限定使用の要件を含む）に従っています。
+</p>
+
+<h2>6. 購入について</h2>
+<p>
+アプリ内購入は Google Play の決済システムを通じて行われます。
+クレジットカード番号などの決済情報を本アプリが受け取ることはありません。
+本アプリが保持するのは「購入済みかどうか」という情報だけです。
+</p>
+
+<h2>7. 子どものプライバシー</h2>
+<p>
+本アプリは特定の年齢層を対象としておらず、年齢や氏名などの個人情報を一切収集しません。
+</p>
+
+<h2>8. データの削除</h2>
+<p>
+すべてのデータは端末内にあります。アプリをアンインストールするか、
+端末の設定からアプリのデータを消去することで、すべて削除されます。
+開発者側に削除を依頼する必要はありません（開発者はデータを保持していないためです）。
+</p>
+
+<h2>9. 本ポリシーの変更</h2>
+<p>
+内容を変更する場合は、このページを更新し、最終更新日を改めます。
+重要な変更がある場合はアプリの更新情報でもお知らせします。
+</p>
+
+<h2>10. お問い合わせ</h2>
+<p>
+本ポリシーに関するご質問は、Google Play ストアの本アプリのページに記載された
+連絡先までお願いします。
+</p>
+
+</body>
+</html>
