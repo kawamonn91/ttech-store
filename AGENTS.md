@@ -1,5 +1,16 @@
 # エージェント向けの指示
 
+## フォルダ構成(パスを推測する前に見る)
+
+- `web/` — Next.js(store.kawamonn.com)。ストア用スクリプトは `web/scripts/`(`publish-app.mjs`・`set-app-icon.mjs` など)
+- `store-app/` — ストアアプリ。コードは `store-app/app/src/main/java/com/kawamonn/store/`、画面は `ui/`(`ui/account/`・`ui/auth/` など)。`native-apps/` の下ではない
+- `native-apps/` — 配布アプリの Gradle マルチモジュール(一覧は `native-apps/settings.gradle.kts`)。各アプリのコードは `native-apps/<slug>/src/main/java/com/ttech/<slug からハイフンを除いた名前>/`(例: `drive-record` → `com/ttech/driverecord`)。例外: `ttech-admin` → `com/ttech/admin`、`track-common` → `com/ttech/track`
+- `workers/scan/` — APK の検査、`supabase/` — マイグレーション、`docs/` — 手順書と計画書
+
+## アプリを公開するとき
+
+- `publish-app.mjs` の前に `versionCode` を上げる。同じ versionCode だと Supabase が 409(`(app_id, version_code)` の重複)を返して失敗する
+
 ## リファクタリング計画
 
 - リファクタリング計画は [docs/refactoring-plan.md](docs/refactoring-plan.md) にある。
