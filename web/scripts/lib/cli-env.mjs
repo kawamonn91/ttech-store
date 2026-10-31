@@ -8,10 +8,15 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const webRoot = path.resolve(here, "../..");
 
-/** .env.local を読み込み、未設定の環境変数にだけ反映する */
-export function loadEnvLocal() {
-  const file = path.join(webRoot, ".env.local");
-  if (!existsSync(file)) return;
+/**
+ * 設定ファイルを読み込み、未設定の環境変数にだけ反映する。
+ * 既定は web/.env.local。環境変数 TTECH_ENV_FILE で別のファイルを選べる
+ * (例: 本番への公開は TTECH_ENV_FILE=.env.prod.local。.env.local を書き換えずに済む)。
+ * 相対パスは web/ から、絶対パスはそのまま解釈する。読んだファイルのパスを返す(無ければ null)。
+ */
+export function loadEnvLocal(fileName = process.env.TTECH_ENV_FILE || ".env.local") {
+  const file = path.resolve(webRoot, fileName);
+  if (!existsSync(file)) return null;
   for (const line of readFileSync(file, "utf8").split("\n")) {
     if (!line.includes("=") || line.startsWith("#")) continue;
     const i = line.indexOf("=");
@@ -19,6 +24,7 @@ export function loadEnvLocal() {
     const value = line.slice(i + 1).trim();
     if (key && process.env[key] === undefined) process.env[key] = value;
   }
+  return file;
 }
 
 /** `--foo bar` / `--flag` 形式の引数を { foo: "bar", flag: true } に変換する */
