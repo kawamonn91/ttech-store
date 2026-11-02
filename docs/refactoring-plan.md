@@ -2,13 +2,36 @@
 
 調査範囲: `web/`(Next.js)・`workers/scan/`・`supabase/`・`.github/`・`store-app/`・`native-apps/`(60モジュール、Kotlin 約38,000行)
 
-作成: 2026-10-22 / 状態: **未着手(着手前の確認待ち)**
+作成: 2026-10-22 / 状態: **一部済み**(フェーズ0・1の一部。フェーズ2〜5は未着手。下の「進み具合」は 2026-11-02 にコードを見て確かめた結果)。「着手前に決めておくべき事項」の D-1〜D-6 は空欄のまま
 
 > [!CAUTION]
 > **この計画を実行する人(AIエージェントを含む)へ**: 作業を始める前に、末尾の「着手前に決めておくべき事項」を必ず持ち主に確認し、了承を得ること。確認が済むまで、コードの変更を始めないこと。
 
 > [!IMPORTANT]
 > 調査中に、リファクタではなく**不具合**と言えるものが見つかりました(フェーズ0)。リファクタより先に直すことをおすすめします。
+
+> [!NOTE]
+> 2026-10-31 に、完成度の低い50アプリを `native-apps/` から削除した(`7064dda`。残りは `:common`・`:track-common` を含めて13モジュール)。下の本文にあるモジュール数・行数・アプリ数(60モジュール、37個のアプリなど)と例に挙げたアプリ(`baby-log` など)は、削除前の数字のまま。
+
+## 進み具合(2026-11-02 時点)
+
+| # | 状態 | 確かめた内容・対応したコミット |
+|---|---|---|
+| 0-1 | 済み | `4a50808`(2026-10-21)。正規表現は `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` |
+| 0-2 | 済み | `4a50808`(2026-10-21)。matcher は `/developer/:path*` |
+| 0-3 | 済み | `ccf483a`(2026-10-21)。`auth/callback` と2つのログイン画面が `safeNextPath` を使う |
+| 0-4 | 未着手 | `AuthSession.kt` は平文の SharedPreferences のまま |
+| 0-5 | 未着手 | 50アプリの削除後も、attendance-count・bike-navi・navi・pocket-dev・run-tracker・travel-wishlist に `?: emptyList()` が残る(検索での目安。1つずつは見ていない) |
+| 0-6 | 未着手 | 管理画面の承認は `/api/admin/releases/[id]/decision` を通り、`reviewRelease` を使っていない |
+| 0-7 | 未着手 | `api/account/delete` は `diary-media` の写真を消さない |
+| 0-8 | 済み | `520c33a`(2026-10-31)。ヨムメモのポリシーを `policies/privacy-policy.html` に置いた |
+| 1-1 | 未確認 | |
+| 1-2 | ほぼ済み | `40e168b`(2026-10-21)ほか。API のエラーは `jsonError` の `{ error: 文字列, code? }` の1種類(計画の `{ error: { code, message } }` とは逆の形にそろえた)、`adminOr401` は無い、UUID の検証は `isUuid`(全か所は見ていない) |
+| 1-3 | 済み | `first()`・`displayNames`・`CONTROL_CHARS`・`suggestSlug` は定義が1つずつ、`getAppBySlug`/`getAppByPackage` は `getPublishedApp` にまとまり、`account` は `listPendingReleases` を使う(`40e168b` ほか)。`sendAdminMail` は `sendMailTo` を呼ぶだけにした(`520c33a`、2026-10-31)。状態ラベルの食い違いは未確認 |
+| 1-4 | 一部 | 2つのスクリプトとも `cli-env.mjs` を使い、`R2` は `scripts/lib/r2.mjs` に移した(`40e168b`)。`decideScan` は `publish-app.mjs` にまだコピーがあり、`set-app-icon.mjs` と `add-screenshot.mjs` も別々のまま |
+| 1-5 | 済み | `520c33a`(2026-10-31)。`getHome` が `total` を返し、トップページの件数集計は1回になった |
+| 1-6 | 一部 | `getAdminMfaStatus` は削除済み(`40e168b`)、RLS の `developers_apply` は削除済み(`f568a49`)、`public/` に標準の SVG は無い。DBトリガー `trg_notify_developer` と `diary_entries_set_updated_at()` は残る。`web/.vercel/` は Git の対象外(手元にだけある) |
+| フェーズ2〜5 | 未着手 | |
 
 ---
 
