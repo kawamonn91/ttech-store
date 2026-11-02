@@ -134,9 +134,24 @@ jobs:
         if: always()
         run: supabase stop --no-backup
 
+  # main の保護で必須にしているのはこのジョブだけ。needs のどれかが失敗すると、if が無いジョブは
+  # 「skipped」になる。GitHub は skipped の必須チェックを成功として扱いマージを止めないので、
+  # always() で必ず実行し、needs の結果を見て自分で失敗させる。
   build:
     name: build
     runs-on: ubuntu-24.04
     needs: [web, worker, android, native-apps, database]
+    if: always()
     steps:
-      - run: echo "All CI checks passed"
+      - name: Check results of all jobs
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::失敗・中止・スキップされたジョブがあります ($r)"
+              exit 1
+            fi
+          done
+          echo "All CI checks passed"
