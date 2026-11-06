@@ -5,13 +5,10 @@ import com.ttech.pocketdev.ConnectionTarget
 import com.ttech.pocketdev.TargetType
 import com.ttech.pocketdev.drive.Drive
 import com.ttech.pocketdev.drive.DriveBackend
-import com.ttech.pocketdev.drive.RcloneDaemon
 import com.ttech.pocketdev.ssh.SshBackend
 import com.ttech.pocketdev.ssh.SshClient
 import java.io.Closeable
 import java.io.InputStream
-import java.security.SecureRandom
-import java.util.Base64
 
 /**
  * SSH・Google ドライブの接続先につなぐ、アプリ内の中継サーバーと、その裏の接続（SSH・rclone）。
@@ -36,7 +33,7 @@ class LocalBridge private constructor(
         fun start(context: Context, target: ConnectionTarget): LocalBridge {
             val assets = context.applicationContext.assets
             val openAsset: (String) -> InputStream? = { name -> runCatching { assets.open("pocket-dev/web/$name") }.getOrNull() }
-            val token = randomToken()
+            val token = randomToken(24)
             return when (target.type) {
                 TargetType.SSH -> {
                     val client = SshClient(target)
@@ -56,17 +53,12 @@ class LocalBridge private constructor(
                     if (!rclone.isLoggedIn) {
                         throw BridgeException("Google にログインしていません。接続先の設定の「Drive」でログインしてください")
                     }
-                    val daemon = RcloneDaemon(rclone)
-                    try {
-                        daemon.ensureStarted()
-                        val backend = DriveBackend(daemon, target.driveRoot)
-                        backend.check()
-                        // ターミナルは無い（IDE は実行のボタンを隠す）
-                        launch(BridgeServer(token, backend, null, openAsset), token, listOf(daemon))
-                    } catch (e: Exception) {
-                        daemon.close()
-                        throw e
-                    }
+                    val daemon = Drive.daemon(context)
+                    daemon.ensureStarted()
+                    val backend = DriveBackend(daemon, target.driveRoot)
+                    backend.check()
+                    // ターミナルは無い（IDE は実行のボタンを隠す）。daemon は Drive シングルトンで共有する
+                    launch(BridgeServer(token, backend, null, openAsset), token, emptyList())
                 }
 
                 else -> throw IllegalArgumentException("中継サーバーを使わない接続先です: ${target.type}")
@@ -76,11 +68,6 @@ class LocalBridge private constructor(
         private fun launch(server: BridgeServer, token: String, resources: List<AutoCloseable>): LocalBridge {
             server.startServer()
             return LocalBridge(server, token, resources)
-        }
-
-        private fun randomToken(): String {
-            val bytes = ByteArray(24).also { SecureRandom().nextBytes(it) }
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
         }
     }
 }

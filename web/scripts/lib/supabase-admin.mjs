@@ -1,7 +1,7 @@
 // CLIスクリプトから Supabase の REST API(テーブル・Storage)を service_role で使う。
 // supabase-js を増やさず、必要な操作だけを fetch で呼ぶ。
 
-import { need } from "./cli-env.mjs";
+import { LEGACY_SUPABASE_HOST, need } from "./cli-env.mjs";
 
 export class SupabaseAdmin {
   /** NEXT_PUBLIC_SUPABASE_URL・SUPABASE_SERVICE_ROLE_KEY から作る */
@@ -11,10 +11,10 @@ export class SupabaseAdmin {
     try {
       const parsed = new URL(url);
       console.log(`📡 Supabase: ${parsed.origin}`);
-      if (parsed.hostname.includes("bniehgjuylkgxbstmjdh.supabase.co") && !env.ALLOW_LEGACY_SUPABASE) {
+      if (parsed.hostname.includes(LEGACY_SUPABASE_HOST) && !env.ALLOW_LEGACY_SUPABASE) {
         throw new Error(
           `[誤登録防止ガード] 旧クラウド Supabase (${parsed.hostname}) に接続しようとしています。\n` +
-          `本番は https://store.kawamonn.com です。\n` +
+          `本番は https://store.kawamonn.com です（TTECH_ENV_FILE=.env.prod.local を確認してください）。\n` +
           `意図して旧環境に接続する場合は ALLOW_LEGACY_SUPABASE=1 を指定してください。`
         );
       }

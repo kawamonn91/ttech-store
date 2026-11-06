@@ -28,7 +28,7 @@ class SshBackend(private val client: SshClient, target: ConnectionTarget) : File
     @Synchronized
     override fun read(path: String, maxBytes: Long): ByteArray = sftp {
         val size = client.fileSize(path)
-        if (size > maxBytes) throw BridgeException("大きすぎて開けません (%,d バイト)".format(size))
+        if (size > maxBytes) throw BridgeException("大きすぎて開けません（%,d バイトまで）".format(maxBytes), 413)
         client.readBytes(path)
     }
 

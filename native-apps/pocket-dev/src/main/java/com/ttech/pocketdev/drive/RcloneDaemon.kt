@@ -1,6 +1,7 @@
 package com.ttech.pocketdev.drive
 
 import android.util.Log
+import com.ttech.pocketdev.bridge.randomToken
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -16,7 +17,6 @@ import java.net.Proxy
 import java.net.ServerSocket
 import java.net.URL
 import java.net.URLEncoder
-import java.security.SecureRandom
 import java.util.Base64
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -226,11 +226,6 @@ class RcloneDaemon(private val rclone: Rclone) : Closeable {
                 out.write(buffer, 0, n)
             }
             return out.toByteArray()
-        }
-
-        private fun randomToken(): String {
-            val bytes = ByteArray(18).also { SecureRandom().nextBytes(it) }
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
         }
     }
 }

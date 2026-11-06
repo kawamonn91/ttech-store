@@ -1,6 +1,7 @@
 package com.ttech.pocketdev.drive
 
 import android.util.Log
+import com.ttech.pocketdev.bridge.randomToken
 import java.io.Closeable
 import java.io.IOException
 import java.io.InputStream
@@ -9,7 +10,6 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
-import java.security.SecureRandom
 import java.util.Base64
 import kotlin.concurrent.thread
 
@@ -72,9 +72,9 @@ class ConnectProxy(
                 request.port !in allowedPorts -> return reply(out, "403 Forbidden")
             }
             val upstream = try {
-                Socket().apply { connect(InetSocketAddress(request!!.host, request.port), CONNECT_TIMEOUT_MS) }
+                Socket().apply { connect(InetSocketAddress(request.host, request.port), CONNECT_TIMEOUT_MS) }
             } catch (e: IOException) {
-                Log.w(TAG, "接続できません: ${request!!.host}:${request.port} (${e.message})")
+                Log.w(TAG, "接続できません: ${request.host}:${request.port} (${e.message})")
                 return reply(out, "502 Bad Gateway")
             }
             upstream.use {
@@ -157,11 +157,6 @@ class ConnectProxy(
                 .firstOrNull { it.startsWith("Proxy-Authorization:", ignoreCase = true) }
                 ?.substringAfter(':')?.trim()
             return Request(host, port, authorization)
-        }
-
-        private fun randomToken(): String {
-            val bytes = ByteArray(18).also { SecureRandom().nextBytes(it) }
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
         }
     }
 }

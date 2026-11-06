@@ -1,7 +1,21 @@
 package com.ttech.pocketdev.bridge
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.Closeable
 import java.io.InputStream
+import java.security.SecureRandom
+import java.util.Base64
+
+/** URL セーフな乱数トークンを作る（ブリッジ認証・rclone rcd・ローカルプロキシで共通利用） */
+fun randomToken(byteLength: Int = 18): String {
+    val bytes = ByteArray(byteLength).also { SecureRandom().nextBytes(it) }
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+}
+
+/** JSON オブジェクトから文字列フィールドを取り出す（無ければ null） */
+fun JsonObject.string(name: String): String? = get(name)?.jsonPrimitive?.contentOrNull
 
 /** IDE（web/ide.html）のファイル一覧の1件。pocket-dev のサーバー（agent/files.py）と同じ形で返す */
 data class FileEntry(

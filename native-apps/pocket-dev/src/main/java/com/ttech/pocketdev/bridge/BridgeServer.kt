@@ -167,8 +167,6 @@ class BridgeServer(
         }
     }
 
-    private fun JsonObject.string(name: String): String? = get(name)?.jsonPrimitive?.contentOrNull
-
     // --------------------------------------------------------------- 応答
 
     private fun asset(name: String): Response {

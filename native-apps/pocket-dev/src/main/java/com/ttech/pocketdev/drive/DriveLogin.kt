@@ -12,17 +12,31 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeout
 
-/** アプリ全体で1つの rclone（名前解決の中継も1つ） */
+/** アプリ全体で1つの rclone（名前解決の中継と rcd も共有し、フォルダ選択→IDE の切り替えで再起動しない） */
 object Drive {
     private val proxy by lazy { ConnectProxy() }
 
     @Volatile
     private var instance: Rclone? = null
 
+    @Volatile
+    private var daemonInstance: RcloneDaemon? = null
+
     fun rclone(context: Context): Rclone =
         instance ?: synchronized(this) {
             instance ?: Rclone(context.applicationContext, proxy).also { instance = it }
         }
+
+    fun daemon(context: Context): RcloneDaemon =
+        daemonInstance ?: synchronized(this) {
+            daemonInstance ?: RcloneDaemon(rclone(context)).also { daemonInstance = it }
+        }
+
+    @Synchronized
+    fun stopDaemon() {
+        daemonInstance?.close()
+        daemonInstance = null
+    }
 }
 
 /**
@@ -84,6 +98,7 @@ object DriveLogin {
                     log = { Log.i(TAG, it) },
                 )
             }
+            Drive.stopDaemon()
             _state.update { State(completed = it.completed + 1) }
         } catch (e: TimeoutCancellationException) {
             _state.update { State(error = "5 分のうちに許可が終わらなかったため、ログインをやめました", completed = it.completed) }
