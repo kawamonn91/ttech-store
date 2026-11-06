@@ -1,0 +1,5 @@
+third_party/rclone-build/
+
+# Google ドライブ直結の OAuth クライアント（公開リポジトリに入れない。README を参照）
+google-oauth.properties
+client_secret_*.json

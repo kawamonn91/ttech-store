@@ -5,6 +5,14 @@ val releaseSigning: Properties? = rootProject.file("pocket-dev/keystore.properti
     .takeIf { it.exists() }
     ?.let { file -> Properties().apply { file.inputStream().use(::load) } }
 
+/**
+ * Google ドライブ直結のログインに使う OAuth クライアント。公開リポジトリには入れない（README を参照）。
+ * 無い環境（CI など）でもデバッグ版はビルドでき、アプリの Drive タブはログインできないと表示する
+ */
+val driveOAuth: Properties? = rootProject.file("pocket-dev/google-oauth.properties")
+    .takeIf { it.exists() }
+    ?.let { file -> Properties().apply { file.inputStream().use(::load) } }
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -19,8 +27,11 @@ android {
         applicationId = "com.ttech.pocketdev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
+
+        buildConfigField("String", "DRIVE_CLIENT_ID", "\"${driveOAuth?.getProperty("clientId").orEmpty()}\"")
+        buildConfigField("String", "DRIVE_CLIENT_SECRET", "\"${driveOAuth?.getProperty("clientSecret").orEmpty()}\"")
     }
 
     signingConfigs {
@@ -51,12 +62,36 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    packaging {
+        jniLibs {
+            // Google ドライブ直結で使う rclone（librclone.so）を nativeLibraryDir に展開させる（APK 内のままでは exec できない）
+            useLegacyPackaging = true
+            // ビルド済みの実行ファイル（scripts/build-rclone.sh で -s -w を付けて作る）なので、NDK の strip にかけない
+            keepDebugSymbols += "**/librclone.so"
+        }
+    }
+
+    testOptions {
+        // ConnectProxy などが android.util.Log を呼ぶため
+        unitTests.isReturnDefaultValues = true
+    }
+
     androidResources {
         localeFilters += listOf("ja", "en")
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+}
+
+// リリース版を、Google にログインできないまま配布しないように止める
+val hasDriveOAuth = driveOAuth != null
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    val configured = hasDriveOAuth
+    doFirst {
+        check(configured) { "pocket-dev/google-oauth.properties がありません（pocket-dev の README の「Google のログインの設定」を参照）" }
     }
 }
 
@@ -73,6 +108,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.android)
+    // Google のログインの画面を、アプリと同じタスクで開く（許可のあと × で戻れる）
+    implementation("androidx.browser:browser:1.8.0")
 
     // SSH & ローカルHTTP/WebSocketブリッジ
     implementation("com.github.mwiede:jsch:0.2.23")

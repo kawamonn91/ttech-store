@@ -43,6 +43,9 @@ data class ConnectionTarget(
     val sshPrivateKey: String = "",
     val sshPassphrase: String = "",
     val sshRemoteRoot: String = "",
+
+    // Google ドライブ直結用: マイドライブの中の基準フォルダ（"" はマイドライブ全体）
+    val driveRoot: String = "",
 ) {
     @Serializable
     enum class SshAuthMethod {
@@ -56,12 +59,25 @@ data class ConnectionTarget(
     /** IDE 画面 */
     val ideUrl: String get() = "$baseUrl/ide.html?token=${encodedToken()}"
 
+    /** 接続して最初に開く画面。Google ドライブ直結はターミナルが無いので IDE を開く */
+    val startUrl: String get() = if (type == TargetType.GOOGLE_DRIVE) ideUrl else terminalUrl
+
+    /** アプリ内の中継サーバー（bridge/BridgeServer）を動かしてつなぐ接続先か */
+    val usesLocalBridge: Boolean get() = type == TargetType.SSH || type == TargetType.GOOGLE_DRIVE
+
+    /** 保存済みの一覧に出す、接続先の場所 */
+    val locationLabel: String get() = when (type) {
+        TargetType.SSH -> "$sshUser@$sshHost:$sshPort"
+        TargetType.GOOGLE_DRIVE -> driveLocationLabel(driveRoot)
+        else -> baseUrl
+    }
+
     /** 表示用の名前。未指定の場合は baseUrl または種別に応じた既定名 */
     val displayName: String get() = when {
         name.isNotBlank() -> name
         type == TargetType.POCKET_LINUX -> "Pocket Linux ($baseUrl)"
         type == TargetType.SSH -> "SSH ($sshUser@$sshHost:$sshPort)"
-        type == TargetType.GOOGLE_DRIVE -> "Google Drive"
+        type == TargetType.GOOGLE_DRIVE -> "Google Drive: ${driveLocationLabel(driveRoot)}"
         else -> baseUrl
     }
 
@@ -130,6 +146,24 @@ data class ConnectionTarget(
                 sshRemoteRoot = remoteRoot.trim(),
             )
         }
+
+        /**
+         * Google ドライブ直結のターゲットを作る。[root] はマイドライブの中のフォルダ（"a/b"、"" は全体）。
+         * 中継サーバーの場所とトークンは、つなぐたびに作る
+         */
+        fun googleDrive(root: String, name: String = ""): ConnectionTarget {
+            val cleanRoot = root.split('/').filter { it.isNotBlank() }.joinToString("/")
+            return ConnectionTarget(
+                baseUrl = "",
+                token = "",
+                name = name.trim(),
+                type = TargetType.GOOGLE_DRIVE,
+                driveRoot = cleanRoot,
+            )
+        }
+
+        fun driveLocationLabel(root: String): String =
+            if (root.isBlank()) "マイドライブ" else "マイドライブ/$root"
 
         fun fromJson(json: String): ConnectionTarget? = runCatching {
             jsonFormat.decodeFromString<ConnectionTarget>(json)

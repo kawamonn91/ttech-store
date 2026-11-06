@@ -131,13 +131,22 @@ class SshClient(private val target: ConnectionTarget) : AutoCloseable {
         return out.toByteArray()
     }
 
+    /** ファイルの大きさ（読む前に、大きすぎないかを確かめる） */
+    fun fileSize(relPath: String): Long {
+        val sftp = ensureConnected()
+        val stat = sftp.stat(resolveRemotePath(relPath))
+        if (stat.isDir) throw IllegalArgumentException("フォルダは開けません: $relPath")
+        return stat.size
+    }
+
     /**
      * テキストファイルを書き込む。
      */
-    fun writeText(relPath: String, content: String): Long {
+    fun writeText(relPath: String, content: String): Long = writeBytes(relPath, content.toByteArray(Charsets.UTF_8))
+
+    fun writeBytes(relPath: String, bytes: ByteArray): Long {
         val sftp = ensureConnected()
         val fullPath = resolveRemotePath(relPath)
-        val bytes = content.toByteArray(Charsets.UTF_8)
         val input = ByteArrayInputStream(bytes)
 
         // 親ディレクトリを作成
