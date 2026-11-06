@@ -168,4 +168,40 @@ class ConnectionTargetTest {
         assertNull(ConnectionTarget.fromJson("{invalid-json"))
         assertEquals(emptyList<ConnectionTarget>(), ConnectionTarget.listFromJson("{invalid"))
     }
+    @Test
+    fun `Google ドライブ直結はIDEを最初に開き中継サーバーを使う`() {
+        val target = ConnectionTarget.googleDrive("/code//pocket-dev/").copy(baseUrl = "http://127.0.0.1:40000", token = "t")
+        assertEquals(TargetType.GOOGLE_DRIVE, target.type)
+        assertEquals("code/pocket-dev", target.driveRoot)
+        assertTrue(target.usesLocalBridge)
+        assertEquals("http://127.0.0.1:40000/ide.html?token=t", target.startUrl)
+        assertEquals("マイドライブ/code/pocket-dev", target.locationLabel)
+        assertEquals("Google Drive: マイドライブ/code/pocket-dev", target.displayName)
+    }
+
+    @Test
+    fun `マイドライブ全体の表示名`() {
+        val target = ConnectionTarget.googleDrive("")
+        assertEquals("", target.driveRoot)
+        assertEquals("マイドライブ", target.locationLabel)
+        assertEquals("Google Drive: マイドライブ", target.displayName)
+    }
+
+    @Test
+    fun `ターミナルのある接続先は最初にターミナルを開く`() {
+        val target = ConnectionTarget.pocketLinux("abc")
+        assertFalse(target.usesLocalBridge)
+        assertEquals("${target.baseUrl}/?token=abc", target.startUrl)
+        assertTrue(ConnectionTarget.ssh("raspi1").usesLocalBridge)
+    }
+
+    @Test
+    fun `Google ドライブ直結の保存と、driveRootの無い古い保存の読み込み`() {
+        val restored = ConnectionTarget.fromJson(ConnectionTarget.googleDrive("a/b").toJson())
+        assertEquals(TargetType.GOOGLE_DRIVE, restored?.type)
+        assertEquals("a/b", restored?.driveRoot)
+
+        val old = ConnectionTarget.fromJson("""{"baseUrl":"http://pc:8765","token":"x","type":"CUSTOM_SERVER"}""")
+        assertEquals("", old?.driveRoot)
+    }
 }

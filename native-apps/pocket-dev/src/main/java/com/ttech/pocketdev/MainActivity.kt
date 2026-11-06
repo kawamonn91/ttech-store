@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Dns
@@ -61,7 +62,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,11 +73,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ttech.common.theme.TtechTheme
-import com.ttech.pocketdev.ssh.LocalBridgeServer
-import com.ttech.pocketdev.ssh.SshClient
+import com.ttech.pocketdev.bridge.BridgeException
+import com.ttech.pocketdev.bridge.LocalBridge
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlin.concurrent.thread
 
 /** pocket-dev のブランド色(ターミナルの緑) */
 private val BrandSeed = Color(0xFF22C55E)
@@ -164,6 +166,7 @@ private fun SetupScreen(
                 TargetType.POCKET_LINUX -> 0
                 TargetType.CUSTOM_SERVER -> 1
                 TargetType.SSH -> 2
+                TargetType.GOOGLE_DRIVE -> 3
                 else -> 0
             }
         )
@@ -233,6 +236,12 @@ private fun SetupScreen(
                 onClick = { selectedTab = 2; error = null },
                 text = { Text("SSH") },
                 icon = { Icon(Icons.Default.Computer, contentDescription = null) },
+            )
+            Tab(
+                selected = selectedTab == 3,
+                onClick = { selectedTab = 3; error = null },
+                text = { Text("Drive") },
+                icon = { Icon(Icons.Default.Cloud, contentDescription = null) },
             )
         }
 
@@ -466,6 +475,8 @@ private fun SetupScreen(
                     Text("SSH で接続する")
                 }
             }
+
+            3 -> DriveSetupSection(initial = initial, onSave = onSave)
         }
 
         error?.let {
@@ -492,7 +503,33 @@ private fun SetupScreen(
                 )
             }
         }
+
+        var showLicenses by remember { mutableStateOf(false) }
+        TextButton(onClick = { showLicenses = true }, modifier = Modifier.fillMaxWidth()) {
+            Text("オープンソースのライセンス")
+        }
+        if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
     }
+}
+
+/** 同梱している rclone（MIT）のライセンス */
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val rcloneLicense = remember {
+        runCatching { context.assets.open("licenses/rclone.txt").bufferedReader().use { it.readText() } }.getOrDefault("")
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("オープンソースのライセンス") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("rclone v1.75.2（Google ドライブ直結で使用）", fontWeight = FontWeight.Bold)
+                Text(rcloneLicense, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("閉じる") } },
+    )
 }
 
 @Composable
@@ -526,8 +563,7 @@ private fun SavedTargetItem(
                     TargetType.GOOGLE_DRIVE -> "Google Drive"
                 }
                 Text(
-                    text = if (target.type == TargetType.SSH) "${target.sshUser}@${target.sshHost}:${target.sshPort} ($typeName)"
-                           else "${target.baseUrl} ($typeName)",
+                    text = "${target.locationLabel} ($typeName)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -568,44 +604,37 @@ private fun ServerScreen(
     var loadError by remember { mutableStateOf<String?>(null) }
     var askLeave by remember { mutableStateOf(false) }
 
-    // SSH 接続の場合のローカルブリッジサーバー
-    var activeBridge by remember { mutableStateOf<Pair<LocalBridgeServer, SshClient>?>(null) }
-    var effectiveTarget by remember { mutableStateOf(target) }
-    var isStartingSsh by remember { mutableStateOf(target.type == TargetType.SSH) }
+    // SSH・Google ドライブは、アプリ内の中継サーバー（bridge/LocalBridge）を動かしてつなぐ
+    var bridge by remember { mutableStateOf<LocalBridge?>(null) }
+    // 開く場所が決まった接続先（中継サーバーを使うときは、起動するまで null）
+    var effectiveTarget by remember { mutableStateOf<ConnectionTarget?>(if (target.usesLocalBridge) null else target) }
+    var attempt by remember { mutableIntStateOf(0) }
 
-    val scope = rememberCoroutineScope()
-
-    // SSH の場合、ローカルブリッジサーバーと SSH セッションを非同期起動
-    LaunchedEffect(target) {
-        if (target.type == TargetType.SSH) {
-            isStartingSsh = true
-            loadError = null
-            withContext(Dispatchers.IO) {
-                try {
-                    val client = SshClient(target)
-                    client.connect()
-
-                    val server = LocalBridgeServer(
-                        port = 0, // OS に空きポートを割り当てさせる
-                        assets = context.assets,
-                        sshClient = client,
-                        token = target.token,
-                    )
-                    server.start()
-
-                    val localUrl = "http://127.0.0.1:${server.listeningPort}"
-                    activeBridge = Pair(server, client)
-                    effectiveTarget = target.copy(baseUrl = localUrl)
-                    isStartingSsh = false
-                } catch (e: Exception) {
-                    loadError = "SSH 接続に失敗しました: ${e.message}"
-                    isStartingSsh = false
-                }
-            }
-        } else {
+    LaunchedEffect(target, attempt) {
+        if (!target.usesLocalBridge) {
             effectiveTarget = target
-            isStartingSsh = false
+            return@LaunchedEffect
         }
+        effectiveTarget = null
+        loadError = null
+        bridge?.let { old ->
+            bridge = null
+            thread { old.close() }
+        }
+        // 起動の途中で画面を離れても、起動したものを確実に止められるよう、取り消さずに待つ
+        val started = withContext(Dispatchers.IO + NonCancellable) {
+            runCatching { LocalBridge.start(context, target) }
+        }
+        if (!isActive) {
+            started.getOrNull()?.let { thread { it.close() } }
+            return@LaunchedEffect
+        }
+        started
+            .onSuccess {
+                bridge = it
+                effectiveTarget = target.copy(baseUrl = it.baseUrl, token = it.token)
+            }
+            .onFailure { loadError = bridgeErrorMessage(target, it) }
     }
 
     DisposableEffect(target) {
@@ -616,11 +645,8 @@ private fun ServerScreen(
             }
             webView = null
 
-            activeBridge?.let { (server, client) ->
-                runCatching { server.stop() }
-                runCatching { client.close() }
-            }
-            activeBridge = null
+            bridge?.let { thread { it.close() } }
+            bridge = null
         }
     }
 
@@ -630,29 +656,35 @@ private fun ServerScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (isStartingSsh) {
+        val current = effectiveTarget
+        if (loadError == null && current == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    Text("SSH セッションを開始しています...", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        if (target.type == TargetType.GOOGLE_DRIVE) "Google ドライブに接続しています..." else "SSH セッションを開始しています...",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
-        } else if (loadError == null) {
+        } else if (loadError == null && current != null) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { factoryContext ->
                     CookieManager.getInstance().setAcceptCookie(true)
-                    createWebView(factoryContext, effectiveTarget) { message -> loadError = message }
+                    // やり直しで作り直したときは、前の WebView を捨てる
+                    webView?.destroy()
+                    createWebView(factoryContext, current) { message -> loadError = message }
                         .also {
                             webView = it
-                            it.loadUrl(effectiveTarget.terminalUrl)
+                            it.loadUrl(current.startUrl)
                         }
                 },
                 update = { view ->
-                    if (view.url == null || !effectiveTarget.isOwnHost(view.url.orEmpty())) {
-                        view.loadUrl(effectiveTarget.terminalUrl)
+                    if (view.url == null || !current.isOwnHost(view.url.orEmpty())) {
+                        view.loadUrl(current.startUrl)
                     }
-                }
+                },
             )
         }
 
@@ -662,29 +694,8 @@ private fun ServerScreen(
                 message = message,
                 onRetry = {
                     loadError = null
-                    if (target.type == TargetType.SSH) {
-                        isStartingSsh = true
-                        scope.launch(Dispatchers.IO) {
-                            try {
-                                activeBridge?.let { (s, c) ->
-                                    runCatching { s.stop() }
-                                    runCatching { c.close() }
-                                }
-                                val client = SshClient(target)
-                                client.connect()
-                                val server = LocalBridgeServer(0, context.assets, client, target.token)
-                                server.start()
-                                activeBridge = Pair(server, client)
-                                effectiveTarget = target.copy(baseUrl = "http://127.0.0.1:${server.listeningPort}")
-                                isStartingSsh = false
-                            } catch (e: Exception) {
-                                loadError = "SSH 接続に失敗しました: ${e.message}"
-                                isStartingSsh = false
-                            }
-                        }
-                    } else {
-                        webView?.loadUrl(effectiveTarget.terminalUrl)
-                    }
+                    // 中継サーバーを使う接続先はつなぎ直す。ほかは WebView を作り直して開き直す
+                    if (target.usesLocalBridge) attempt++
                 },
                 onOpenSettings = onOpenSettings,
             )
@@ -704,6 +715,13 @@ private fun ServerScreen(
             },
         )
     }
+}
+
+/** 中継サーバーを起動できなかったときに見せる文 */
+private fun bridgeErrorMessage(target: ConnectionTarget, error: Throwable): String = when {
+    error is BridgeException -> error.message.orEmpty()
+    target.type == TargetType.SSH -> "SSH 接続に失敗しました: ${error.message}"
+    else -> error.message ?: "接続できませんでした"
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -759,6 +777,8 @@ private fun ErrorOverlay(
                 val hint = when (target.type) {
                     TargetType.POCKET_LINUX -> "Pocket Linux アプリで「IDE のサーバーを動かす」がオンになっているか確認してください。"
                     TargetType.SSH -> "SSH ホスト、ポート、ユーザー名、認証情報、およびネットワーク接続を確認してください。"
+                    TargetType.GOOGLE_DRIVE -> "ネットワークにつながっているかを確認してください。" +
+                        "ログインが切れたときは、「接続先を変更」→「Drive」でログインし直してください。"
                     else -> "サーバーが起動しているか、同じネットワークにいるかを確認してください。"
                 }
                 Text(hint, style = MaterialTheme.typography.bodySmall)

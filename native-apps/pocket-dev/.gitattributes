@@ -1,0 +1,5 @@
+# WSL や CI の bash で動かすので、Windows で取り出しても改行を LF のままにする
+*.sh text eol=lf
+*.go text eol=lf
+# 同梱の rclone（ビルド済みの実行ファイル）
+*.so binary
