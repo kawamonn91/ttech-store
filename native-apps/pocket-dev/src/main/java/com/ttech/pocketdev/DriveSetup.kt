@@ -29,7 +29,6 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,7 +49,6 @@ import com.ttech.pocketdev.drive.RcloneDaemon
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.concurrent.thread
 
 /**
  * 接続先の設定の「Drive」タブ。Google でログインし、開くフォルダを選ぶ。
@@ -100,10 +98,11 @@ fun DriveSetupSection(initial: ConnectionTarget?, onSave: (ConnectionTarget) -> 
         )
 
         else -> DriveFolderPicker(
-            rclone = rclone,
+            daemon = remember { Drive.daemon(context) },
             initialRoot = initial?.takeIf { it.type == TargetType.GOOGLE_DRIVE }?.driveRoot.orEmpty(),
             onOpen = { root -> onSave(ConnectionTarget.googleDrive(root)) },
             onLogout = {
+                Drive.stopDaemon()
                 rclone.logout()
                 loggedIn = false
             },
@@ -143,15 +142,13 @@ private fun DriveLoginCard(running: Boolean, error: String?, onLogin: () -> Unit
 
 @Composable
 private fun DriveFolderPicker(
-    rclone: Rclone,
+    daemon: RcloneDaemon,
     initialRoot: String,
     onOpen: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
-    // フォルダの一覧も rclone の API で取る（この画面を離れたら止める）
-    val daemon = remember { RcloneDaemon(rclone) }
-    val drive = remember { DriveBackend(daemon, "") }
-    DisposableEffect(Unit) { onDispose { thread { daemon.close() } } }
+    // フォルダの一覧も共有の rclone rcd で取る（「開く」を押したあとの IDE でもそのまま使い回す）
+    val drive = remember(daemon) { DriveBackend(daemon, "") }
 
     var path by remember { mutableStateOf(initialRoot) }
     var folders by remember { mutableStateOf<List<String>?>(null) }

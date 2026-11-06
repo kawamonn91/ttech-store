@@ -4,6 +4,7 @@ import android.util.Log
 import com.ttech.pocketdev.bridge.BridgeException
 import com.ttech.pocketdev.bridge.FileBackend
 import com.ttech.pocketdev.bridge.FileEntry
+import com.ttech.pocketdev.bridge.string
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.booleanOrNull
@@ -193,7 +194,5 @@ class DriveBackend(private val daemon: RcloneDaemon, root: String) : FileBackend
                 else -> "Google ドライブの操作に失敗しました: $raw"
             }
         }
-
-        private fun JsonObject.string(name: String): String? = get(name)?.jsonPrimitive?.contentOrNull
     }
 }

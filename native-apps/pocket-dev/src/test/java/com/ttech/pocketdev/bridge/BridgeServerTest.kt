@@ -231,6 +231,18 @@ class BridgeServerTest {
         assertEquals(null, BridgeServer.cookieValue(null, "pocketdev_bridge"))
     }
 
+    @Test
+    fun `randomTokenとJsonObject_stringヘルパー`() {
+        val t1 = randomToken()
+        val t2 = randomToken()
+        assertEquals(24, t1.length)
+        assertTrue(t1 != t2)
+        val obj = Json.parseToJsonElement("""{"a":"hello","b":null}""").jsonObject
+        assertEquals("hello", obj.string("a"))
+        assertEquals(null, obj.string("b"))
+        assertEquals(null, obj.string("c"))
+    }
+
     // ------------------------------------------------------------ 道具
 
     private data class HttpResult(val code: Int, val body: String, val headers: Map<String, String>) {

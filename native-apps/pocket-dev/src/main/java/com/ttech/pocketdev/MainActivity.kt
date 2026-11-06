@@ -730,6 +730,7 @@ private fun createWebView(
     target: ConnectionTarget,
     onError: (String) -> Unit,
 ): WebView = WebView(context).apply {
+    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
     settings.setSupportZoom(false)

@@ -7,14 +7,35 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const webRoot = path.resolve(here, "../..");
+export const LEGACY_SUPABASE_HOST = "bniehgjuylkgxbstmjdh.supabase.co";
+
+/**
+ * 既定で読む環境変数ファイル名を返す。
+ * TTECH_ENV_FILE が未指定で、.env.local が廃止済みの旧クラウド Supabase を指しており、
+ * かつ同階層に .env.prod.local がある場合は自動的に .env.prod.local を使う。
+ */
+export function resolveDefaultEnvFile(root = webRoot, env = process.env) {
+  if (env.TTECH_ENV_FILE) return env.TTECH_ENV_FILE;
+  const localFile = path.resolve(root, ".env.local");
+  const prodFile = path.resolve(root, ".env.prod.local");
+  if (
+    !env.ALLOW_LEGACY_SUPABASE &&
+    existsSync(localFile) &&
+    existsSync(prodFile) &&
+    readFileSync(localFile, "utf8").includes(LEGACY_SUPABASE_HOST)
+  ) {
+    return ".env.prod.local";
+  }
+  return ".env.local";
+}
 
 /**
  * 設定ファイルを読み込み、未設定の環境変数にだけ反映する。
- * 既定は web/.env.local。環境変数 TTECH_ENV_FILE で別のファイルを選べる
- * (例: 本番への公開は TTECH_ENV_FILE=.env.prod.local。.env.local を書き換えずに済む)。
+ * 既定は web/.env.local（旧クラウド Supabase を指している場合は .env.prod.local に自動フォールバック）。
+ * 環境変数 TTECH_ENV_FILE で別のファイルを選べる。
  * 相対パスは web/ から、絶対パスはそのまま解釈する。読んだファイルのパスを返す(無ければ null)。
  */
-export function loadEnvLocal(fileName = process.env.TTECH_ENV_FILE || ".env.local") {
+export function loadEnvLocal(fileName = resolveDefaultEnvFile()) {
   const file = path.resolve(webRoot, fileName);
   if (!existsSync(file)) return null;
   for (const line of readFileSync(file, "utf8").split("\n")) {

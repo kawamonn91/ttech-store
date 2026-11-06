@@ -27,8 +27,8 @@ android {
         applicationId = "com.ttech.pocketdev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
 
         buildConfigField("String", "DRIVE_CLIENT_ID", "\"${driveOAuth?.getProperty("clientId").orEmpty()}\"")
         buildConfigField("String", "DRIVE_CLIENT_SECRET", "\"${driveOAuth?.getProperty("clientSecret").orEmpty()}\"")
@@ -93,6 +93,15 @@ tasks.matching { it.name == "preReleaseBuild" }.configureEach {
     doFirst {
         check(configured) { "pocket-dev/google-oauth.properties がありません（pocket-dev の README の「Google のログインの設定」を参照）" }
     }
+}
+
+// 隣の pocket-dev リポジトリの web/ アセットをアプリ側の assets/pocket-dev/web/ に同期する開発用タスク
+val syncWebAssets = tasks.register<Sync>("syncWebAssets") {
+    from(rootProject.file("../../pocket-dev/web"))
+    into(layout.projectDirectory.dir("src/main/assets/pocket-dev/web"))
+}
+tasks.configureEach {
+    if (name != "syncWebAssets") mustRunAfter(syncWebAssets)
 }
 
 dependencies {
