@@ -66,6 +66,15 @@ export class SupabaseAdmin {
     });
   }
 
+  /** Storage のファイルを消す(無いファイルは無視される) */
+  remove(bucket, objectPaths) {
+    return this.request(`/storage/v1/object/${bucket}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prefixes: objectPaths }),
+    });
+  }
+
   /** URL用の名前(slug)でアプリを1件引く。無ければ例外 */
   async appBySlug(slug, columns = "id,name") {
     const [app] = await this.select("apps", `slug=eq.${encodeURIComponent(slug)}&select=${columns}`);

@@ -10,6 +10,8 @@
 ## アプリを公開するとき
 
 - `publish-app.mjs` の前に `versionCode` を上げる。同じ versionCode だと Supabase が 409(`(app_id, version_code)` の重複)を返して失敗する
+- 公開は、PR の CI が通って main にマージしてから行う
+- 掲載文の更新は `update-listing.mjs`。スクリーンショットの撮り直しは `add-screenshot.mjs` の1枚目に `--reset` を付ける(前のものが消える)
 
 ## リファクタリング計画
 

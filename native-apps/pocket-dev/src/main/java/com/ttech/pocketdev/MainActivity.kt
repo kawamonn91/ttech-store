@@ -12,8 +12,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,6 +78,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.ttech.common.theme.TtechTheme
 import com.ttech.pocketdev.bridge.BridgeException
 import com.ttech.pocketdev.bridge.LocalBridge
+import com.ttech.pocketdev.drive.Drive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
@@ -84,6 +88,9 @@ import kotlin.concurrent.thread
 /** pocket-dev のブランド色(ターミナルの緑) */
 private val BrandSeed = Color(0xFF22C55E)
 
+/** IDE・ターミナルの背景（web/ide.html の背景色と同じ）。ステータスバーとナビゲーションバーの後ろもこの色にする */
+private val IdeBackground = Color(0xFF0F1117)
+
 /**
  * pocket-dev IDE/ターミナル クライアント。
  * Pocket Linux (同一端末)、外部サーバー、SSH、Google Drive などへの接続に対応。
@@ -92,6 +99,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // テーマの土台は暗い色なので、指定しないと明るい画面でステータスバーの文字が白のまま見えなくなる
+        enableEdgeToEdge()
         val settings = ServerSettings(this)
 
         setContent {
@@ -99,10 +108,22 @@ class MainActivity : ComponentActivity() {
                 var target by remember { mutableStateOf(settings.load()) }
                 var editing by remember { mutableStateOf(settings.load() == null) }
                 var savedTargets by remember { mutableStateOf(settings.loadAll()) }
+                val showServer = !editing && target != null
+
+                // IDE は暗い色なので文字を明るくする。設定の画面は端末の明暗に合わせる
+                LaunchedEffect(showServer) {
+                    if (showServer) {
+                        val style = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                    } else {
+                        enableEdgeToEdge()
+                    }
+                }
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(if (showServer) Modifier.background(IdeBackground) else Modifier)
                         .windowInsetsPadding(WindowInsets.safeDrawing),
                 ) {
                     val current = target
@@ -144,6 +165,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 「終了」のあとはプロセスが凍結され、時間で止める処理が動かないので、ここで rclone rcd を止める
+        if (isFinishing) Drive.stopDaemon()
     }
 }
 
@@ -655,7 +682,8 @@ private fun ServerScreen(
         if (view != null && view.canGoBack()) view.goBack() else askLeave = true
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // つないでいる途中とエラーの表示は、アプリのテーマの色の上に出す（IDE が開くと WebView で隠れる）
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         val current = effectiveTarget
         if (loadError == null && current == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

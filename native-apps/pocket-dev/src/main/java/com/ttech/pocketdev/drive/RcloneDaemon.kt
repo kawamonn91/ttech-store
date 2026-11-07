@@ -46,11 +46,16 @@ class RcloneDaemon(private val rclone: Rclone) : Closeable {
     @Volatile
     private var baseUrl = ""
 
+    @Volatile
+    private var closed = false
+
     val isRunning: Boolean get() = process?.isAlive == true
 
     /** 起動していなければ起動して、API が答えるまで待つ（時間がかかるので、メインスレッドで呼ばない） */
     @Synchronized
     fun ensureStarted(timeoutMs: Long = START_TIMEOUT_MS) {
+        // 閉じたあとに起動すると、誰も止められないプロセスが残る
+        if (closed) throw IOException("rclone は止められています。開き直してください")
         if (isRunning) return
         stopProcess()
         val port = ServerSocket(0, 1, InetAddress.getByName(HOST)).use { it.localPort }
@@ -155,6 +160,7 @@ class RcloneDaemon(private val rclone: Rclone) : Closeable {
     }
 
     override fun close() {
+        closed = true
         stopProcess()
     }
 

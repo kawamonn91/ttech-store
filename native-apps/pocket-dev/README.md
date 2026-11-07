@@ -25,6 +25,7 @@ Drive にはターミナルが無いので、`/api/info` の `terminal` を `fal
     ブラウザ（Custom Tabs）で許可している間にアプリが凍結されないよう、ログインの間だけ常駐サービス（`drive/DriveLoginService.kt`）を動かす
   - ログインの情報はアプリ専用の領域の `files/rclone/rclone.conf`
 - 編集は `rclone rcd`（遠隔操作の API）を 127.0.0.1 で動かして頼む（`drive/RcloneDaemon.kt`・`drive/DriveBackend.kt`）。合言葉は起動ごとに作る
+  - rclone rcd はフォルダ選択と IDE で共有し、誰も使わなくなって 30 秒で止める（`drive/SharedCloseable.kt`）。ログイン・ログアウト・アプリの「終了」ではすぐに止める（終了のあとはプロセスが凍結され、時間で止める処理が動かないため）
   - 一覧 `operations/list`、読む `--rc-serve`（`GET /[gdrive:]/パス`）、書く `operations/uploadfile`、
     フォルダの作成 `operations/mkdir`、削除 `operations/deletefile`・`purge`・`rmdir`（Drive のゴミ箱に入る）、
     名前の変更 `operations/movefile`（ファイル）・`sync/move`（フォルダ。そのあと `fscache/clear`）
