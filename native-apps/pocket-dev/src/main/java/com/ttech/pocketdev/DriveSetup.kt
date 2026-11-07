@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -97,16 +98,27 @@ fun DriveSetupSection(initial: ConnectionTarget?, onSave: (ConnectionTarget) -> 
             onCancel = DriveLogin::cancel,
         )
 
-        else -> DriveFolderPicker(
-            daemon = remember { Drive.daemon(context) },
-            initialRoot = initial?.takeIf { it.type == TargetType.GOOGLE_DRIVE }?.driveRoot.orEmpty(),
-            onOpen = { root -> onSave(ConnectionTarget.googleDrive(root)) },
-            onLogout = {
-                Drive.stopDaemon()
-                rclone.logout()
-                loggedIn = false
-            },
-        )
+        else -> {
+            // この画面にいる間だけ借りる（「開く」で IDE に移ったときは、IDE が借り直すので止まらない）
+            var daemon by remember { mutableStateOf<RcloneDaemon?>(null) }
+            DisposableEffect(Unit) {
+                val lease = Drive.acquireDaemon(context)
+                daemon = lease.value
+                onDispose { lease.close() }
+            }
+            daemon?.let { shared ->
+                DriveFolderPicker(
+                    daemon = shared,
+                    initialRoot = initial?.takeIf { it.type == TargetType.GOOGLE_DRIVE }?.driveRoot.orEmpty(),
+                    onOpen = { root -> onSave(ConnectionTarget.googleDrive(root)) },
+                    onLogout = {
+                        Drive.stopDaemon()
+                        rclone.logout()
+                        loggedIn = false
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -147,7 +159,7 @@ private fun DriveFolderPicker(
     onOpen: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
-    // フォルダの一覧も共有の rclone rcd で取る（「開く」を押したあとの IDE でもそのまま使い回す）
+    // フォルダの一覧も共有の rclone rcd で取る
     val drive = remember(daemon) { DriveBackend(daemon, "") }
 
     var path by remember { mutableStateOf(initialRoot) }

@@ -2,7 +2,8 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { LEGACY_SUPABASE_HOST, loadEnvLocal, resolveDefaultEnvFile } from "./cli-env.mjs";
+import { LEGACY_SUPABASE_HOST, loadEnvLocal } from "./cli-env.mjs";
+import { SupabaseAdmin } from "./supabase-admin.mjs";
 
 describe("loadEnvLocal", () => {
   afterEach(() => {
@@ -31,12 +32,28 @@ describe("loadEnvLocal", () => {
   it("ファイルが無ければ null を返す", () => {
     expect(loadEnvLocal(path.join(tmpdir(), "does-not-exist.env"))).toBeNull();
   });
+});
 
-  it(".env.local が旧クラウド Supabase を指し .env.prod.local がある場合は .env.prod.local を選ぶ", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "cli-env-"));
-    writeFileSync(path.join(dir, ".env.local"), `NEXT_PUBLIC_SUPABASE_URL=https://${LEGACY_SUPABASE_HOST}\n`);
-    writeFileSync(path.join(dir, ".env.prod.local"), "NEXT_PUBLIC_SUPABASE_URL=https://store.kawamonn.com\n");
-    expect(resolveDefaultEnvFile(dir, {})).toBe(".env.prod.local");
-    expect(resolveDefaultEnvFile(dir, { ALLOW_LEGACY_SUPABASE: "1" })).toBe(".env.local");
+describe("SupabaseAdmin.fromEnv", () => {
+  const key = "test-key";
+
+  it("旧クラウド Supabase を指していたらエラーで止める(本番へ勝手に切り替えない)", () => {
+    expect(() =>
+      SupabaseAdmin.fromEnv({ NEXT_PUBLIC_SUPABASE_URL: `https://${LEGACY_SUPABASE_HOST}`, SUPABASE_SERVICE_ROLE_KEY: key }),
+    ).toThrow("誤登録防止ガード");
+  });
+
+  it("ALLOW_LEGACY_SUPABASE を付ければ旧環境にもつなげる", () => {
+    const db = SupabaseAdmin.fromEnv({
+      NEXT_PUBLIC_SUPABASE_URL: `https://${LEGACY_SUPABASE_HOST}`,
+      SUPABASE_SERVICE_ROLE_KEY: key,
+      ALLOW_LEGACY_SUPABASE: "1",
+    });
+    expect(db.url).toBe(`https://${LEGACY_SUPABASE_HOST}`);
+  });
+
+  it("本番の接続先はそのまま使う", () => {
+    const db = SupabaseAdmin.fromEnv({ NEXT_PUBLIC_SUPABASE_URL: "https://store.kawamonn.com", SUPABASE_SERVICE_ROLE_KEY: key });
+    expect(db.url).toBe("https://store.kawamonn.com");
   });
 });

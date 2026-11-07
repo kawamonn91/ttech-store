@@ -2,6 +2,8 @@ package com.ttech.pocketdev.drive
 
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellationException
@@ -11,31 +13,45 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeout
+import kotlin.concurrent.thread
 
-/** アプリ全体で1つの rclone（名前解決の中継と rcd も共有し、フォルダ選択→IDE の切り替えで再起動しない） */
+/** アプリ全体で1つの rclone（名前解決の中継と rcd も共有する） */
 object Drive {
+    /** 誰も使わなくなってから rclone rcd を止めるまでの時間（フォルダ選択 → IDE の切り替えで起動し直さない長さ） */
+    private const val DAEMON_IDLE_MS = 30_000L
+
     private val proxy by lazy { ConnectProxy() }
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     @Volatile
     private var instance: Rclone? = null
 
     @Volatile
-    private var daemonInstance: RcloneDaemon? = null
+    private var sharedDaemon: SharedCloseable<RcloneDaemon>? = null
 
     fun rclone(context: Context): Rclone =
         instance ?: synchronized(this) {
             instance ?: Rclone(context.applicationContext, proxy).also { instance = it }
         }
 
-    fun daemon(context: Context): RcloneDaemon =
-        daemonInstance ?: synchronized(this) {
-            daemonInstance ?: RcloneDaemon(rclone(context)).also { daemonInstance = it }
-        }
+    /** 共有の rclone rcd を借りる。使い終わったら閉じる（起動は [RcloneDaemon.ensureStarted]） */
+    fun acquireDaemon(context: Context): Lease<RcloneDaemon> =
+        (sharedDaemon ?: synchronized(this) {
+            sharedDaemon ?: SharedCloseable(
+                create = { RcloneDaemon(rclone(context)) },
+                idleMs = DAEMON_IDLE_MS,
+                schedule = { delayMs, action ->
+                    val runnable = Runnable(action)
+                    mainHandler.postDelayed(runnable, delayMs)
+                    ({ mainHandler.removeCallbacks(runnable) })
+                },
+                runInBackground = { action -> thread(name = "rclone-rcd-stop", isDaemon = true) { action() } },
+            ).also { sharedDaemon = it }
+        }).acquire()
 
-    @Synchronized
+    /** rclone rcd をすぐに止める（ログインの情報が変わったとき）。待たないのでメインスレッドから呼んでよい */
     fun stopDaemon() {
-        daemonInstance?.close()
-        daemonInstance = null
+        sharedDaemon?.stopNow()
     }
 }
 

@@ -53,12 +53,19 @@ class LocalBridge private constructor(
                     if (!rclone.isLoggedIn) {
                         throw BridgeException("Google にログインしていません。接続先の設定の「Drive」でログインしてください")
                     }
-                    val daemon = Drive.daemon(context)
-                    daemon.ensureStarted()
-                    val backend = DriveBackend(daemon, target.driveRoot)
-                    backend.check()
-                    // ターミナルは無い（IDE は実行のボタンを隠す）。daemon は Drive シングルトンで共有する
-                    launch(BridgeServer(token, backend, null, openAsset), token, emptyList())
+                    // rclone rcd は共有のものを借りる。閉じると返し、誰も使わなくなると少しして止まる
+                    val lease = Drive.acquireDaemon(context)
+                    try {
+                        val daemon = lease.value
+                        daemon.ensureStarted()
+                        val backend = DriveBackend(daemon, target.driveRoot)
+                        backend.check()
+                        // ターミナルは無い（IDE は実行のボタンを隠す）
+                        launch(BridgeServer(token, backend, null, openAsset), token, listOf(lease))
+                    } catch (e: Exception) {
+                        lease.close()
+                        throw e
+                    }
                 }
 
                 else -> throw IllegalArgumentException("中継サーバーを使わない接続先です: ${target.type}")
