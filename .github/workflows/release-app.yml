@@ -1,0 +1,161 @@
+# CD（docs/release.md）。アプリ名/v版 のタグ（store-app/v0.6.5・weight-log/v2.0.2 など）を push すると、
+# そのアプリの署名済みのリリース版を作って GitHub Releases に置く。
+# 手で動かした（workflow_dispatch）ときは、署名済みのビルドと署名の確かめまでにして、リリースは作らない（CD の動作確認用）。
+# T-tech Store への公開は、ここで作った APK を手元から web/scripts/publish-app.mjs で行う（本番の鍵を GitHub に置かないため）。
+# Web（store.kawamonn.com）は対象外（raspi1 へは web/scripts/deploy-web.ps1 で手元から出す）。
+name: release-app
+
+on:
+  push:
+    tags: ["*/v*"]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "アプリ（store-app、または native-apps/settings.gradle.kts に include したモジュール名）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-app-${{ github.ref }}-${{ inputs.app }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      # アクションは改ざんに備えてコミットの SHA で固定する（コメントは版）
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # どのアプリか・版・鍵の名前・ストアに出している版の証明書（SHA-256。APK から誰でも読める値）を決める
+      - name: アプリと版を決める
+        id: target
+        env:
+          INPUT_APP: ${{ inputs.app }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            app="${GITHUB_REF_NAME%%/v*}"
+            tag_version="${GITHUB_REF_NAME#*/v}"
+          else
+            app="$INPUT_APP"
+            tag_version=""
+          fi
+          case "$app" in
+            store-app)
+              project=store-app; module=app; build_file=store-app/app/build.gradle.kts; apk_name=ttech-store
+              cert=b11d17293012e0d10dfac7f3a618f5a42ca6b712738fe5eb6fd7511c4c19b48b ;;
+            *)
+              if ! grep -qx "include(\":$app\")" native-apps/settings.gradle.kts; then
+                echo "::error::$app は store-app でも native-apps/settings.gradle.kts のモジュールでもありません"
+                exit 1
+              fi
+              project=native-apps; module="$app"; build_file="native-apps/$app/build.gradle.kts"; apk_name="$app"
+              case "$app" in
+                attendance-count) cert=3d3e6ae01590cd48031fd35fc7e9c3197605cbb3d5aac2b5a6e5e060bd83fa0b ;;
+                bike-navi) cert=8645866e9359f2e0440d48e7cf4b8def01440c553aca036c811e72d67969ecac ;;
+                drive-record) cert=892cbf4aafffcb8797479ef34ffb418d7183b61eae15ae420d4b629c29ac13e1 ;;
+                idea-memo) cert=bc00d062b5c8729de946917bc3c81f7cb8dedd2b956b937aed0fc98fdbd1e1e1 ;;
+                navi) cert=b75784572620203eeeb93a19761a85adc13bc6f5397af7d3f5ea9d374f7f8b7a ;;
+                pocket-dev) cert=2b07354ed7ae3494b961e8add38b39aa526070ee11e933a45342037cbef131ca ;;
+                run-tracker) cert=ecf2332d13640b0c1b9c21939dcebab7a5054934dfe2e916fb2bbf389991f20e ;;
+                travel-wishlist) cert=d45299b1eec9f682f66c5a07a14781bb44eb932d455c68b44240aa1bed93bbb9 ;;
+                trip-shiori) cert=74a15b15d71b2af6a02169b747c6b24b407f3836e26df7a196fd7a2967cfc30b ;;
+                ttech-admin) cert=ac6378ffa39e6bb9a2b09eb6427f5e71b4eb0e03e1838ed63eb840f3a4e23d7b ;;
+                weight-log) cert=1922aa8d633646f9a356517c196817d93f0456f6b6daad0b5e2532eb3b1e63b6 ;;
+                *) echo "::error::$app の証明書（SHA-256）がワークフローにありません（docs/release.md の「アプリを足したとき」）"; exit 1 ;;
+              esac ;;
+          esac
+          version="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$build_file" | head -n 1)"
+          if [ -z "$version" ]; then echo "::error::$build_file から versionName を読めません"; exit 1; fi
+          echo "アプリ: $app / versionName: $version / ref: $GITHUB_REF_NAME"
+          if [ -n "$tag_version" ] && [ "$tag_version" != "$version" ]; then
+            echo "::error::タグ（$GITHUB_REF_NAME）が $build_file の versionName（$version）と合いません"
+            exit 1
+          fi
+          # 鍵の名前: SIGNING_ + 大文字にして - を _ にしたもの（store-app → SIGNING_STORE_APP）
+          secret="SIGNING_$(echo "$app" | tr 'a-z-' 'A-Z_')"
+          {
+            echo "app=$app"
+            echo "project=$project"
+            echo "module=$module"
+            echo "apk_name=$apk_name"
+            echo "version=$version"
+            echo "cert=$cert"
+            echo "secret=$secret"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # ci.yml と同じ理由で、素の sdkmanager を使い、android-37 の別名フォルダを作る
+      - name: Android SDK (compileSdk 37) の準備
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0"
+          if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
+            cp -r "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+
+      # アプリの鍵の束（keystore.properties・署名鍵、アプリによってはログインの設定）を、アプリのフォルダに展開する。
+      # 束は tools/set-release-secrets.sh が作る（ログに出さない。終わったら消す）
+      - name: 署名鍵と設定を書き出す
+        env:
+          BUNDLE: ${{ secrets[steps.target.outputs.secret] }}
+          SECRET_NAME: ${{ steps.target.outputs.secret }}
+          DIR: ${{ steps.target.outputs.project == 'store-app' && 'store-app' || format('native-apps/{0}', steps.target.outputs.module) }}
+        run: |
+          if [ -z "$BUNDLE" ]; then echo "::error::GitHub Secrets の $SECRET_NAME がありません（docs/release.md）"; exit 1; fi
+          printf '%s' "$BUNDLE" | base64 -d | tar -xz -C "$DIR"
+          tar -tzf <(printf '%s' "$BUNDLE" | base64 -d) | sed "s#^#$DIR/#" > "$RUNNER_TEMP/secret-files.txt"
+          echo "書き出したファイル:"; cat "$RUNNER_TEMP/secret-files.txt"
+
+      - name: 単体テストとリリース版のビルド
+        working-directory: ${{ steps.target.outputs.project }}
+        env:
+          MODULE: ${{ steps.target.outputs.module }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --console=plain --max-workers=2 ":$MODULE:testDebugUnitTest" ":$MODULE:assembleRelease"
+
+      - name: 署名を確かめて、置くものを集める
+        env:
+          PROJECT: ${{ steps.target.outputs.project }}
+          MODULE: ${{ steps.target.outputs.module }}
+          APK_NAME: ${{ steps.target.outputs.apk_name }}
+          VERSION: ${{ steps.target.outputs.version }}
+          CERT: ${{ steps.target.outputs.cert }}
+        run: |
+          if [ "$PROJECT" = store-app ]; then apk=store-app/app/build/outputs/apk/release/app-release.apk
+          else apk="native-apps/$MODULE/build/outputs/apk/release/$MODULE-release.apk"; fi
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner"
+          "$apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/certs.txt" | grep -E "certificate (DN|SHA-256)"
+          if ! grep -qi "certificate SHA-256 digest: $CERT" "$RUNNER_TEMP/certs.txt"; then
+            echo "::error::ストアに出している版と違う鍵で署名されています（GitHub Secrets の鍵を確かめる）"
+            exit 1
+          fi
+          mkdir dist
+          cp "$apk" "dist/$APK_NAME-$VERSION.apk"
+          (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+
+      - name: リリースを作る
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP: ${{ steps.target.outputs.app }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --target "$GITHUB_SHA" --title "$APP $VERSION" \
+            --notes "署名済みのリリース版（コミット $GITHUB_SHA）。T-tech Store への公開は docs/release.md の手順で行う。"
+
+      - name: 署名鍵を消す
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/secret-files.txt" ]; then xargs -r rm -f < "$RUNNER_TEMP/secret-files.txt"; fi
