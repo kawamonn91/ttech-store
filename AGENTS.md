@@ -11,6 +11,7 @@
 
 - `publish-app.mjs` の前に `versionCode` を上げる。同じ versionCode だと Supabase が 409(`(app_id, version_code)` の重複)を返して失敗する
 - 公開は、PR の CI が通って main にマージしてから行う
+- 署名済みの APK は CD で作る。main で `アプリ名/v版` のタグ（`weight-log/v2.0.2` など）を push すると GitHub Releases に置かれる。手順と鍵の登録は [docs/release.md](docs/release.md)
 - 掲載文の更新は `update-listing.mjs`。スクリーンショットの撮り直しは `add-screenshot.mjs` の1枚目に `--reset` を付ける(前のものが消える)
 
 ## リファクタリング計画
