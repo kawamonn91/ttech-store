@@ -5,14 +5,14 @@ export const metadata: Metadata = { title: "PDF・PowerPoint 日本語化ツー�
 export default function PdfJaToolPage() {
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">PDF・PowerPoint 日本語化ツール</h1>
+      <h1 className="mb-2 text-2xl font-bold">PDF・PowerPoint 日本語化ツール</h1>
       <p className="mb-6 text-sm text-muted">
         英語のPDFやPowerPointを、レイアウト・画像・フォントの見た目を保ったまま日本語にする Windows 用ツールです。
         はみ出す文字は自動で小さくし、気に入らない箇所は文字サイズや位置を手で調整できます。
       </p>
 
       <div className="mb-8 rounded-lg border border-border bg-surface p-5">
-        <p className="mb-3 font-mono text-xs text-muted">Windows 10 / 11 ・ 翻訳には Claude API キーが必要です</p>
+        <p className="mb-3 text-xs text-muted">Windows 10 / 11 ・ 翻訳には Claude API キーが必要です</p>
         <a
           href="/download/pdf-ja"
           className="inline-block rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground transition hover:opacity-90"
@@ -21,7 +21,7 @@ export default function PdfJaToolPage() {
         </a>
       </div>
 
-      <h2 className="mb-2 text-base font-bold tracking-tight">はじめかた</h2>
+      <h2 className="mb-2 text-base font-bold">はじめかた</h2>
       <ol className="mb-8 list-decimal space-y-2 pl-5 text-sm">
         <li>ダウンロードした zip を展開し、「PDF-JA-Translator」フォルダを好きな場所に置きます。</li>
         <li>フォルダの中の「start.bat」をダブルクリックして起動し、「APIキー登録」を押します。画面の手順に沿って、Claude API キーを登録してください。</li>
@@ -30,7 +30,7 @@ export default function PdfJaToolPage() {
         <li>「日本語版を保存」で、日本語版のファイルを書き出します。</li>
       </ol>
 
-      <h2 className="mb-2 text-base font-bold tracking-tight">ご注意</h2>
+      <h2 className="mb-2 text-base font-bold">ご注意</h2>
       <ul className="mb-8 list-disc space-y-2 pl-5 text-sm text-muted">
         <li>
           Claude API の利用料金は、Anthropic の従量課金です(使った分だけ)。キーは Anthropic Console で作成し、利用上限を設定しておくと安心です。

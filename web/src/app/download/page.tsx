@@ -12,14 +12,14 @@ export default async function DownloadPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">T-tech Store アプリを入手</h1>
+      <h1 className="mb-2 text-2xl font-bold">T-tech Store アプリを入手</h1>
       <p className="mb-6 text-sm text-muted">
         T-tech のアプリは、この専用ストアアプリからインストール・更新します。最初の1回だけ、こちらからインストールしてください。
       </p>
 
       {latest ? (
         <div className="mb-8 rounded-lg border border-border bg-surface p-5">
-          <p className="mb-3 font-mono text-xs text-muted">
+          <p className="mb-3 text-xs text-muted tabular-nums">
             バージョン {latest.versionName}
             {latest.apkSize != null && ` ・ ${formatBytes(latest.apkSize)}`} ・ Android {latest.minSdk ?? 8} 以上
           </p>
@@ -36,14 +36,14 @@ export default async function DownloadPage() {
         </p>
       )}
 
-      <h2 className="mb-2 text-base font-bold tracking-tight">インストール手順</h2>
+      <h2 className="mb-2 text-base font-bold">インストール手順</h2>
       <ol className="mb-8 list-decimal space-y-2 pl-5 text-sm">
         <li>上のボタンから APK をダウンロードします(ブラウザに「この種類のファイルは危険」と表示された場合は「ダウンロード」を選びます)。</li>
         <li>ダウンロードしたファイルを開き、「提供元不明のアプリ」の許可を求められたら、お使いのブラウザに対して許可します。</li>
         <li>インストールが終わったら T-tech Store を開きます。以降のアプリのインストール・更新はアプリ内で完結します。</li>
       </ol>
 
-      <h2 className="mb-2 text-base font-bold tracking-tight">安全性について</h2>
+      <h2 className="mb-2 text-base font-bold">安全性について</h2>
       <ul className="list-disc space-y-2 pl-5 text-sm text-muted">
         <li>Google Play 以外から入手するアプリのため、端末に警告が出ることがあります。</li>
         <li>ストアアプリは、ダウンロードしたアプリの改ざん(ハッシュ)と開発者の署名を確認してからインストールします。</li>

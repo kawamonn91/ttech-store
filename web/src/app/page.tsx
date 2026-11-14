@@ -21,7 +21,7 @@ const loadHome = unstable_cache(
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-base font-bold tracking-tight">{title}</h2>
+      <h2 className="mb-3 text-base font-bold">{title}</h2>
       {children}
     </section>
   );
@@ -35,7 +35,7 @@ export default async function HomePage() {
     <>
       <div className="mb-8 flex flex-col justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">T-tech のAndroidアプリ・ツール配布</h1>
+          <h1 className="text-2xl font-bold">T-tech のAndroidアプリ・ツール配布</h1>
           <p className="mt-1.5 text-sm text-muted">
             広告なし・シンプルな実用アプリをまとめて配布しています。インストールと更新は専用のストアアプリで行えます。
           </p>
@@ -58,7 +58,7 @@ export default async function HomePage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-semibold">PDF・PowerPoint 日本語化ツール</span>
-              <span className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted">
+              <span className="rounded-sm bg-background px-1.5 py-0.5 text-[11px] text-muted">
                 Windows 10 / 11
               </span>
             </div>
@@ -66,7 +66,7 @@ export default async function HomePage() {
               英語の PDF・PowerPoint を、見た目を保ったまま日本語に。はみ出しは自動で調整し、手で直すこともできます。
             </p>
           </div>
-          <span className="shrink-0 font-mono text-xs text-muted">詳細 →</span>
+          <span className="shrink-0 text-xs text-muted">詳細 →</span>
         </Link>
       </Section>
 

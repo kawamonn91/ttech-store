@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
+/*
+ * T-tech の共通デザイントークン（色・文字・角丸）。
+ * www・UoA Online（kawamonn-labs の src/styles/tokens.css）と同じ値を使う。
+ * 紙と墨の中間色を土台にし、差し色は朱 1 色だけ（ここでは brand という名前で使う）。
+ */
 :root {
-  --background: #fafafa;
+  --background: #faf9f7;
   --surface: #ffffff;
-  --border: #e4e4e7;
-  --foreground: #09090b;
-  --muted: #71717a;
-  --brand: #18181b;
-  --brand-foreground: #fafafa;
-  --danger: #dc2626;
+  --border: #e3e0db;
+  --foreground: #1c1a17;
+  --muted: #736d64;
+  --brand: #c8442a;
+  --brand-foreground: #ffffff;
+  --danger: #b42318;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #09090b;
-    --surface: #121215;
-    --border: #27272a;
-    --foreground: #f4f4f5;
-    --muted: #a1a1aa;
-    --brand: #fafafa;
-    --brand-foreground: #09090b;
-    --danger: #f87171;
+    --background: #161412;
+    --surface: #1e1b18;
+    --border: #34302b;
+    --foreground: #edeae5;
+    --muted: #8c867d;
+    --brand: #f0795a;
+    --brand-foreground: #1c1a17;
+    --danger: #f2877c;
   }
 }
 
@@ -33,14 +38,38 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-danger: var(--danger);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI",
+    Meiryo, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, "BIZ UDGothic", monospace;
+}
+
+/* 角丸：ボタンや入力は 3px、カードは 6px（共通トークンの radius-s・radius-m） */
+@theme {
+  --radius-sm: 3px;
+  --radius-md: 3px;
+  --radius-lg: 6px;
+}
+
+:root {
+  color-scheme: light dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  line-height: 1.6;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
+}
+
+/* 日本語の見出しを文節の切れ目で折り返す（対応していないブラウザは通常の折り返し） */
+h1,
+h2,
+h3 {
+  word-break: auto-phrase;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
