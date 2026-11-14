@@ -17,7 +17,11 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   ]);
 
   const chip = (active: boolean) =>
-    `rounded-full border px-3 py-1 text-sm ${active ? "border-brand bg-brand text-brand-foreground" : "border-border bg-surface"}`;
+    `rounded-md border px-2.5 py-1 text-xs font-medium transition ${
+      active
+        ? "border-brand bg-brand text-brand-foreground"
+        : "border-border bg-surface text-muted hover:border-foreground/40 hover:text-foreground"
+    }`;
   const href = (c: string) => `/search?${new URLSearchParams({ ...(q ? { q } : {}), ...(c ? { category: c } : {}) })}`;
 
   return (
@@ -27,12 +31,14 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
         <input
           name="q"
           defaultValue={q}
-          placeholder="アプリを検索"
-          className="min-w-0 flex-1 rounded-xl border border-border bg-surface px-4 py-2"
+          placeholder="アプリを検索..."
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3.5 py-2 text-sm outline-none focus:border-foreground"
         />
-        <button className="rounded-xl bg-brand px-5 py-2 font-semibold text-brand-foreground">検索</button>
+        <button className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition hover:opacity-90">
+          検索
+        </button>
       </form>
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 flex flex-wrap gap-1.5">
         <Link href={href("")} className={chip(!category)}>
           すべて
         </Link>
@@ -43,10 +49,10 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
         ))}
       </div>
       {result.items.length === 0 ? (
-        <p className="text-muted">見つかりませんでした。</p>
+        <p className="text-sm text-muted">見つかりませんでした。</p>
       ) : (
         <>
-          <p className="mb-3 text-sm text-muted">{result.total}件</p>
+          <p className="mb-3 font-mono text-xs text-muted">{result.total}件</p>
           <AppGrid apps={result.items} />
         </>
       )}

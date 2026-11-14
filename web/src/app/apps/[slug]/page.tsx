@@ -29,12 +29,12 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
 
   return (
     <article>
-      <div className="flex items-center gap-4">
-        <AppIcon url={app.iconUrl} size={96} />
+      <div className="flex items-center gap-4 border-b border-border pb-6">
+        <AppIcon url={app.iconUrl} size={80} />
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold">{app.name}</h1>
-          {app.developerName && <p className="text-sm text-brand">{app.developerName}</p>}
-          <p className="mt-1 flex flex-wrap gap-x-4 text-sm text-muted">
+          <h1 className="text-2xl font-bold tracking-tight">{app.name}</h1>
+          {app.developerName && <p className="text-sm text-muted">{app.developerName}</p>}
+          <p className="mt-1.5 flex flex-wrap gap-x-4 font-mono text-xs text-muted">
             {app.ratingCount > 0 && <span>★ {app.ratingAvg.toFixed(1)}</span>}
             <span>{formatCount(app.downloadCount)} ダウンロード</span>
             {app.category && <span>{app.category.name}</span>}
@@ -43,14 +43,17 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
       </div>
 
       {/* ダウンロードはストアアプリ内で完結させる。Webからはアプリを開く/入手する導線のみ */}
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-5 flex flex-wrap gap-2.5">
         <a
           href={`ttechstore://apps/${app.slug}`}
-          className="rounded-full bg-brand px-6 py-2.5 font-semibold text-brand-foreground"
+          className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition hover:opacity-90"
         >
           ストアアプリで開く
         </a>
-        <Link href="/download" className="rounded-full border border-border bg-surface px-6 py-2.5 font-semibold">
+        <Link
+          href="/download"
+          className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold transition hover:border-foreground/40"
+        >
           ストアアプリを入手
         </Link>
       </div>
@@ -62,25 +65,25 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
         <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
           {app.screenshots.map((url) => (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={url} src={url} alt="スクリーンショット" className="h-72 shrink-0 rounded-xl border border-border" />
+            <img key={url} src={url} alt="スクリーンショット" className="h-72 shrink-0 rounded-lg border border-border" />
           ))}
         </div>
       )}
 
-      <section className="mt-6">
-        <h2 className="mb-2 text-lg font-bold">アプリについて</h2>
-        <p className="whitespace-pre-wrap">{app.description || app.shortDesc}</p>
+      <section className="mt-8 border-t border-border pt-6">
+        <h2 className="mb-2 text-base font-bold tracking-tight">アプリについて</h2>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{app.description || app.shortDesc}</p>
       </section>
 
       {latest && (
-        <section className="mt-6">
-          <h2 className="mb-2 text-lg font-bold">最新バージョン {latest.versionName}</h2>
-          {latest.releaseNotes && <p className="mb-3 whitespace-pre-wrap">{latest.releaseNotes}</p>}
-          <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
+        <section className="mt-8 border-t border-border pt-6">
+          <h2 className="mb-2 text-base font-bold tracking-tight">最新バージョン {latest.versionName}</h2>
+          {latest.releaseNotes && <p className="mb-3 whitespace-pre-wrap text-sm">{latest.releaseNotes}</p>}
+          <dl className="grid grid-cols-[8rem_1fr] gap-y-1.5 text-sm">
             {latest.apkSize != null && (
               <>
                 <dt className="text-muted">サイズ</dt>
-                <dd>{formatBytes(latest.apkSize)}</dd>
+                <dd className="font-mono">{formatBytes(latest.apkSize)}</dd>
               </>
             )}
             {latest.minSdk != null && (
@@ -92,7 +95,7 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
             {latest.permissions.length > 0 && (
               <>
                 <dt className="text-muted">必要な権限</dt>
-                <dd className="break-words">{latest.permissions.map(shortPermission).join(", ")}</dd>
+                <dd className="break-words font-mono text-xs">{latest.permissions.map(shortPermission).join(", ")}</dd>
               </>
             )}
           </dl>

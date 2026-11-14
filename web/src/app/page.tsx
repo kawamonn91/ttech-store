@@ -21,7 +21,7 @@ const loadHome = unstable_cache(
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-xl font-bold">{title}</h2>
+      <h2 className="mb-3 text-base font-bold tracking-tight">{title}</h2>
       {children}
     </section>
   );
@@ -33,32 +33,44 @@ export default async function HomePage() {
 
   return (
     <>
-      <div className="mb-8 rounded-3xl bg-brand p-6 text-brand-foreground">
-        <h1 className="text-2xl font-bold">T-tech のAndroidアプリ、ここに集合。</h1>
-        <p className="mt-2 text-sm opacity-90">
-          広告なし・シンプルなアプリをまとめて配布しています。インストールと更新は専用のストアアプリで。
-        </p>
-        <Link
-          href="/download"
-          className="mt-4 inline-block rounded-full bg-surface px-5 py-2 text-sm font-semibold text-brand"
-        >
-          ストアアプリを入手
-        </Link>
+      <div className="mb-8 flex flex-col justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">T-tech のAndroidアプリ・ツール配布</h1>
+          <p className="mt-1.5 text-sm text-muted">
+            広告なし・シンプルな実用アプリをまとめて配布しています。インストールと更新は専用のストアアプリで行えます。
+          </p>
+        </div>
+        <div className="shrink-0">
+          <Link
+            href="/download"
+            className="inline-block rounded-md bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition hover:opacity-90"
+          >
+            ストアアプリを入手
+          </Link>
+        </div>
       </div>
 
       <Section title="Windows 版ツール">
         <Link
           href="/tools/pdf-ja"
-          className="block rounded-2xl border border-border bg-surface p-5 hover:border-brand"
+          className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4 transition hover:border-foreground/40"
         >
-          <p className="font-bold">PDF・PowerPoint 日本語化ツール</p>
-          <p className="mt-1 text-sm text-muted">
-            英語の PDF・PowerPoint を、見た目を保ったまま日本語に。はみ出しは自動で調整し、手で直すこともできます。
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">PDF・PowerPoint 日本語化ツール</span>
+              <span className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted">
+                Windows 10 / 11
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              英語の PDF・PowerPoint を、見た目を保ったまま日本語に。はみ出しは自動で調整し、手で直すこともできます。
+            </p>
+          </div>
+          <span className="shrink-0 font-mono text-xs text-muted">詳細 →</span>
         </Link>
       </Section>
 
-      {empty && <p className="text-muted">公開中のアプリはまだありません。</p>}
+      {empty && <p className="text-sm text-muted">公開中のアプリはまだありません。</p>}
       {featured.length > 0 && (
         <Section title="おすすめ">
           <AppGrid apps={featured} />
@@ -75,9 +87,12 @@ export default async function HomePage() {
         </Section>
       )}
       {total > 0 && (
-        <div className="mb-8 text-center">
-          <Link href="/search" className="inline-block rounded-full border border-border bg-surface px-6 py-2.5 text-sm font-semibold hover:text-brand">
-            すべてのアプリを見る({total}件)
+        <div className="mb-8 pt-2">
+          <Link
+            href="/search"
+            className="inline-block rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium transition hover:border-foreground/40"
+          >
+            すべてのアプリを見る ({total}件) →
           </Link>
         </div>
       )}

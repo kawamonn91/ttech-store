@@ -70,12 +70,12 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="mb-6 text-xl font-bold">{mode === "signin" ? "ログイン" : "新規登録"}</h1>
+    <div className="mx-auto max-w-sm rounded-lg border border-border bg-surface p-6">
+      <h1 className="mb-5 text-lg font-bold tracking-tight">{mode === "signin" ? "ログイン" : "新規登録"}</h1>
 
       <button
         onClick={withGoogle}
-        className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 font-semibold"
+        className="mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium transition hover:border-foreground/40"
       >
         <GoogleIcon />
         Googleで{mode === "signin" ? "ログイン" : "登録"}
@@ -95,7 +95,7 @@ function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="メールアドレス"
-          className="w-full rounded-xl border border-border bg-surface px-4 py-2"
+          className="w-full rounded-md border border-border bg-background px-3.5 py-2 text-sm outline-none focus:border-foreground"
         />
         <input
           type="password"
@@ -104,37 +104,37 @@ function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="パスワード"
-          className="w-full rounded-xl border border-border bg-surface px-4 py-2"
+          className="w-full rounded-md border border-border bg-background px-3.5 py-2 text-sm outline-none focus:border-foreground"
         />
         {error && <p className="text-sm text-danger">{error}</p>}
-        {notice && <p className="text-sm text-brand">{notice}</p>}
+        {notice && <p className="text-sm text-foreground">{notice}</p>}
         <button
           disabled={busy}
-          className="w-full rounded-xl bg-brand px-4 py-2 font-semibold text-brand-foreground disabled:opacity-60"
+          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition hover:opacity-90 disabled:opacity-60"
         >
           {busy ? "処理中…" : mode === "signin" ? "ログイン" : "登録する"}
         </button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-muted">
+      <p className="mt-4 text-center text-xs text-muted">
         {mode === "signin" ? (
           <>
             アカウントをお持ちでない場合は{" "}
-            <button className="text-brand underline" onClick={() => setMode("signup")}>
+            <button className="font-medium text-foreground underline" onClick={() => setMode("signup")}>
               新規登録
             </button>
           </>
         ) : (
           <>
             既にアカウントをお持ちの場合は{" "}
-            <button className="text-brand underline" onClick={() => setMode("signin")}>
+            <button className="font-medium text-foreground underline" onClick={() => setMode("signin")}>
               ログイン
             </button>
           </>
         )}
       </p>
-      <p className="mt-6 text-center text-xs text-muted">
-        <Link href="/admin/login" className="underline">
+      <p className="mt-5 border-t border-border pt-4 text-center text-xs text-muted">
+        <Link href="/admin/login" className="underline hover:text-foreground">
           運営者はこちら
         </Link>
       </p>
@@ -144,7 +144,7 @@ function LoginForm() {
 
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden>
       <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
       <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.95v2.33A9 9 0 0 0 9 18z" />
       <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.05z" />
