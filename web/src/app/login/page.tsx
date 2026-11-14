@@ -71,7 +71,7 @@ function LoginForm() {
 
   return (
     <div className="mx-auto max-w-sm rounded-lg border border-border bg-surface p-6">
-      <h1 className="mb-5 text-lg font-bold tracking-tight">{mode === "signin" ? "ログイン" : "新規登録"}</h1>
+      <h1 className="mb-5 text-lg font-bold">{mode === "signin" ? "ログイン" : "新規登録"}</h1>
 
       <button
         onClick={withGoogle}

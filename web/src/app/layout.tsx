@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import { env } from "@/lib/env";
 import { sessionClient } from "@/lib/supabase";
+import { BrandSeal } from "@/components/BrandSeal";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl()),
@@ -21,14 +22,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <header className="border-b border-border bg-surface">
           <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-            <div className="flex items-center gap-2.5">
-              <Link href="/" className="text-base font-bold tracking-tight">
-                T-tech Store
-              </Link>
-              <span className="hidden rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-muted sm:inline">
-                store.kawamonn.com
-              </span>
-            </div>
+            <Link href="/" className="flex items-center gap-2.5 text-base font-bold" aria-label="T-tech Store トップ">
+              <BrandSeal />
+              <span>T-tech Store</span>
+            </Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/search" className="text-muted transition hover:text-foreground">
                 検索
@@ -54,7 +51,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <p>© T-tech</p>
             <p className="flex flex-wrap gap-4">
               <a href="https://www.kawamonn.com" className="transition hover:text-foreground">
-                kawamonn.com
+                T-tech のトップ
               </a>
               <Link href="/legal/terms" className="transition hover:text-foreground">
                 利用規約

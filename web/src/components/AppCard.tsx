@@ -38,9 +38,9 @@ export function AppCard({ app }: { app: AppSummaryDto }) {
     >
       <AppIcon url={app.iconUrl} />
       <div className="min-w-0 flex-1">
-        <div className="truncate font-semibold tracking-tight">{app.name}</div>
+        <div className="truncate font-semibold">{app.name}</div>
         {app.shortDesc && <div className="truncate text-sm text-muted">{app.shortDesc}</div>}
-        <div className="mt-1 flex flex-wrap gap-x-3 font-mono text-xs text-muted">
+        <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted tabular-nums">
           {app.ratingCount > 0 && <span>★ {app.ratingAvg.toFixed(1)}</span>}
           <span>{formatCount(app.downloadCount)} DL</span>
           {app.category && <span>{app.category.name}</span>}

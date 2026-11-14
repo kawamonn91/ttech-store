@@ -52,7 +52,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
         <p className="text-sm text-muted">見つかりませんでした。</p>
       ) : (
         <>
-          <p className="mb-3 font-mono text-xs text-muted">{result.total}件</p>
+          <p className="mb-3 text-xs text-muted tabular-nums">{result.total}件</p>
           <AppGrid apps={result.items} />
         </>
       )}

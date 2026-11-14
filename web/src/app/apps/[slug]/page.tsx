@@ -32,9 +32,9 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
       <div className="flex items-center gap-4 border-b border-border pb-6">
         <AppIcon url={app.iconUrl} size={80} />
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight">{app.name}</h1>
+          <h1 className="text-2xl font-bold">{app.name}</h1>
           {app.developerName && <p className="text-sm text-muted">{app.developerName}</p>}
-          <p className="mt-1.5 flex flex-wrap gap-x-4 font-mono text-xs text-muted">
+          <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted tabular-nums">
             {app.ratingCount > 0 && <span>★ {app.ratingAvg.toFixed(1)}</span>}
             <span>{formatCount(app.downloadCount)} ダウンロード</span>
             {app.category && <span>{app.category.name}</span>}
@@ -71,19 +71,19 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
       )}
 
       <section className="mt-8 border-t border-border pt-6">
-        <h2 className="mb-2 text-base font-bold tracking-tight">アプリについて</h2>
+        <h2 className="mb-2 text-base font-bold">アプリについて</h2>
         <p className="whitespace-pre-wrap text-sm leading-relaxed">{app.description || app.shortDesc}</p>
       </section>
 
       {latest && (
         <section className="mt-8 border-t border-border pt-6">
-          <h2 className="mb-2 text-base font-bold tracking-tight">最新バージョン {latest.versionName}</h2>
+          <h2 className="mb-2 text-base font-bold">最新バージョン {latest.versionName}</h2>
           {latest.releaseNotes && <p className="mb-3 whitespace-pre-wrap text-sm">{latest.releaseNotes}</p>}
           <dl className="grid grid-cols-[8rem_1fr] gap-y-1.5 text-sm">
             {latest.apkSize != null && (
               <>
                 <dt className="text-muted">サイズ</dt>
-                <dd className="font-mono">{formatBytes(latest.apkSize)}</dd>
+                <dd className="tabular-nums">{formatBytes(latest.apkSize)}</dd>
               </>
             )}
             {latest.minSdk != null && (
