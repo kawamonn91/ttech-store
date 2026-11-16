@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = { title: "利用規約" };
 
@@ -6,6 +7,7 @@ export const metadata: Metadata = { title: "利用規約" };
 export default function TermsPage() {
   return (
     <article className="prose-sm mx-auto max-w-2xl space-y-4 leading-7">
+      <Breadcrumbs items={[{ label: "利用規約" }]} />
       <h1 className="text-2xl font-bold">利用規約</h1>
       <p>この利用規約(以下「本規約」)は、T-tech(以下「運営者」)が提供する「T-tech Store」(Webサイトおよびアプリ。以下「本サービス」)の利用条件を定めます。</p>
 

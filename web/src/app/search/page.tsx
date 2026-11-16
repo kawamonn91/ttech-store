@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppGrid } from "@/components/AppCard";
 import { listApps, listCategories } from "@/lib/catalog";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "検索" };
@@ -24,8 +25,17 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
     }`;
   const href = (c: string) => `/search?${new URLSearchParams({ ...(q ? { q } : {}), ...(c ? { category: c } : {}) })}`;
 
+  const current = categories.find((c) => c.slug === category);
+
   return (
     <>
+      <Breadcrumbs
+        items={
+          current
+            ? [{ label: "検索", href: href("") }, { label: current.name }]
+            : [{ label: q ? `「${q}」の検索` : "検索" }]
+        }
+      />
       <form action="/search" className="mb-4 flex gap-2">
         {category && <input type="hidden" name="category" value={category} />}
         <input

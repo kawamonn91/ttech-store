@@ -13,6 +13,7 @@ import { AppEditForm } from "./AppEditForm";
 import { MediaManager } from "./MediaManager";
 import { ReleaseUploader } from "./ReleaseUploader";
 import { VisibilityToggle } from "./VisibilityToggle";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = { title: "アプリの管理" };
 export const dynamic = "force-dynamic";
@@ -75,9 +76,7 @@ export default async function DeveloperAppPage({ params }: { params: Promise<{ i
     <div className="mx-auto max-w-2xl space-y-8">
       <AutoRefresh active={releases.some((r) => r.status === "uploaded")} />
       <div>
-        <Link href="/developer" className="text-sm text-muted hover:text-brand">
-          ← 開発者ダッシュボード
-        </Link>
+        <Breadcrumbs items={[{ label: "開発者ダッシュボード", href: "/developer" }, { label: app.name }]} />
         <div className="mt-1 flex items-center gap-3">
           <h1 className="text-xl font-bold">{app.name}</h1>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${TONE_CLASS[status.tone]}`}>{status.label}</span>

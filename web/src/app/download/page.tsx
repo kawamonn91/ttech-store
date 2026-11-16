@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getAppByPackage } from "@/lib/catalog";
 import { env } from "@/lib/env";
 import { formatBytes } from "@/lib/format";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "ストアアプリを入手" };
@@ -12,6 +13,7 @@ export default async function DownloadPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
+      <Breadcrumbs items={[{ label: "ストアアプリを入手" }]} />
       <h1 className="mb-2 text-2xl font-bold">T-tech Store アプリを入手</h1>
       <p className="mb-6 text-sm text-muted">
         T-tech のアプリは、この専用ストアアプリからインストール・更新します。最初の1回だけ、こちらからインストールしてください。

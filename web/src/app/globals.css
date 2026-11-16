@@ -8,7 +8,9 @@
 :root {
   --background: #faf9f7;
   --surface: #ffffff;
+  --surface-2: #f3f1ee;
   --border: #e3e0db;
+  --border-strong: #c9c4bc;
   --foreground: #1c1a17;
   --muted: #736d64;
   --brand: #c8442a;
@@ -20,7 +22,9 @@
   :root {
     --background: #161412;
     --surface: #1e1b18;
+    --surface-2: #26221e;
     --border: #34302b;
+    --border-strong: #4a453e;
     --foreground: #edeae5;
     --muted: #8c867d;
     --brand: #f0795a;
@@ -32,7 +36,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-brand: var(--brand);
@@ -60,13 +66,29 @@ body {
   font-family: var(--font-sans);
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
+  /*
+   * 文章の折り返し: 日本語は文節の切れ目で折り返し（Chrome・Edge）、禁則を厳しめにし、
+   * 段落の最後の行に1〜2文字だけ残さない。長い URL などは、はみ出すときだけ途中で折る。
+   */
+  line-break: strict;
+  word-break: auto-phrase;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
-/* 日本語の見出しを文節の切れ目で折り返す（対応していないブラウザは通常の折り返し） */
+/* 見出しは、行の長さをそろえる */
 h1,
 h2,
 h3 {
-  word-break: auto-phrase;
+  text-wrap: balance;
+}
+
+/* コードは英数字の並びなので、文節で区切らない */
+code,
+pre,
+kbd,
+samp {
+  word-break: normal;
 }
 
 :focus-visible {

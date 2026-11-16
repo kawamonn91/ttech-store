@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import { env } from "@/lib/env";
 import { sessionClient } from "@/lib/supabase";
-import { BrandSeal } from "@/components/BrandSeal";
+import { BrandMenu } from "@/components/BrandMenu";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl()),
@@ -22,15 +22,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <header className="border-b border-border bg-surface">
           <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-            <Link href="/" className="flex items-center gap-2.5 text-base font-bold" aria-label="T-tech Store トップ">
-              <BrandSeal />
-              <span>T-tech Store</span>
-            </Link>
-            <nav className="flex items-center gap-4 text-sm">
+            <BrandMenu />
+            <nav className="flex items-center gap-4 text-sm whitespace-nowrap">
               <Link href="/search" className="text-muted transition hover:text-foreground">
                 検索
               </Link>
-              <Link href="/developer" className="text-muted transition hover:text-foreground">
+              <Link href="/developer" className="hidden text-muted transition hover:text-foreground sm:inline">
                 開発者向け
               </Link>
               <Link href={user ? "/account" : "/login"} className="text-muted transition hover:text-foreground">
@@ -38,7 +35,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </Link>
               <Link
                 href="/download"
-                className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground transition hover:opacity-90"
+                className="hidden rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground transition hover:opacity-90 sm:inline-block"
               >
                 ストアアプリを入手
               </Link>
@@ -53,6 +50,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <a href="https://www.kawamonn.com" className="transition hover:text-foreground">
                 T-tech のトップ
               </a>
+              <Link href="/developer" className="transition hover:text-foreground">
+                開発者向け
+              </Link>
               <Link href="/legal/terms" className="transition hover:text-foreground">
                 利用規約
               </Link>
