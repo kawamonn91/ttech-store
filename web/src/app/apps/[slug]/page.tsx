@@ -5,6 +5,7 @@ import { cache } from "react";
 import { AppIcon } from "@/components/AppCard";
 import { getAppBySlug } from "@/lib/catalog";
 import { formatBytes, formatCount, shortPermission } from "@/lib/format";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,12 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
 
   return (
     <article>
+      <Breadcrumbs
+        items={[
+          ...(app.category ? [{ label: app.category.name, href: `/search?category=${app.category.slug}` }] : []),
+          { label: app.name },
+        ]}
+      />
       <div className="flex items-center gap-4 border-b border-border pb-6">
         <AppIcon url={app.iconUrl} size={80} />
         <div className="min-w-0">
@@ -101,6 +108,20 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
           </dl>
         </section>
       )}
+
+      <nav aria-label="ほかのページへ" className="mt-10 flex flex-wrap justify-between gap-3 border-t border-border pt-5 text-sm">
+        <Link href="/" className="text-muted underline decoration-border underline-offset-2 hover:text-brand">
+          ← アプリの一覧へ戻る
+        </Link>
+        {app.category && (
+          <Link
+            href={`/search?category=${app.category.slug}`}
+            className="text-muted underline decoration-border underline-offset-2 hover:text-brand"
+          >
+            {app.category.name}のアプリをもっと見る →
+          </Link>
+        )}
+      </nav>
     </article>
   );
 }

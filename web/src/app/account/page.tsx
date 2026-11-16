@@ -9,6 +9,7 @@ import { PendingReleases } from "./PendingReleases";
 import { PrivateApps } from "./PrivateApps";
 import { ProfileForm } from "./ProfileForm";
 import { TotpSetup } from "./TotpSetup";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export default async function AccountPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      <Breadcrumbs items={[{ label: "マイページ" }]} />
       <div>
         <h1 className="text-xl font-bold">マイページ</h1>
         <p className="text-sm text-muted">{user.email}</p>

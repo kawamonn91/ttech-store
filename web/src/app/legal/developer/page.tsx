@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = { title: "開発者向け規約" };
 
@@ -7,6 +8,7 @@ export const metadata: Metadata = { title: "開発者向け規約" };
 export default function DeveloperTermsPage() {
   return (
     <article className="prose-sm mx-auto max-w-2xl space-y-4 leading-7">
+      <Breadcrumbs items={[{ label: "開発者向け規約" }]} />
       <h1 className="text-2xl font-bold">開発者向け規約</h1>
       <p>
         この規約は、「T-tech Store」(以下「本サービス」)にアプリを公開する方(以下「開発者」)と、本サービスの運営者(以下「運営者」)との間の条件を定めます。

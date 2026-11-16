@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/developer";
 import { serviceClient } from "@/lib/supabase";
 import { NewAppForm } from "./NewAppForm";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = { title: "アプリを登録" };
 export const dynamic = "force-dynamic";
@@ -22,9 +22,7 @@ export default async function NewAppPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div>
-        <Link href="/developer" className="text-sm text-muted hover:text-brand">
-          ← 開発者ダッシュボード
-        </Link>
+        <Breadcrumbs items={[{ label: "開発者ダッシュボード", href: "/developer" }, { label: "アプリを登録" }]} />
         <h1 className="mt-1 text-xl font-bold">アプリを登録</h1>
         <p className="text-sm text-muted">まず、アプリの基本情報を登録します。次の画面で、アイコン・スクリーンショットとAPKをアップロードします。</p>
       </div>

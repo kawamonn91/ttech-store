@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = { title: "プライバシーポリシー" };
 
@@ -20,6 +21,7 @@ const APP_POLICIES = [
 export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-2xl space-y-4 leading-7">
+      <Breadcrumbs items={[{ label: "プライバシーポリシー" }]} />
       <h1 className="text-2xl font-bold">プライバシーポリシー</h1>
       <p className="text-sm text-muted">最終更新日: 2026年10月6日</p>
       <p>

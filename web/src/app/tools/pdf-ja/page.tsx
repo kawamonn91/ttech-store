@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = { title: "PDF・PowerPoint 日本語化ツール(Windows)" };
 
 export default function PdfJaToolPage() {
   return (
     <div className="mx-auto max-w-2xl">
+      <Breadcrumbs items={[{ label: "PDF・PowerPoint 日本語化ツール" }]} />
       <h1 className="mb-2 text-2xl font-bold">PDF・PowerPoint 日本語化ツール</h1>
       <p className="mb-6 text-sm text-muted">
         英語のPDFやPowerPointを、レイアウト・画像・フォントの見た目を保ったまま日本語にする Windows 用ツールです。

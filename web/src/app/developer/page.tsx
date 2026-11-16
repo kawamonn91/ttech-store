@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/developer";
 import { APP_STATUS_LABEL, TONE_CLASS } from "@/lib/release-status";
 import { serviceClient } from "@/lib/supabase";
 import { RegisterForm } from "./RegisterForm";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = { title: "開発者向け" };
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ export default async function DeveloperPage() {
   if (!developer) {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
+        <Breadcrumbs items={[{ label: "開発者向け" }]} />
         <h1 className="text-xl font-bold">開発者として登録する</h1>
         {intro}
         <Card>
@@ -68,6 +70,7 @@ export default async function DeveloperPage() {
   if (developer.status !== "approved") {
     return (
       <div className="mx-auto max-w-2xl space-y-4">
+        <Breadcrumbs items={[{ label: "開発者向け" }]} />
         <h1 className="text-xl font-bold">開発者向け</h1>
         <Card>
           <p className="text-sm">
@@ -86,6 +89,7 @@ export default async function DeveloperPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <Breadcrumbs items={[{ label: "開発者ダッシュボード" }]} />
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">開発者ダッシュボード</h1>
