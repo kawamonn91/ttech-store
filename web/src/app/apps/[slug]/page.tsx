@@ -6,6 +6,7 @@ import { AppIcon } from "@/components/AppCard";
 import { getAppBySlug } from "@/lib/catalog";
 import { formatBytes, formatCount, shortPermission } from "@/lib/format";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { keepNumbers } from "@/lib/keep-numbers";
 
 export const dynamic = "force-dynamic";
 
@@ -79,14 +80,14 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
 
       <section className="mt-8 border-t border-border pt-6">
         <h2 className="mb-2 text-base font-bold">アプリについて</h2>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">{app.description || app.shortDesc}</p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{keepNumbers(app.description || app.shortDesc)}</p>
       </section>
 
       {latest && (
         <section className="mt-8 border-t border-border pt-6">
           <h2 className="mb-2 text-base font-bold">最新バージョン {latest.versionName}</h2>
-          {latest.releaseNotes && <p className="mb-3 whitespace-pre-wrap text-sm">{latest.releaseNotes}</p>}
-          <dl className="grid grid-cols-[8rem_1fr] gap-y-1.5 text-sm">
+          {latest.releaseNotes && <p className="mb-3 whitespace-pre-wrap text-sm">{keepNumbers(latest.releaseNotes)}</p>}
+          <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-y-1.5 text-sm">
             {latest.apkSize != null && (
               <>
                 <dt className="text-muted">サイズ</dt>
@@ -102,7 +103,7 @@ export default async function AppPage({ params }: PageProps<"/apps/[slug]">) {
             {latest.permissions.length > 0 && (
               <>
                 <dt className="text-muted">必要な権限</dt>
-                <dd className="break-words font-mono text-xs">{latest.permissions.map(shortPermission).join(", ")}</dd>
+                <dd className="font-mono text-xs [overflow-wrap:anywhere]">{latest.permissions.map(shortPermission).join(", ")}</dd>
               </>
             )}
           </dl>
