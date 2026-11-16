@@ -34,7 +34,7 @@ export function AppCard({ app }: { app: AppSummaryDto }) {
   return (
     <Link
       href={`/apps/${app.slug}`}
-      className="flex items-center gap-3.5 rounded-lg border border-border bg-surface p-3.5 transition hover:border-foreground/40"
+      className="flex min-w-0 items-center gap-3.5 rounded-lg border border-border bg-surface p-3.5 transition hover:border-foreground/40"
     >
       <AppIcon url={app.iconUrl} />
       <div className="min-w-0 flex-1">
@@ -52,7 +52,7 @@ export function AppCard({ app }: { app: AppSummaryDto }) {
 
 export function AppGrid({ apps }: { apps: AppSummaryDto[] }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {apps.map((a) => (
         <AppCard key={a.id} app={a} />
       ))}
